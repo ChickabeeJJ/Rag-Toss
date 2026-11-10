@@ -1,7 +1,7 @@
 'use strict';
 /* =========================================================================
-   Progress: save data, the bag (three item slots), upgrades, daily missions,
-   the login streak and ranks. Saved through Platform (CrazyGames data module,
+   Progress: save data, the bag (three item slots), upgrades, missions and
+   ranks. Saved through Platform (CrazyGames data module,
    else localStorage).
    ========================================================================= */
 
@@ -17,8 +17,7 @@ const Save = (() => {
     stats: { kills: 0, headshots: 0, ringouts: 0, bosses: 0, deflects: 0, earned: 0, crates: 0, combo5: 0, runs: 0, tricks: 0, throws: 0 },
     rank: 0,
     daily: { day: -1, list: [], bonus: false },
-    streak: { count: 0, claimedDay: -1 },
-    seenTut: false, seenDuck: false, seenSwap: false,
+    tutDone: false, seenSwap: false,
   });
   let data = fresh();
 
@@ -28,7 +27,7 @@ const Save = (() => {
       if (raw) {
         const d = JSON.parse(raw), f = fresh();
         data = Object.assign(f, d);
-        for (const k of ['settings', 'best', 'stats', 'daily', 'streak']) data[k] = Object.assign(fresh()[k], d[k] || {});
+        for (const k of ['settings', 'best', 'stats', 'daily']) data[k] = Object.assign(fresh()[k], d[k] || {});
         if (!Array.isArray(data.items)) data.items = ['rock'];
         data.items = data.items.filter(id => ITEM[id]);
         if (!data.items.includes('rock')) data.items.unshift('rock');
@@ -123,23 +122,6 @@ const Save = (() => {
   }
   const missionsReady = () => data.daily.list.some(m => !m.claimed && m.prog >= m.n) || (allClaimed() && !data.daily.bonus);
 
-  /* --------------------------------------------------------- login streak */
-  const STREAK = [50, 75, 100, 125, 150, 200, 400];
-  function streakState() {
-    const day = dayIndex(), s = data.streak;
-    const claimable = s.claimedDay !== day;
-    let count = s.count;
-    if (claimable && s.claimedDay !== day - 1) count = 0;   // missed a day: back to day 1
-    return { claimable, day: count % 7, reward: STREAK[count % 7], count, table: STREAK };
-  }
-  function claimStreak() {
-    const st = streakState();
-    if (!st.claimable) return 0;
-    data.streak = { count: st.count + 1, claimedDay: dayIndex() };
-    data.coins += st.reward; save();
-    return st.reward;
-  }
-
   /* ---------------------------------------------------------------- ranks */
   function rankInfo() {
     const kos = data.stats.kills;
@@ -172,7 +154,7 @@ const Save = (() => {
 
   return {
     load, save, reset, addCoins, owns, buyItem, equip, unequip, bagItems, nextItem, lvl, buyUpgrade, canAffordAny,
-    track, claimMission, claimBonus, allClaimed, missionsReady, rollDaily, streakState, claimStreak, rankInfo, claimRanks, recordRun,
+    track, claimMission, claimBonus, allClaimed, missionsReady, rollDaily, rankInfo, claimRanks, recordRun,
     get data() { return data; },
   };
 })();

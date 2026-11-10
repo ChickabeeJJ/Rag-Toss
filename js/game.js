@@ -18,9 +18,10 @@ const Game = (() => {
   const throwLog = new Map();
   let run = null;
   let themeFrom = 0, themeTo = 0, themeT = 1;
-  const aim = { on: false, id: null, sx: 0, sy: 0, cx: 0, cy: 0, power: 0, ang: 0 };
-  let duckHeld = false, duckTired = false, pending = null, demoT = 1.5, staFlash = 0;
-  const on = { over: null, perk: null, toast: null, banner: null, bag: null };
+  const aim = { on: false, id: null, sx: 0, sy: 0, cx: 0, cy: 0, power: 0, ang: 0, max: 200, t: 0 };
+  const PULL_DEAD = 16;
+  let duckHeld = false, duckTired = false, duckOn = false, duckT = 0, pending = null, demoT = 1.5, staFlash = 0;
+  const on = { over: null, perk: null, toast: null, banner: null, tut: null };
 
   const HOME_X = 262, HOME_Y = 620;
   const pk = id => (run && run.perks[id]) || 0;
@@ -32,6 +33,7 @@ const Game = (() => {
   function init(cv) {
     canvas = cv; ctx = canvas.getContext('2d');
     World.init();
+    Fx.setSolids(() => plats);
     resize();
     toMenu();
   }
@@ -54,7 +56,7 @@ const Game = (() => {
     home = new Plat(250, HOME_Y, 300, 'player'); home.h = 300; home.bobA = 0;
     wall = new Plat(378, HOME_Y - 62, 36, 'wall'); wall.h = 62;
     plats.push(home, wall);
-    const rag = new Rag({ x: HOME_X, y: HOME_Y, facing: 1, isPlayer: true, body: '#f7f2e7', shade: '#d3c8b3', accent: '#ff9a3c', plat: home });
+    const rag = new Rag({ x: HOME_X, y: HOME_Y, facing: 1, isPlayer: true, body: '#f7f2e7', shade: '#d3c8b3', accent: '#ff9a3c', plat: home, weight: 1.3, steady: true });
     player = { rag, hp: 100, maxHp: 100, sta: 100, maxSta: 100, cd: 0, staWait: 0, slot: 0, bonus: null, dead: false, inv: 0 };
     refreshStats(true);
     selectFirstSlot();
@@ -63,13 +65,16 @@ const Game = (() => {
     const maxHp = 100 + 15 * Save.lvl('health') + 35 * pk('skin');
     if (full) player.hp = maxHp; else player.hp = Math.min(maxHp, player.hp + Math.max(0, maxHp - player.maxHp));
     player.maxHp = maxHp;
-    player.maxSta = 100 + 12 * Save.lvl('stamina');
+    player.maxSta = 200 + 20 * Save.lvl('stamina');
     if (full) player.sta = player.maxSta;
   }
   function selectFirstSlot() { const b = Save.data.bag; if (!b[player.slot]) player.slot = Math.max(0, b.findIndex(Boolean)); }
   const dmgMul = () => (1 + 0.08 * Save.lvl('power')) * (1 + 0.25 * pk('heavy'));
   const coinMul = () => (1 + 0.1 * Save.lvl('greed')) * (1 + 0.3 * pk('rich'));
-  const staRegen = () => 21 * (1 + 0.1 * Save.lvl('regen')) * (1 + 0.4 * pk('lungs'));
+  // Stamina: a big pool, small costs. A throw takes a few points, holding a wind-up
+  // sips at it, a duck is a flat fee, and it refills by itself the whole time.
+  const DUCK_COST = 5, HOLD_DRAIN = 2.5, DUCK_MAX = 1.5;
+  const staRegen = () => 11 * (1 + 0.1 * Save.lvl('regen')) * (1 + 0.4 * pk('lungs'));
   const throwCd = () => 0.42 * (1 - 0.08 * Save.lvl('quick'));
   const staCost = def => def.sta * (1 - Math.min(0.6, 0.2 * pk('cheap')));
   const armor = () => 1 - 0.05 * Save.lvl('armor');
@@ -88,14 +93,53 @@ const Game = (() => {
     demoT = 1.2; aimCancel();
     Sfx.setStage(1);
   }
-  function start() {
+  function start(opts = {}) {
     state = 'play'; paused = false; hold = false; slowT = 0; hitStop = 0; acc = 0;
     run = freshRun(false);
     themeFrom = themeTo = 0; themeT = 1;
     buildWorld();
-    aimCancel(); duckHeld = false; duckTired = false; pending = null;
+    aimCancel(); duckHeld = false; duckTired = false; duckOn = false; pending = null;
     Sfx.setStage(1);
+    if (opts.tutorial) startTut();
+    else if (on.banner) on.banner('STAGE 1', THEMES[0].name.toUpperCase());
+  }
+
+  /* -------------------------------------------------------------- tutorial
+     The first launch only. Four beats on the real field with the real rules:
+     land a throw, knock the foe out, duck a throw, knock out one that fights
+     back. Then the run carries straight on into stage 1. */
+  function startTut() {
+    run.tut = { step: 0, hits: 0, ducked: false, wait: 0, foe: null };
+    tutFoe(true);
+    if (on.tut) on.tut(0);
+  }
+  function tutFoe(passive) {
+    const f = spawnFoe('chucker', null, { x: 1010, y: 540 });
+    f.passive = passive; f.tut = true; f.hp = f.maxHp = passive ? 56 : 42; f.t = 1.4;
+    run.tut.foe = f;
+  }
+  function tutStep(n) { run.tut.step = n; if (on.tut) on.tut(n); Sfx.style(); }
+  function stepTut(dt) {
+    const T = run.tut, f = T.foe;
+    if (T.wait > 0) { if ((T.wait -= dt) <= 0) { tutFoe(false); T.ducked = false; } return; }
+    const gone = !f || !f.rag.alive;
+    if (T.step === 0 && (T.hits > 0 || gone)) tutStep(1);
+    if (T.step === 1 && gone) { tutStep(2); T.wait = 0.7; return; }
+    if (T.step === 2 && gone) { endTut(); return; }
+    if (T.step === 2 && T.ducked) tutStep(3);
+    if (T.step === 3 && gone) endTut();
+  }
+  function endTut() {
+    if (!run.tut) return;
+    const f = run.tut.foe;
+    if (f && f.rag.alive) { f.passive = false; f.tut = false; }   // skipped: whoever is left just becomes the first foe
+    run.tut = null;
+    Save.data.tutDone = true; Save.save();
+    run.kos = 0; run.stageKills = 0; run.combo = 0; run.bestCombo = 0; run.heads = 0; run.rings = 0; run.spawnT = 0.8; run.t = 0;
+    player.hp = player.maxHp; player.sta = player.maxSta;
+    if (on.tut) on.tut(-1);
     if (on.banner) on.banner('STAGE 1', THEMES[0].name.toUpperCase());
+    Sfx.stage();
   }
 
   /* ------------------------------------------------------------- throw log
@@ -133,14 +177,14 @@ const Game = (() => {
   /* ---------------------------------------------------------------- input */
   function aimStart(x, y, id) {
     if (state !== 'play' || paused || hold || player.dead || aim.on) return;
-    aim.on = true; aim.id = id; aim.sx = aim.cx = x; aim.sy = aim.cy = y; aim.power = 0;
+    aim.on = true; aim.id = id; aim.sx = aim.cx = x; aim.sy = aim.cy = y; aim.power = 0; aim.t = 0;
+    aim.max = clamp(Math.min(cw, ch) * 0.3, 110, 230);
   }
   function aimMove(x, y, id) {
     if (!aim.on || aim.id !== id) return;
     aim.cx = x; aim.cy = y;
     const dx = aim.sx - x, dy = aim.sy - y, len = Math.hypot(dx, dy);
-    const maxPull = clamp(Math.min(cw, ch) * 0.3, 110, 230), dead = 14;
-    const p = clamp((len - dead) / (maxPull - dead), 0, 1);
+    const p = clamp((len - PULL_DEAD) / (aim.max - PULL_DEAD), 0, 1);
     if (Math.abs(p - aim.power) > 0.04 && p > 0) Sfx.stretch(p);
     aim.power = p;
     if (len > 4) aim.ang = Math.atan2(dy, dx);
@@ -175,7 +219,7 @@ const Game = (() => {
     const id = currentItemId(), def = ITEM[id];
     const free = usingBonus(), cost = free ? 0 : staCost(def);
     if (player.sta < cost) { Sfx.empty(); staFlash = 0.5; return false; }
-    player.sta -= cost; player.staWait = 0.35; player.cd = throwCd();
+    player.sta -= cost; player.staWait = 0.25; player.cd = throwCd();
     if (free && --player.bonus.n <= 0) player.bonus = null;
     const rag = player.rag;
     rag.aim = ang; rag.throwT = 0;
@@ -197,7 +241,6 @@ const Game = (() => {
     if (twin) volley(ang - 0.06, 0.11);
     Sfx.throw(!!real.heavy);
     track('throws');
-    if (!Save.data.seenTut) { Save.data.seenTut = true; Save.save(); }
     return true;
   }
 
@@ -428,7 +471,7 @@ const Game = (() => {
       if (hit) {
         if (s.def.blast) { detonate(s); return; }
         const d = Math.hypot(s.vx, s.vy) || 1;
-        hurtPlayer(s.dmg * (hit.part === 'head' ? 1.25 : 1), { x: hit.x, y: hit.y, dirx: s.vx / d, diry: s.vy / d, head: hit.part === 'head' });
+        hurtPlayer(s.dmg * (hit.part === 'head' ? 1.25 : 1), { x: hit.x, y: hit.y, dirx: s.vx / d, diry: s.vy / d, head: hit.part === 'head', hit });
         Fx.chunk(s.art, s.x, s.y, -s.vx * 0.2, -rand(180, 320), s.r, 0.8);
         kill(s); return;
       }
@@ -567,6 +610,7 @@ const Game = (() => {
     const rag = f.rag;
     if (!rag.alive) return;
     if (!f.dummy) f.hp -= dmg;
+    if (f.tut && run.tut && !o.dot) run.tut.hits++;
     rag.flash = 1;
     const big = dmg >= 24;
     if (!o.dot || dmg >= 1) Fx.text(o.x + rand(-8, 8), o.y - 24, String(Math.max(1, Math.round(dmg))), o.head ? '#ffe14d' : o.dot ? '#ffb070' : '#ffffff', o.dot ? 15 : clamp(17 + dmg * 0.3, 17, 34));
@@ -583,19 +627,27 @@ const Game = (() => {
     if (f.state === 'wind' && !f.boss && dmg >= 4) { f.state = 'idle'; f.t = rand(0.9, 1.5); rag.pull = 0; style('stop', rag.head.x, rag.head.y - 60); }
     shove(f, o.dirx, o.diry, o.kb, o);
   }
-  // hurt foes fly further, as in Element Rag
+  /* What a blow does to a body. The throw pushes the bone it landed on and
+     leaves the muscles soft for a moment; whether the foe keeps its feet after
+     that is up to the ragdoll (see Rag.balance). Only the really heavy stuff
+     skips that and throws the body clear. Hurt foes take more from every blow. */
   function shove(f, dx, dy, kb, o) {
     const rag = f.rag;
     if (kb <= 0 || !rag.alive) return;
     const hurt = 1 + 0.9 * (1 - clamp(f.hp / f.maxHp, 0, 1));
     const pw = kb * hurt * (1 + 0.4 * pk('shove'));
-    const idx = rag.nearestPoint(o.x, o.y);
-    if (rag.mode === 'tumble') { rag.impulse(idx, dx * pw * 300, dy * pw * 260 - 120, 0.8); return; }
-    if (pw >= f.anchor && rag.frozen <= 0 && !f.dummy) {
-      const v = 230 + 115 * Math.min(pw, 4.5);
-      rag.knock(dx * v, dy * v * 0.6 - 300 - 45 * Math.min(pw, 4), idx, 0.55);
+    const hit = o.hit || { seg: 1, u: 0.5 };
+    if (rag.mode === 'tumble') { rag.impulseAt(hit, dx * pw * 340, dy * pw * 290 - 100, 0.7); return; }
+    if (rag.frozen > 0) return;
+    if (pw >= f.anchor && !f.dummy && !f.boss) {
+      // carried along by the blow, not popped into the air: the lift only comes with real weight
+      const v = 250 + 125 * Math.min(pw, 4.5);
+      rag.knock(dx * v, dy * v * 0.6 - 90 - 70 * Math.min(pw, 4), rag.nearestPoint(o.x, o.y), 0.55);
       f.state = 'idle'; f.t = Math.max(f.t, 0.9);
-    } else rag.impulse(idx, dx * pw * 420, dy * pw * 300, 0.3);
+      return;
+    }
+    rag.stagger(0.55 * pw);
+    rag.impulseAt(hit, dx * pw * 3300, dy * pw * 2000, 0.3);
   }
   function style(k, x, y) {
     const [label, coins] = STYLE[k];
@@ -608,7 +660,9 @@ const Game = (() => {
     const rag = f.rag, c = rag.chest;
     const lh = f.lastHit || {};
     const dx = o.dirx || 0, dy = o.diry || 0;
-    rag.die(dx * 400, dy * 260 - 340, rag.nearestPoint(o.x, o.y));
+    // the last blow carries the body: a pebble drops it where it stands, a bowling ball takes it along
+    const push = Math.min(4, (o.kb == null ? 1 : o.kb) * 1.8 + 0.4);
+    rag.die(dx * (150 + 120 * push), dy * (90 + 70 * push) - 120 - 45 * push, rag.nearestPoint(o.x, o.y));
     f.state = 'dead';
     if (f.dummy) return;
     let coins = f.coins * (1 + 0.05 * (run.stage - 1)), y = c.y - 70;
@@ -669,9 +723,11 @@ const Game = (() => {
     if (player.dead || player.inv > 0 || state !== 'play') return;
     dmg *= armor();
     player.hp -= dmg;
+    if (run.tut) player.hp = Math.max(player.hp, player.maxHp * 0.5);   // nobody loses the tutorial
     const rag = player.rag;
     rag.flash = 1; hurtFlash = 1; shake = Math.max(shake, 0.45); Sfx.hurt();
-    rag.impulse(rag.nearestPoint(o.x, o.y), o.dirx * 620, o.diry * 380, 0.4);
+    rag.stagger(0.4 + dmg * 0.012);
+    if (o.hit) rag.impulseAt(o.hit, o.dirx * 1100, o.diry * 760, 0.25); else rag.impulse(rag.nearestPoint(o.x, o.y), o.dirx * 1000, o.diry * 700, 0.4);
     Fx.text(o.x, o.y - 30, '-' + Math.max(1, Math.round(dmg)), '#ff6b78', o.head ? 26 : 21);
     Fx.hit(o.x, o.y, Math.atan2(o.diry, o.dirx), '#ff9aa0', 8);
     if (player.hp > 0) return;
@@ -729,7 +785,7 @@ const Game = (() => {
     if (!boss && !floater && run.stage >= 4 && Math.random() < Math.min(0.5, (run.stage - 3) * 0.1)) { pl.moveA = rand(36, 80); pl.moveS = rand(0.5, 0.9); }
     pl.y = pl.baseY + 520;
     plats.push(pl);
-    const rag = new Rag({ x: pos.x, y: pl.y, scale: sc, facing: -1, body: def.body, shade: def.shade, accent: shade(def.body, -0.45), hat: def.hat, plat: pl });
+    const rag = new Rag({ x: pos.x, y: pl.y, scale: sc, facing: -1, body: def.body, shade: def.shade, accent: shade(def.body, -0.45), hat: def.hat, plat: pl, weight: boss ? 4.5 : def.anchor / 1.7, steady: !!boss });
     const hp = (boss ? boss.hp : def.hp) * foeHpMul();
     const f = {
       type, def, rag, plat: pl, hp, maxHp: hp, state: 'enter', t: rand(0.9, 1.8), burst: boss ? boss.burst : def.burst || 1, left: 0, sol: null,
@@ -746,8 +802,6 @@ const Game = (() => {
       const cols = ['#ff5d73', '#ffc933', '#4fa8ff', '#45e08a', '#b05be0', '#ff9a3c'];
       for (let i = 0; i < nb; i++) pl.balloons.push({ ox: (i - (nb - 1) / 2) * (boss ? 40 : 36), oy: -(170 + (i % 2) * 34) * sc - 30, r: 21 * (boss ? 1.15 : 1), alive: true, col: cols[i % cols.length], ph: rand(0, TAU) });
     }
-    // a brand-new player gets time to find the throw before anything comes back
-    if (!Save.data.seenTut && !run.demo) f.t = 7;
     pl.owner = f; foes.push(f);
     return f;
   }
@@ -821,9 +875,8 @@ const Game = (() => {
     const rag = f.rag, def = f.def, ammo = AMMO[def.ammo];
     const p0 = release(rag, f.sol.ang);
     rag.throwT = 0; rag.pull = 0;
-    launch(ammo, { owner: 'e', x: p0.x, y: p0.y, vx: f.sol.vx, vy: f.sol.vy, dmg: ammo.dmg * foeDmgMul() * (f.boss ? 1.2 : 1), from: f, scale: f.boss ? 1.25 : 1, life: 6 });
+    launch(ammo, { owner: 'e', x: p0.x, y: p0.y, vx: f.sol.vx, vy: f.sol.vy, dmg: f.tut ? 3 : ammo.dmg * foeDmgMul() * (f.boss ? 1.2 : 1), from: f, scale: f.boss ? 1.25 : 1, life: 6 });
     Sfx.foeThrow();
-    if (!Save.data.seenDuck && Save.data.seenTut && on.toast) { Save.data.seenDuck = true; Save.save(); on.toast('duck'); }
   }
   function stepFoe(f, dt) {
     const rag = f.rag, def = f.def;
@@ -859,8 +912,8 @@ const Game = (() => {
     // last resort for a body snagged on nothing it can stand on: shake it loose
     if (rag.mode === 'tumble' && rag.stuckT > 2.6) { rag.knock(rand(-160, 160), -380, P.PELVIS, 0.4); Fx.dust(pv.x, pv.y, 4); }
     if (rag.mode === 'rising' && rag.plat && f.plat !== rag.plat) f.plat = rag.plat;
-    if (rag.mode !== 'active') { rag.aimW = approach(rag.aimW, 0, dt * 6); return; }
-    if (f.dummy || rag.frozen > 0 || rag.stun > 0 || (f.plat && f.plat.state === 'in')) { rag.aimW = approach(rag.aimW, 0, dt * 5); rag.pull = 0; if (f.state === 'wind') { f.state = 'idle'; f.t = 0.8; } return; }
+    if (rag.mode !== 'active') { rag.aimW = approach(rag.aimW, 0, dt * 6); if (f.state === 'wind') { f.state = 'idle'; f.t = rand(0.7, 1.1); } return; }
+    if (f.dummy || f.passive || rag.frozen > 0 || rag.stun > 0 || (f.plat && f.plat.state === 'in')) { rag.aimW = approach(rag.aimW, 0, dt * 5); rag.pull = 0; if (f.state === 'wind') { f.state = 'idle'; f.t = 0.8; } return; }
     if (f.tele > 0) f.tele -= dt;
     if (f.state === 'enter') f.state = 'idle';
     if (f.state === 'idle') {
@@ -922,18 +975,20 @@ const Game = (() => {
     if (!player.dead) {
       player.cd -= dt; player.inv -= dt;
       if ((player.staWait -= dt) <= 0) player.sta = Math.min(player.maxSta, player.sta + staRegen() * dt);
-      // ducking burns stamina, so it is a dodge, not a place to hide
-      if (!duckHeld) duckTired = false;
-      const ducking = duckHeld && !duckTired && state === 'play';
-      if (ducking) {
-        player.sta -= 16 * dt; player.staWait = 0.25;
-        if (player.sta <= 0) { player.sta = 0; duckTired = true; staFlash = 0.5; Sfx.empty(); }
+      // a duck is a flat fee and lasts a moment: a dodge, not a place to hide
+      if (!duckHeld) { duckTired = false; duckOn = false; }
+      else if (!duckOn && !duckTired && state === 'play') {
+        if (player.sta >= DUCK_COST) { player.sta -= DUCK_COST; duckOn = true; duckT = DUCK_MAX; if (run.tut) run.tut.ducked = true; }
+        else { duckTired = true; staFlash = 0.5; Sfx.empty(); }
       }
+      if (duckOn && (duckT -= dt) <= 0) { duckOn = false; duckTired = true; }
+      const ducking = duckOn;
       rag.duck = approach(rag.duck, ducking ? 1 : 0, dt * 9);
       const aiming = aim.on && aim.power > 0 && !ducking && state === 'play';
       if (state === 'play') {
         rag.aimW = approach(rag.aimW, aiming ? 1 : 0, dt * (aiming ? 9 : 5));
-        if (aiming) { rag.aim = aim.ang; rag.pull = aim.power; } else if (rag.throwT < 0) rag.pull = approach(rag.pull, 0, dt * 6);
+        if (aiming) { rag.aim = aim.ang; rag.pull = aim.power; player.sta = Math.max(0, player.sta - HOLD_DRAIN * dt); player.staWait = Math.max(player.staWait, 0.1); }
+        else if (rag.throwT < 0) rag.pull = approach(rag.pull, 0, dt * 6);
       }
       const id = currentItemId();
       rag.hold = player.cd > 0.12 ? null : id; rag.holdR = ITEM[id].r * 0.95;
@@ -974,7 +1029,7 @@ const Game = (() => {
       if (c.popped || c.y < -140) crates.splice(i, 1);
     }
 
-    if (state === 'play' && !player.dead) director(dt);
+    if (state === 'play' && !player.dead) { if (run.tut) stepTut(dt); else director(dt); }
     if (run.overT > 0 && (run.overT -= dt) <= 0) finishRun();
     if (run.perkT > 0 && !player.dead && (run.perkT -= dt) <= 0) offerPerks();
     Fx.update(dt);
@@ -1069,6 +1124,7 @@ const Game = (() => {
   function update(dtReal) {
     time += dtReal;
     shake = Math.max(0, shake - dtReal * 2.4);
+    if (aim.on) aim.t += dtReal;
     hurtFlash = Math.max(0, hurtFlash - dtReal * 2.2); healFlash = Math.max(0, healFlash - dtReal * 1.6); staFlash = Math.max(0, staFlash - dtReal);
     themeT = Math.min(1, themeT + dtReal * 0.6);
     menuT = approach(menuT, state === 'menu' ? 1 : 0, dtReal * 2.2);
@@ -1142,25 +1198,107 @@ const Game = (() => {
     ctx.beginPath(); ctx.roundRect(x, y, Math.max(3, w * clamp(f.hp / f.maxHp, 0, 1)), 5, 2.5); ctx.fill();
   }
 
+  // the arc the throw will follow: evenly spaced dots that shrink, ending in an arrowhead
   function drawAimGuide() {
     if (!aim.on || aim.power <= 0 || player.dead || player.rag.duck > 0.5) return;
     const def = ITEM[currentItemId()];
     const v = throwSpeed(def, aim.power), p0 = release(player.rag, aim.ang);
-    const vx = Math.cos(aim.ang) * v, vy = Math.sin(aim.ang) * v, g = G * (def.grav != null ? def.grav : 1);
-    const n = 8 + 2 * Save.lvl('guide'), can = player.sta >= staCost(def) || usingBonus();
-    for (let i = 1; i <= n; i++) {
-      const t = i * 0.045;
-      const x = p0.x + vx * t, y = p0.y + vy * t + 0.5 * g * t * t, k = 1 - i / (n + 1);
-      ctx.globalAlpha = 0.35 + 0.6 * k;
-      ctx.fillStyle = 'rgba(12,14,21,0.55)'; ctx.beginPath(); ctx.arc(x, y, 3.2 + 3.4 * k, 0, TAU); ctx.fill();
-      ctx.fillStyle = can ? '#ffffff' : '#ff8a94'; ctx.beginPath(); ctx.arc(x, y, 2 + 3 * k, 0, TAU); ctx.fill();
+    let vx = Math.cos(aim.ang) * v, vy = Math.sin(aim.ang) * v;
+    const g = G * (def.grav != null ? def.grav : 1);
+    const n = 9 + 3 * Save.lvl('guide'), gap = 30, can = player.sta >= staCost(def) || usingBonus();
+    const col = can ? '#ffffff' : '#ff8a94';
+    let x = p0.x, y = p0.y, d = gap * 0.6, i = 0, lx = x, ly = y;
+    const h = 0.004;
+    for (let k = 0; k < 900 && i < n; k++) {
+      vy += g * h; const sx = vx * h, sy = vy * h;
+      x += sx; y += sy; d += Math.hypot(sx, sy);
+      if (d < gap) continue;
+      d = 0; i++;
+      const f = 1 - i / (n + 1);
+      if (i === n) {
+        const a = Math.atan2(y - ly, x - lx);
+        ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.globalAlpha = 0.9;
+        ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(-7, -8); ctx.lineTo(-3, 0); ctx.lineTo(-7, 8); ctx.closePath();
+        ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = 'rgba(12,14,21,0.7)'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
+        ctx.restore();
+      } else {
+        ctx.globalAlpha = 0.45 + 0.55 * f;
+        ctx.fillStyle = 'rgba(12,14,21,0.6)'; ctx.beginPath(); ctx.arc(x, y, 4 + 3.6 * f, 0, TAU); ctx.fill();
+        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, 2.6 + 3.2 * f, 0, TAU); ctx.fill();
+      }
+      lx = x; ly = y;
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  /* The pull, drawn where the finger is. A dashed ring marks how far a
+     full-power pull reaches, two elastic strands run from the anchor to a knob
+     that stops at the ring and shows the power as a number, and a short arrow
+     on the far side of the anchor points the way the throw will go. */
+  function drawPull() {
+    if (!aim.on || state !== 'play' || player.dead) return;
+    const p = aim.power, max = aim.max;
+    const dx = aim.cx - aim.sx, dy = aim.cy - aim.sy, len = Math.hypot(dx, dy);
+    const ux = len > 0.5 ? dx / len : 0, uy = len > 0.5 ? dy / len : 1;
+    const L = Math.min(len, max), kx = aim.sx + ux * L, ky = aim.sy + uy * L;
+    const def = ITEM[currentItemId()];
+    const can = usingBonus() || player.sta >= staCost(def);
+    const ink = 'rgba(12,14,21,0.72)';
+    const col = !can ? '#9aa1b3' : p >= 0.985 ? '#ff5d73' : mixHex('#ffffff', '#ff9a3c', p);
+    const appear = Math.min(1, aim.t / 0.12);
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    // how far a full pull reaches
+    ctx.globalAlpha = 0.5 * appear;
+    ctx.strokeStyle = ink; ctx.lineWidth = 4; ctx.setLineDash([3, 11]);
+    ctx.beginPath(); ctx.arc(aim.sx, aim.sy, max, 0, TAU); ctx.stroke();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(aim.sx, aim.sy, max, 0, TAU); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = appear;
+    if (p > 0) {
+      // the way it will fly: an arrow out the other side of the anchor
+      const al = 30 + 44 * p, ax = aim.sx - ux * al, ay = aim.sy - uy * al, a = Math.atan2(-uy, -ux);
+      for (const [w, c] of [[9, ink], [4.5, col]]) {
+        ctx.strokeStyle = c; ctx.lineWidth = w;
+        ctx.beginPath(); ctx.moveTo(aim.sx - ux * 16, aim.sy - uy * 16); ctx.lineTo(ax, ay);
+        ctx.moveTo(ax + Math.cos(a + 2.5) * 13, ay + Math.sin(a + 2.5) * 13); ctx.lineTo(ax, ay); ctx.lineTo(ax + Math.cos(a - 2.5) * 13, ay + Math.sin(a - 2.5) * 13);
+        ctx.stroke();
+      }
+      // two strands of elastic, thinner the further they stretch
+      const nx = -uy * 10, ny = ux * 10;
+      for (const [w, c] of [[lerp(9, 5.5, p), ink], [lerp(5.5, 2.4, p), col]]) {
+        ctx.strokeStyle = c; ctx.lineWidth = w;
+        ctx.beginPath(); ctx.moveTo(aim.sx + nx, aim.sy + ny); ctx.lineTo(kx, ky); ctx.lineTo(aim.sx - nx, aim.sy - ny); ctx.stroke();
+      }
+      if (len > max + 6) {   // pulled past full power: show the slack
+        ctx.globalAlpha = 0.35; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.setLineDash([2, 7]);
+        ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(aim.cx, aim.cy); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      }
+    }
+    // anchor
+    ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(aim.sx, aim.sy, 12, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(aim.sx, aim.sy, 12, 0, TAU); ctx.stroke();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(aim.sx, aim.sy, 3.5, 0, TAU); ctx.fill();
+    // knob with the power on it
+    const r = 19 + 4 * p + (p >= 0.985 ? Math.sin(time * 22) * 1.2 : 0);
+    ctx.fillStyle = p > 0 ? col : 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.arc(kx, ky, r, 0, TAU); ctx.fill();
+    ctx.strokeStyle = ink; ctx.lineWidth = 3; ctx.stroke();
+    ctx.fillStyle = '#12141c'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = '900 14px Rubik, sans-serif';
+    ctx.fillText(p > 0 ? (p >= 0.985 ? 'MAX' : String(Math.round(p * 100))) : '', kx, ky + 1);
+    // a word when it matters
+    const label = p <= 0 ? (len > 3 ? 'PULL BACK FURTHER' : '') : !can ? 'NO STAMINA' : '';
+    if (label) {
+      ctx.font = '900 12px Rubik, sans-serif';
+      const ly = ky + (uy < -0.3 ? -r - 14 : r + 16);
+      ctx.lineWidth = 4; ctx.strokeStyle = ink; ctx.strokeText(label, kx, ly);
+      ctx.fillStyle = can || p <= 0 ? '#ffffff' : '#ff8a94'; ctx.fillText(label, kx, ly);
     }
     ctx.globalAlpha = 1;
   }
 
   function render() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    World.draw(ctx, canvas.width, canvas.height, themeFrom, themeTo, themeT, time);
+    World.draw(ctx, canvas.width, canvas.height, themeFrom, themeTo, themeT);
     camera();
     const th = theme();
     const shx = Save.data.settings.shake ? Math.sin(time * 71) * shake * 9 : 0, shy = Save.data.settings.shake ? Math.cos(time * 83) * shake * 7 : 0;
@@ -1203,17 +1341,7 @@ const Game = (() => {
 
     // screen space: the pull band, low-health vignette
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    if (aim.on && state === 'play') {
-      const p = aim.power, col = p <= 0 ? 'rgba(255,255,255,0.5)' : mixHex('#ffffff', '#ff9a3c', p);
-      ctx.strokeStyle = 'rgba(12,14,21,0.5)'; ctx.lineWidth = 7; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(aim.sx, aim.sy); ctx.lineTo(aim.cx, aim.cy); ctx.stroke();
-      ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.setLineDash([2, 9]);
-      ctx.beginPath(); ctx.moveTo(aim.sx, aim.sy); ctx.lineTo(aim.cx, aim.cy); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(12,14,21,0.5)'; ctx.beginPath(); ctx.arc(aim.sx, aim.sy, 9, 0, TAU); ctx.fill();
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(aim.sx, aim.sy, 9, 0, TAU); ctx.stroke();
-      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(aim.cx, aim.cy, 10 + p * 5, 0, TAU); ctx.fill();
-      ctx.strokeStyle = 'rgba(12,14,21,0.7)'; ctx.lineWidth = 2; ctx.stroke();
-    }
+    drawPull();
     const low = state === 'play' && !player.dead ? clamp(1 - player.hp / (player.maxHp * 0.35), 0, 1) * (0.5 + 0.2 * Math.sin(time * 6)) : 0;
     const v = Math.max(hurtFlash * 0.6, low * 0.5);
     if (v > 0.01) {
@@ -1232,11 +1360,11 @@ const Game = (() => {
   const toScreen = (x, y) => ({ x: x * view.s + view.ox, y: y * view.s + view.oy });
 
   return {
-    init, resize, update, render, start, toMenu, setMenuInset, aimStart, aimMove, aimEnd, aimCancel, setDuck, selectSlot, cycleSlot, pickPerk, toScreen, on,
+    init, resize, update, render, start, toMenu, skipTut: endTut, DUCK_COST, setMenuInset, aimStart, aimMove, aimEnd, aimCancel, setDuck, selectSlot, cycleSlot, pickPerk, toScreen, on,
     staCost, refreshBag() { if (player) { selectFirstSlot(); } },
     get state() { return state; }, get paused() { return paused; }, set paused(v) { paused = v; if (v) aimCancel(); },
     get hold() { return hold; }, get run() { return run; }, get player() { return player; }, get aiming() { return aim.on; },
-    get itemId() { return currentItemId(); }, get usingBonus() { return usingBonus(); }, get staFlash() { return staFlash; }, get themeDark() { return theme().dark; },
+    get itemId() { return currentItemId(); }, get usingBonus() { return usingBonus(); }, get staFlash() { return staFlash; }, get tutorial() { return !!(run && run.tut); }, get themeDark() { return theme().dark; },
     get foes() { return foes; }, get shots() { return shots; }, get crates() { return crates; }, get time() { return time; },
     _spawn: spawnFoe, _crate: spawnCrate,
   };

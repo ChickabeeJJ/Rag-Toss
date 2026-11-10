@@ -1,12 +1,15 @@
 'use strict';
 /* =========================================================================
-   Rag: an active ragdoll, the same idea as Element Rag's Fighter. Eleven
-   verlet points joined by bones are pulled toward an animated pose by
-   "muscles". Hits shove the points around; a big hit drops muscle strength
-   to zero (tumble) and the body flies limp until it settles on an island and
-   stands back up, or falls into the sky below.
-   Throwers stay rooted to one island, so the pose is built from a fixed foot
-   position plus aim, wind-up, release and duck amounts.
+   Rag: a physical ragdoll that can also stand. Eleven verlet points with
+   their own mass and collision radius are joined by bones, with one-way
+   hinges at the knees and elbows and soft limits at the hips, shoulders and
+   neck. While standing, "muscles" pull the points toward an animated pose.
+   Nothing about a hit is scripted: a throw pushes the bone it lands on, the
+   muscles go soft for a moment (daze), the body bends around the blow, the
+   feet shuffle to get back under the hips, and if the hips end up past the
+   edge of the island or the trunk tips too far, the muscles let go and the
+   body falls as a limp ragdoll. A limp body that comes to rest on an island
+   gets back up; one that misses falls into the sky.
    ========================================================================= */
 
 const P = { HEAD: 0, NECK: 1, PELVIS: 2, FELB: 3, FHAND: 4, BELB: 5, BHAND: 6, FKNEE: 7, FFOOT: 8, BKNEE: 9, BFOOT: 10 };
@@ -31,6 +34,11 @@ const JOINT_LIMITS = [
   [0, 3, 20, 60], [0, 5, 20, 60],
 ];
 const HEAD_R = 13;
+// collision radius of each point, so a limp body lies on the ground instead of sinking into it
+const PT_R = [13, 10, 10, 5.5, 5, 5.5, 5, 6.5, 5.5, 6.5, 5.5];
+// one-way hinges [root, joint, tip, side]: knees only fold back, elbows only fold forward
+const HINGES = [[2, 7, 8, -1], [2, 9, 10, -1], [1, 3, 4, 1], [1, 5, 6, 1]];
+const GROUND_FRICTION = 0.3, GROUND_BOUNCE = 0.2;
 const STEP = 1 / 120;          // physics step; the game runs whole steps only
 
 class Rag {
@@ -45,6 +53,11 @@ class Rag {
     this.root = { x: o.x, y: o.y };
     this.plat = o.plat || null;
     this.platOff = o.plat ? o.x - o.plat.x : 0;
+    this.homeOff = this.platOff;    // where it likes to stand on its island
+    this.weight = o.weight || 1;    // heavier bodies take less from the same blow
+    this.steady = !!o.steady;       // never loses its footing (the player, bosses)
+    this.daze = 0;                  // 0..1: how soft the muscles are right now
+    this.leanT = 0;                 // the lean the pose is asking for
     this.mode = 'active';           // active | tumble | rising | dead
     this.m = 1;                     // muscle strength 0..1
     this.t = Math.random() * 10;
@@ -84,34 +97,55 @@ class Rag {
     for (let i = 0; i < 11; i++) { this.T[i].x += dx; this.T[i].y += dy; this.Tp[i].x += dx; this.Tp[i].y += dy; }
   }
 
+  // a change of velocity at one point, with a share passed on to the rest of the body
   impulse(idx, vx, vy, spread = 0.35) {
+    const w = STEP / this.weight;
     for (let i = 0; i < 11; i++) {
-      const k = (i === idx ? 1 : spread) * INV_MASS[i] * STEP;
+      const k = (i === idx ? 1 : spread) * INV_MASS[i] * w;
       this.pts[i].px -= vx * k; this.pts[i].py -= vy * k;
     }
   }
-  // go limp and fly
+  // the same, applied where a throw actually landed: split between the two ends of
+  // the bone by how far along it the hit was, so an off-centre blow turns the body
+  impulseAt(hit, vx, vy, spread = 0.2) {
+    const a = SEGS[hit.seg][0], b = SEGS[hit.seg][1], u = hit.u == null ? 0.5 : hit.u;
+    const w = STEP / this.weight;
+    for (let i = 0; i < 11; i++) {
+      const k = (i === a ? 1 - u * 0.6 : i === b ? 0.4 + u * 0.6 : spread) * INV_MASS[i] * w;
+      this.pts[i].px -= vx * k; this.pts[i].py -= vy * k;
+    }
+  }
+  // muscles go soft for a moment after a blow; heavy bodies shrug more of it off
+  stagger(a) { if (this.frozen <= 0) this.daze = Math.min(1, this.daze + a / this.weight); }
+  // lose the fight to stay upright: let go and fall with whatever speed the body has
+  topple() {
+    if (this.mode !== 'active' && this.mode !== 'rising') return;
+    this.mode = 'tumble'; this.m = 0; this.tumbleT = 0.45; this.restT = 0; this.stuckT = 0; this.plat = null;
+    this.pull = 0; this.throwT = -1; this.aimW = 0; this.daze = 0;
+  }
+  // thrown clear: go limp with a velocity. The struck point gets more of it than
+  // the rest, which is what sets the body spinning.
   knock(vx, vy, idx = P.NECK, dur = 0.55) {
     if (this.mode === 'dead') return;
     this.mode = 'tumble'; this.m = 0; this.tumbleT = dur; this.restT = 0; this.stuckT = 0; this.plat = null;
-    this.pull = 0; this.throwT = -1; this.aimW = 0;
+    this.pull = 0; this.throwT = -1; this.aimW = 0; this.daze = 0;
     for (let i = 0; i < 11; i++) {
-      const k = (i === idx ? 1.25 : 1) * STEP;
+      const k = (i === idx ? 2.3 : 0.7) * STEP;
       this.pts[i].px -= (vx + rand(-40, 40)) * k; this.pts[i].py -= (vy + rand(-40, 40)) * k;
     }
   }
   die(vx, vy, idx = P.NECK) {
     if (this.mode === 'dead') return;
-    this.mode = 'dead'; this.m = 0; this.deadT = 0; this.plat = null; this.frozen = 0; this.stun = 0;
+    this.mode = 'dead'; this.m = 0; this.deadT = 0; this.plat = null; this.frozen = 0; this.stun = 0; this.daze = 0;
     this.hold = null; this.pull = 0;
     for (let i = 0; i < 11; i++) {
-      const k = (i === idx ? 1.4 : 1) * STEP;
-      this.pts[i].px -= (vx + rand(-60, 60)) * k; this.pts[i].py -= (vy + rand(-60, 60)) * k;
+      const k = (i === idx ? 2.4 : 0.65) * STEP;
+      this.pts[i].px -= (vx + rand(-50, 50)) * k; this.pts[i].py -= (vy + rand(-50, 50)) * k;
     }
   }
   revive(plat, x) {
-    this.mode = 'active'; this.m = 1; this.plat = plat; this.root.x = x; this.root.y = plat.top; this.platOff = x - plat.x;
-    this.stun = 0; this.frozen = 0; this.burn = 0; this.stuck.length = 0;
+    this.mode = 'active'; this.m = 1; this.plat = plat; this.root.x = x; this.root.y = plat.top; this.platOff = this.homeOff = x - plat.x;
+    this.stun = 0; this.daze = 0; this.frozen = 0; this.burn = 0; this.stuck.length = 0;
     this.snap();
   }
 
@@ -126,11 +160,13 @@ class Rag {
         const dx = nx - this.root.x, dy = ny - this.root.y;
         if (dx || dy) { this.root.x = nx; this.root.y = ny; this.shift(dx, dy); }
       }
-      if (this.mode === 'rising') { this.m = Math.min(1, this.m + dt * 2.4); if (this.m >= 1) this.mode = 'active'; }
+      if (this.mode === 'rising') { this.m = Math.min(1, this.m + dt * 1.9); if (this.m >= 1) this.mode = 'active'; }
+      this.daze = Math.max(0, this.daze - dt * 1.5);
       if (this.frozen <= 0) this.computeTargets();
       else for (let i = 0; i < 11; i++) { this.Tp[i].x = this.T[i].x; this.Tp[i].y = this.T[i].y; }
     }
     this.stepBody(dt, plats);
+    if (this.mode === 'active' && this.frozen <= 0) this.balance(dt);
     if (this.mode === 'tumble') this.followBody(dt, plats);
     if (this.mode === 'dead') this.deadT += dt;
   }
@@ -146,7 +182,9 @@ class Rag {
     const dizzy = this.stun > 0 ? Math.sin(t * 7) * 0.16 : 0;
     const breathe = Math.sin(t * 2.4) * 1.4 * s;
     const lean = f * (-0.17 * pull * aw + 0.3 * swing + 1.05 * duck) + Math.sin(t * 1.3) * 0.02 + dizzy;
-    const px = r.x - f * 5 * s * pull * aw + f * 7 * s * swing, py = r.y - (54 - 33 * duck) * s + breathe;
+    this.leanT = lean;
+    const fy = r.y - PT_R[P.FFOOT] * s;     // the foot point sits one radius above the ground
+    const px = r.x - f * 5 * s * pull * aw + f * 7 * s * swing, py = r.y - (58 - 33 * duck) * s + breathe;
     T[P.PELVIS].x = px; T[P.PELVIS].y = py;
     const nx = px + Math.sin(lean) * 45 * s, ny = py - Math.cos(lean) * 45 * s;
     T[P.NECK].x = nx; T[P.NECK].y = ny;
@@ -154,10 +192,10 @@ class Rag {
     T[P.HEAD].x = nx + Math.sin(hl) * 17 * s; T[P.HEAD].y = ny - Math.cos(hl) * 17 * s;
     // legs: feet planted, knees forward
     const ffx = r.x + f * (13 + 9 * duck) * s, bfx = r.x - f * (14 + 5 * duck) * s;
-    T[P.FFOOT].x = ffx; T[P.FFOOT].y = r.y; T[P.BFOOT].x = bfx; T[P.BFOOT].y = r.y;
-    let k = ik2(px, py, ffx, r.y, 29 * s, 28 * s, -f);
+    T[P.FFOOT].x = ffx; T[P.FFOOT].y = fy; T[P.BFOOT].x = bfx; T[P.BFOOT].y = fy;
+    let k = ik2(px, py, ffx, fy, 29 * s, 28 * s, -f);
     T[P.FKNEE].x = k.x; T[P.FKNEE].y = k.y;
-    k = ik2(px, py, bfx, r.y, 29 * s, 28 * s, -f);
+    k = ik2(px, py, bfx, fy, 29 * s, 28 * s, -f);
     T[P.BKNEE].x = k.x; T[P.BKNEE].y = k.y;
     // throwing arm: carried at the hip, drawn back behind the head, whipped forward
     const sx = nx, sy = ny + 3 * s;
@@ -181,9 +219,11 @@ class Rag {
   }
 
   stepBody(dt, plats) {
-    const m = this.m, pts = this.pts, T = this.T, Tp = this.Tp;
-    const g = G * dt * dt * (1 - 0.92 * m);
-    const air = m < 0.5 ? 0.9985 : 0.985;
+    const pts = this.pts, T = this.T, Tp = this.Tp, s = this.s;
+    // a dazed body's muscles are soft, so it sags and bends around the blow before pulling itself together
+    const m = this.m * (1 - 0.9 * this.daze);
+    const g = G * dt * dt * (1 - 0.9 * m);
+    const air = m < 0.5 ? 0.9988 : 0.986;
     const firm = this.throwT >= 0 || this.aimW > 0.5;
     for (let i = 0; i < 11; i++) {
       const p = pts[i];
@@ -198,16 +238,48 @@ class Rag {
         p.y += (T[i].y - p.y) * k - (vy - tvy) * damping * m;
       }
     }
-    const s = this.s;
     const limp = this.mode === 'tumble' || this.mode === 'dead';
-    for (let it = 0; it < 5; it++) {
+    const f = this.facing;
+    for (let it = 0; it < 6; it++) {
       for (let b = 0; b < SEGS.length; b++) {
         const ia = SEGS[b][0], ib = SEGS[b][1], L = BONE_LEN[b] * s;
         solveDist(pts[ia], pts[ib], INV_MASS[ia], INV_MASS[ib], L, L, 1);
       }
       for (const [ia, ib, lo, hi] of JOINT_LIMITS) solveDist(pts[ia], pts[ib], INV_MASS[ia], INV_MASS[ib], lo * s, hi * s, 0.6);
-      if (limp) for (const p of pts) for (const pl of plats) solidPoint(p, pl);
+      // hinges: push a knee or elbow that has folded the wrong way back across the limb's line
+      if (limp || this.daze > 0) for (const [ia, ij, ib, side] of HINGES) {
+        const A = pts[ia], J = pts[ij], B = pts[ib];
+        const ax = B.x - A.x, ay = B.y - A.y, L = Math.hypot(ax, ay) || 1e-4;
+        const d = (ax * (J.y - A.y) - ay * (J.x - A.x)) / L;     // signed distance of the joint from the line
+        if (d * f * side >= 0) continue;
+        const nx = -ay / L, ny = ax / L, k = d * 0.5;
+        J.x -= nx * k; J.y -= ny * k;
+        A.x += nx * k * 0.25; A.y += ny * k * 0.25; B.x += nx * k * 0.25; B.y += ny * k * 0.25;
+      }
+      if (limp) { for (let i = 0; i < 11; i++) for (const pl of plats) solidCircle(pts[i], PT_R[i] * s, pl); }
+      else if (this.plat && !this.plat.falling) for (let i = 0; i < 11; i++) solidCircle(pts[i], PT_R[i] * s, this.plat);
     }
+  }
+
+  /* Staying upright. The hips get shoved off the stance by a blow; the feet
+     shuffle after them (faster the more dazed the body is) and walk back when
+     things calm down. Shuffle past the edge of the island, tip the trunk too far
+     or let the hips drop, and the body gives up and falls. */
+  balance(dt) {
+    const s = this.s, pts = this.pts, pv = pts[P.PELVIS], nk = pts[P.NECK], pl = this.plat;
+    const ex = pv.x - this.T[P.PELVIS].x;
+    if (Math.abs(ex) > 6 * s) {
+      let step = clamp(ex * 9, -200, 200) * dt * (0.4 + 1.4 * this.daze);
+      if (this.steady) step = clamp(this.platOff + step, this.homeOff - 22, this.homeOff + 22) - this.platOff;
+      this.platOff += step; this.root.x += step;
+    } else if (this.daze < 0.05 && this.platOff !== this.homeOff) {
+      const to = approach(this.platOff, this.homeOff, 26 * dt);
+      this.root.x += to - this.platOff; this.platOff = to;
+    }
+    if (this.steady || !pl) return;
+    if (Math.abs(this.platOff) > pl.w / 2 - 3 * s) { this.topple(); return; }
+    const tilt = Math.atan2(nk.x - pv.x, pv.y - nk.y);
+    if (this.duck < 0.3 && this.daze > 0.05 && (Math.abs(angDiff(this.leanT, tilt)) > 0.9 || pv.y > this.T[P.PELVIS].y + 24 * s)) this.topple();
   }
 
   // tumbling: once the body has come to rest on an island, stand back up there
@@ -231,7 +303,8 @@ class Rag {
     this.plat = best; this.stuckT = 0;
     this.root.x = clamp(pv.x, best.left + 16, best.right - 16); this.root.y = best.top;
     this.platOff = this.root.x - best.x;
-    this.mode = 'rising'; this.m = 0.05;
+    this.homeOff = clamp(this.platOff, -(best.w / 2 - 24), best.w / 2 - 24);
+    this.mode = 'rising'; this.m = 0.05; this.daze = 0;
     this.computeTargets();
     for (let i = 0; i < 11; i++) { this.Tp[i].x = this.T[i].x; this.Tp[i].y = this.T[i].y; }
   }
@@ -287,28 +360,14 @@ class Rag {
     ctx.fillStyle = shade;
     ctx.beginPath(); ctx.arc(pts[P.BHAND].x, pts[P.BHAND].y, 5.3 * s, 0, TAU); ctx.fill();
     seg(1, 2, 22, body);
-    // belt in the accent colour ties each thrower to its type
-    const bx = lerp(pts[1].x, pts[2].x, 0.86), by = lerp(pts[1].y, pts[2].y, 0.86);
-    const tx = pts[2].x - pts[1].x, ty = pts[2].y - pts[1].y, tl = Math.hypot(tx, ty) || 1;
-    ctx.strokeStyle = this.accent; ctx.lineWidth = 5 * s; ctx.lineCap = 'butt';
-    ctx.beginPath(); ctx.moveTo(bx + ty / tl * 10.5 * s, by - tx / tl * 10.5 * s); ctx.lineTo(bx - ty / tl * 10.5 * s, by + tx / tl * 10.5 * s); ctx.stroke();
-    ctx.lineCap = 'round';
     seg(2, 7, 13.5, body); seg(7, 8, 11.5, body);
-    // head: rounded block with one eye, so facing reads at a glance
+    // head: a plain rounded block
     const hd = pts[P.HEAD], hr = HEAD_R * s;
     const ha = Math.atan2(hd.y - pts[P.NECK].y, hd.x - pts[P.NECK].x) + Math.PI / 2;
     ctx.save(); ctx.translate(hd.x, hd.y); ctx.rotate(ha);
     ctx.fillStyle = body;
     ctx.beginPath(); ctx.roundRect(-hr, -hr * 1.05, hr * 2, hr * 2.1, hr * 0.8); ctx.fill();
     const f = this.facing;
-    ctx.strokeStyle = ctx.fillStyle = '#1a1c26';
-    if (this.mode === 'dead' || this.stun > 0) {
-      ctx.lineWidth = 2 * s; const ex = f * 5 * s, ey = -1 * s, q = 3 * s;
-      ctx.beginPath(); ctx.moveTo(ex - q, ey - q); ctx.lineTo(ex + q, ey + q); ctx.moveTo(ex + q, ey - q); ctx.lineTo(ex - q, ey + q); ctx.stroke();
-    } else {
-      const blink = (time * 0.37 + this.t) % 3.1 < 0.09;
-      ctx.beginPath(); ctx.ellipse(f * 5.5 * s, -1.5 * s, 2.2 * s, blink ? 0.6 * s : 3 * s, 0, 0, TAU); ctx.fill();
-    }
     this.drawHeadgear(ctx, hr, time);
     ctx.restore();
     // things stuck in the body
@@ -410,16 +469,35 @@ function solveDist(A, B, wa, wb, d0, d1, stiff) {
   B.x -= dx * k * wb; B.y -= dy * k * wb;
 }
 
-/* a verlet point against a solid island box. Whatever was above the top last
-   step lands on it (with friction); otherwise it is pushed out the near side. */
-function solidPoint(p, pl) {
-  if (p.x <= pl.left || p.x >= pl.right || p.y <= pl.top || p.y >= pl.bottom) return;
-  const du = p.y - pl.top, dl = p.x - pl.left, dr = pl.right - p.x, db = pl.bottom - p.y;
-  if (p.py <= pl.top + 10 || du <= Math.min(dl, dr, db)) {
-    p.y = pl.top;
-    p.px = lerp(p.px, p.x, 0.35);
-    p.py = p.y + Math.min(0, p.py - p.y) * 0.2;
-  } else if (dl < dr && dl < db) { p.x = pl.left; p.px = p.x + Math.max(0, p.px - p.x) * 0.3; }
-  else if (dr < db) { p.x = pl.right; p.px = p.x + Math.min(0, p.px - p.x) * 0.3; }
-  else { p.y = pl.bottom; p.py = p.y + Math.max(0, p.py - p.y) * 0.2; }
+/* A verlet point with a radius against a solid island box. The contact
+   normal comes from the nearest point on the box; the velocity along it is
+   reflected with a little bounce and the velocity across it is rubbed away. */
+function solidCircle(p, r, pl) {
+  const L = pl.left, R = pl.right, T = pl.top, B = pl.bottom;
+  if (p.x <= L - r || p.x >= R + r || p.y <= T - r || p.y >= B + r) return;
+  let nx = 0, ny = 0, pen = 0;
+  const cx = clamp(p.x, L, R), cy = clamp(p.y, T, B);
+  const dx = p.x - cx, dy = p.y - cy;
+  if (dx === 0 && dy === 0) {
+    // centre inside the box: out through the top if it came from above, else the nearest face
+    const du = p.y - T, dl = p.x - L, dr = R - p.x, db = B - p.y;
+    if (p.py <= T + 8 || du <= Math.min(dl, dr, db)) { ny = -1; pen = du + r; }
+    else if (dl < dr && dl < db) { nx = -1; pen = dl + r; }
+    else if (dr < db) { nx = 1; pen = dr + r; }
+    else { ny = 1; pen = db + r; }
+  } else {
+    const d = Math.hypot(dx, dy);
+    if (d >= r) return;
+    nx = dx / d; ny = dy / d; pen = r - d;
+  }
+  let vx = p.x - p.px, vy = p.y - p.py;
+  p.x += nx * pen; p.y += ny * pen;
+  const vn = vx * nx + vy * ny;
+  if (vn < 0) {
+    const tx = vx - vn * nx, ty = vy - vn * ny;
+    // only a real impact bounces; a body at rest just rests
+    const e = vn < -1.6 ? GROUND_BOUNCE : 0;
+    vx = tx * (1 - GROUND_FRICTION) - vn * e * nx; vy = ty * (1 - GROUND_FRICTION) - vn * e * ny;
+  }
+  p.px = p.x - vx; p.py = p.y - vy;
 }

@@ -7,6 +7,8 @@
 const Fx = (() => {
   const parts = [], rings = [], texts = [], bolts = [], debris = [];
   const MAX = 900;
+  let solids = () => [];        // the islands, so broken things can land on them
+  function setSolids(fn) { solids = fn; }
 
   function clear() { parts.length = rings.length = texts.length = bolts.length = debris.length = 0; }
 
@@ -74,6 +76,12 @@ const Fx = (() => {
     for (let i = debris.length - 1; i >= 0; i--) {
       const d = debris[i]; d.life -= dt;
       d.vy += G * dt; d.x += d.vx * dt; d.y += d.vy * dt; d.rot += d.vr * dt;
+      if (d.vy > 0) for (const pl of solids()) {
+        if (pl.falling || d.x < pl.left || d.x > pl.right || d.y + d.r * 0.7 < pl.top || d.y - d.vy * dt + d.r * 0.7 > pl.top + 8) continue;
+        d.y = pl.top - d.r * 0.7;
+        d.vy = d.vy > 140 ? -d.vy * 0.36 : 0; d.vx *= 0.62; d.vr *= 0.5;
+        break;
+      }
       if (d.life <= 0 || d.y > WORLD_H + 300) debris.splice(i, 1);
     }
   }
@@ -131,5 +139,5 @@ const Fx = (() => {
     ctx.globalAlpha = 1;
   }
 
-  return { clear, burst, ring, text, bolt, chunk, explosion, dust, hit, confetti, update, draw, drawText };
+  return { setSolids, clear, burst, ring, text, bolt, chunk, explosion, dust, hit, confetti, update, draw, drawText };
 })();

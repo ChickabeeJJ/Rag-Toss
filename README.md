@@ -1,6 +1,6 @@
 # Rag Toss
 
-A ragdoll throwing duel on floating islands. You stand on your island, the other ragdolls stand on theirs, and everybody throws things. Press anywhere, **pull back and let go** to throw. Every thrower is an **active ragdoll**, the same idea as Element Rag: a verlet skeleton held up by muscle springs, so bodies wobble when they're hit, go limp when they're hit hard, and either pick themselves back up or tumble off their island for a **ring-out**.
+A ragdoll throwing duel on floating islands. You stand on your island, the other ragdolls stand on theirs, and everybody throws things. Press anywhere, **pull back and let go** to throw. Every thrower is a **physical ragdoll that can also stand**: a verlet skeleton with mass, collision radii and one-way knee and elbow hinges, held up by muscle springs. Nothing about a hit is scripted. A throw pushes the bone it lands on, the muscles go soft for a moment, the body bends around the blow and the feet shuffle to catch up. Push the hips past the edge of the island or tip the trunk too far and the body lets go and falls limp, either onto the island (it gets back up) or off it for a **ring-out**.
 
 You don't throw arrows. You throw **stuff**: a rubber chicken, a bowling ball, a beehive, an anvil. There are **18 things to throw**, each with its own gimmick, and you carry three of them into a run. A run never ends on its own: foes keep coming, every 8 knockouts a **boss** walks in, and every boss you beat lets you pick a **perk** before the next stage. Coins from a run buy more stuff and permanent upgrades, so the next run goes further.
 
@@ -8,12 +8,15 @@ It's pure HTML5 and vanilla JS, with no build step and no dependencies. It has t
 
 To play, serve the folder (for example `python3 -m http.server`) and open `index.html`.
 
+The game boots **straight into a run**: there's no menu to click through. The very first launch starts with a four-step tutorial on the real field (land a throw, knock the foe out, duck a throw, knock out one that fights back; it can be skipped) and carries on into stage 1. The home screen, shop and upgrades are where you land after a run, or from the pause menu.
+
 ## The game
 
-- **Throwing.** Drag back from anywhere on the screen. The direction of the pull is the direction of the throw, the length is the power, and a dotted line shows the start of the arc. Each throw costs **stamina**, which refills on its own, and there's a short beat between throws. A release that comes a touch early is buffered.
+- **Throwing.** Drag back from anywhere on the screen. A dashed ring shows how far a full-power pull reaches, two elastic strands run from where you pressed to a knob that shows the power as a number (and stops at MAX), an arrow on the far side points the way the throw will go, and a line of dots ending in an arrowhead shows the start of the arc. There's a short beat between throws, and a release that comes a touch early is buffered.
+- **Stamina.** A pool of 200 with small costs. A throw takes 4 to 14 points depending on what it is, holding a wind-up sips 2.5 a second, a duck is a flat 5, and it refills by itself the whole time. You only run dry by spamming the heavy stuff.
 - **Where you hit matters.** Headshots do double damage, limbs do three quarters. Hurt foes fly further when hit, and anyone knocked off their island is out, whatever health they had left.
 - **Throws can be thrown at.** Anything a foe throws can be knocked out of the air (DEFLECT). Barrels take two hits.
-- **Ducking.** Hold **S** to drop behind your crates. Flat throws sail over you or hit the crates, bombs do half damage. Ducking burns stamina and you can't throw while you're down, so it's a dodge, not a hiding place.
+- **Ducking.** Hold **S** to drop behind your crates. Flat throws sail over you or hit the crates, bombs do half damage. A duck costs 5 stamina, lasts up to a second and a half, and you can't throw while you're down, so it's a dodge, not a hiding place.
 - **Streak.** Every throw that hits something adds one to your streak, worth +10% coins each, up to +100%. A throw that hits nothing resets it.
 - **Mystery crates.** A crate on a balloon drifts up the middle of the screen every so often. Pop it for a few free throws of something you don't have in your bag (it gets its own slot, key **4**), or for health or coins.
 - **Style.** Knockouts pay extra for HEADSHOT, RING OUT, AIRBORNE, LONG SHOT, TRICK SHOT, DOUBLE KO and SHATTER.
@@ -59,7 +62,7 @@ A new kind shows up in each of the first seven stages. Every foe winds up before
 
 From stage 3 some foes wear a pot that soaks one headshot, and from stage 4 some islands travel up and down.
 
-**Bosses** are crowned, never get knocked off their feet, throw in bursts and whistle up help: King Chuck, Madame Lob, Fastball Frank, Sir Lidsalot, Baron von Float and The Wall, then round again. When a boss falls, its reinforcements fall with it, you get a quarter of your health back, the sky changes and you pick one of three perks.
+**Bosses** are crowned, heavy enough that they never lose their footing, throw in bursts and whistle up help: King Chuck, Madame Lob, Fastball Frank, Sir Lidsalot, Baron von Float and The Wall, then round again. When a boss falls, its reinforcements fall with it, you get a quarter of your health back, the sky changes and you pick one of three perks.
 
 ## Why you play another run
 
@@ -69,7 +72,7 @@ From stage 3 some foes wear a pot that soaks one headshot, and from stage 4 some
 - **Stuff and upgrades.** 18 items and nine permanent upgrades: Thick Skull (health), Big Lungs (stamina), Second Breath (refill), Strong Arm (damage), Quick Hands (time between throws), Good Eye (longer aim line), Padding (damage taken), Deep Pockets (coins) and Second Wind (get back up once per run).
 - **The results screen always points at the next thing.** It shows the next item you don't own with a bar for how close you are, flags affordable upgrades, and shows your rank bar.
 - **Ranks.** Lifetime knockouts move you through eleven ranks, from Butterfingers to The Last Throw. Each rank-up pays coins.
-- **Daily missions and a daily reward.** Three missions a day from a pool of ten (resetting at 00:00 UTC) with a 250-coin chest for all three, and a 7-day login streak paying 50 to 400 coins.
+- **Missions.** Three at a time from a pool of ten, refreshed at 00:00 UTC, with a 250-coin chest for finishing all three. There is no login reward.
 
 ## Controls
 
@@ -89,7 +92,7 @@ Everything that sets the difficulty curve is in a handful of one-liners near the
 
 ## CrazyGames
 
-This build is set up for a **Basic Launch**: no ads of any kind. `gameplayStart` / `gameplayStop` follow play, pause, perk picks and results, `happytime` fires when a boss falls, and saves go through the SDK data module (with `localStorage` as the fallback, so the game runs unchanged anywhere). For the leaderboard, put the key in `LEADERBOARD_KEY` in `js/platform.js` and the best knockout count gets submitted.
+There are **no ads of any kind** in this build (a Basic Launch): `gameplayStart` / `gameplayStop` follow play, pause, perk picks and results, `happytime` fires when a boss falls, and saves go through the SDK data module (with `localStorage` as the fallback, so the game runs unchanged anywhere). For the leaderboard, put the key in `LEADERBOARD_KEY` in `js/platform.js` and the best knockout count gets submitted.
 
 ## Project layout
 
@@ -100,14 +103,14 @@ js/util.js        math, seeded RNG, colour helpers, glow sprite cache, two-bone 
 js/platform.js    CrazyGames SDK v3 wrapper: events, happytime, accounts, data (no ads)
 js/audio.js       synthesized SFX and a small generative music loop that speeds up with the stage
 js/data.js        items, enemy ammo, foes, bosses, upgrades, perks, themes, missions, ranks
-js/progress.js    save data, bag, upgrades, daily missions, login streak, ranks
+js/progress.js    save data, bag, upgrades, missions, ranks
 js/items.js       procedural art for every throwable; also the shop and HUD icons
-js/world.js       floating islands (blocky tile pyramids) and the painted backdrops
-js/ragdoll.js     Rag: active ragdoll, throw / duck poses, tumble and recover, hit tests
+js/world.js       floating islands (blocky tile pyramids) and the backdrop: a sky gradient and hills
+js/ragdoll.js     Rag: physical ragdoll (radii, hinges, friction), standing poses, daze, balance, toppling, hit tests
 js/fx.js          particles, rings, lightning, flying debris, combat text
 js/game.js        throwing, item gimmicks, foe AI, knockback and ring-outs, stages, bosses, perks, rendering
 js/icons.js       UI icons
-js/ui.js          home, stuff shop and bag, upgrades, missions, rank, pause, perk picks, results, HUD, coaching
+js/ui.js          home, stuff shop and bag, upgrades, missions, rank, pause, perk picks, results, HUD, tutorial panel
 js/main.js        boot, loop, pointer and keyboard input
 assets/fonts/     Rubik (SIL Open Font License)
 ```

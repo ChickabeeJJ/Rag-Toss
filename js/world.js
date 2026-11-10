@@ -1,7 +1,7 @@
 'use strict';
 /* =========================================================================
    World: floating islands (blocky tile pyramids, as in Element Rag) and the
-   painted backdrop for each theme. Islands are solid boxes for physics; the
+   backdrop for each theme: a sky gradient and rolling hills, nothing else. Islands are solid boxes for physics; the
    pyramid underneath is only drawn.
    ========================================================================= */
 
@@ -94,16 +94,10 @@ class Plat {
 
 const World = (() => {
   const cache = new Map();
-  let clouds = [], motes = [];
 
-  function init() {
-    clouds = [];
-    for (let i = 0; i < 7; i++) clouds.push({ x: Math.random(), y: 0.08 + Math.random() * 0.4, s: 0.6 + Math.random() * 0.9, v: 0.004 + Math.random() * 0.006 });
-    motes = [];
-    for (let i = 0; i < 46; i++) motes.push({ x: Math.random(), y: Math.random(), s: 0.5 + Math.random(), p: Math.random() * TAU });
-  }
+  function init() { cache.clear(); }
 
-  // the static part of a theme (sky, sun, hills, far islands) is painted once per size
+  // A theme's backdrop is just sky and three bands of rolling hills, painted once per size.
   function backdrop(i, w, h) {
     const key = i + ':' + w + 'x' + h;
     if (cache.has(key)) return cache.get(key);
@@ -115,19 +109,6 @@ const World = (() => {
     const sky = g.createLinearGradient(0, 0, 0, h);
     sky.addColorStop(0, th.sky[0]); sky.addColorStop(0.55, th.sky[1]); sky.addColorStop(1, th.sky[2]);
     g.fillStyle = sky; g.fillRect(0, 0, w, h);
-    if (th.stars) {
-      g.fillStyle = '#ffffff';
-      for (let k = 0; k < 140; k++) { g.globalAlpha = 0.25 + R() * 0.7; g.beginPath(); g.arc(R() * w, R() * h * 0.7, 0.6 + R() * 1.4, 0, TAU); g.fill(); }
-      g.globalAlpha = 1;
-    }
-    // sun or moon with a soft halo
-    const sx = w * 0.74, sy = h * th.sunY, sr = Math.min(w, h) * 0.07;
-    const halo = g.createRadialGradient(sx, sy, sr * 0.5, sx, sy, sr * 5);
-    halo.addColorStop(0, rgba(th.sun, 0.55)); halo.addColorStop(1, rgba(th.sun, 0));
-    g.fillStyle = halo; g.fillRect(0, 0, w, h);
-    g.fillStyle = th.sun; g.beginPath(); g.arc(sx, sy, sr, 0, TAU); g.fill();
-    if (th.stars) { g.fillStyle = th.sky[0]; g.globalAlpha = 0.9; g.beginPath(); g.arc(sx + sr * 0.42, sy - sr * 0.2, sr * 0.86, 0, TAU); g.fill(); g.globalAlpha = 1; }
-    // three bands of rolling hills
     for (let L = 0; L < 3; L++) {
       const base = h * (0.56 + L * 0.13), amp = h * (0.07 - L * 0.012);
       const p1 = R() * 10, p2 = R() * 10, f1 = 1.2 + R() * 1.2, f2 = 2.8 + R() * 2;
@@ -139,49 +120,14 @@ const World = (() => {
       }
       g.lineTo(w, h); g.closePath(); g.fill();
     }
-    // far-off islands, hazy
-    for (let k = 0; k < 4; k++) {
-      const x = w * (0.2 + R() * 0.75), y = h * (0.2 + R() * 0.4), ww = w * (0.03 + R() * 0.04);
-      g.globalAlpha = 0.35;
-      g.fillStyle = th.hills[1];
-      g.beginPath(); g.moveTo(x - ww, y); g.lineTo(x + ww, y); g.lineTo(x + ww * 0.3, y + ww * 0.9); g.lineTo(x - ww * 0.4, y + ww * 0.7); g.closePath(); g.fill();
-      g.fillStyle = th.grass; g.beginPath(); g.roundRect(x - ww * 1.05, y - 3, ww * 2.1, 6, 3); g.fill();
-      g.globalAlpha = 1;
-    }
-    // ground haze
-    const haze = g.createLinearGradient(0, h * 0.7, 0, h);
-    haze.addColorStop(0, rgba(th.hills[2], 0)); haze.addColorStop(1, rgba(th.dark ? '#05070d' : th.hills[2], 0.75));
-    g.fillStyle = haze; g.fillRect(0, h * 0.7, w, h * 0.3);
     cache.set(key, c);
     return c;
   }
 
-  // from -> to crossfade (blend 0..1), then the moving bits: clouds and weather
-  function draw(ctx, w, h, from, to, blend, time) {
+  // from -> to crossfade (blend 0..1) when the stage changes
+  function draw(ctx, w, h, from, to, blend) {
     ctx.drawImage(backdrop(from, w, h), 0, 0);
     if (blend > 0 && to !== from) { ctx.globalAlpha = blend; ctx.drawImage(backdrop(to, w, h), 0, 0); ctx.globalAlpha = 1; }
-    const th = THEMES[blend > 0.5 ? to : from];
-    ctx.fillStyle = th.dark ? 'rgba(200,210,240,0.10)' : 'rgba(255,255,255,0.5)';
-    for (const c of clouds) {
-      const x = ((c.x + time * c.v) % 1.3 - 0.15) * w, y = c.y * h, s = c.s * h * 0.05;
-      ctx.beginPath();
-      ctx.ellipse(x, y, s * 2.6, s * 0.7, 0, 0, TAU); ctx.ellipse(x - s * 1.1, y - s * 0.4, s * 1.2, s * 0.8, 0, 0, TAU); ctx.ellipse(x + s * 0.7, y - s * 0.55, s * 1.4, s * 0.9, 0, 0, TAU);
-      ctx.fill();
-    }
-    if (th.rain) {
-      ctx.strokeStyle = 'rgba(200,215,240,0.35)'; ctx.lineWidth = 1.5; ctx.beginPath();
-      for (const m of motes) { const x = ((m.x + time * 0.25 * m.s) % 1) * w, y = ((m.y + time * 1.6 * m.s) % 1) * h; ctx.moveTo(x, y); ctx.lineTo(x - 6, y + 20); }
-      ctx.stroke();
-    } else {
-      ctx.fillStyle = th.mote;
-      for (const m of motes) {
-        const fall = th.snow ? 0.06 : 0.012;
-        const x = ((m.x + Math.sin(time * 0.4 + m.p) * 0.02 + time * 0.006 * m.s) % 1) * w, y = ((m.y + time * fall * m.s) % 1) * h;
-        ctx.globalAlpha = (th.snow ? 0.8 : 0.35) * (0.5 + 0.5 * Math.sin(time * 1.5 + m.p));
-        ctx.beginPath(); ctx.arc(x, y, (th.snow ? 2.4 : 1.8) * m.s, 0, TAU); ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-    }
   }
 
   return { init, draw };

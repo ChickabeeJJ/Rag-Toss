@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0c0e15">
   <meta name="description" content="Rag Toss - a ragdoll throwing duel. Pull back, let go and fling rubber chickens, anvils, beehives and 15 other things at an endless parade of ragdolls on floating islands.">
   <title>Rag Toss</title>
-  <link rel="stylesheet" href="css/style.css?v=1">
+  <link rel="stylesheet" href="css/style.css?v=2">
   <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 </head>
 <body>
@@ -45,10 +45,14 @@
 
     <div class="slots" id="slots"></div>
 
-    <div class="duckhint" id="duckHint"><kbd id="duckKey">S</kbd><span>HOLD TO DUCK</span></div>
+    <div class="duckhint" id="duckHint"><kbd id="duckKey">S</kbd><span>DUCK</span><em><span class="ic" data-icon="bolt"></span>5</em></div>
     <button class="tb tb-duck" id="btnDuck"><span class="ic" data-icon="duck"></span><small>DUCK</small></button>
 
-    <div class="coach hidden" id="coach"><div class="coach-vis" id="coachVis"></div><p id="coachText"></p></div>
+    <div class="coach hidden" id="coach">
+      <div class="tut-dots hidden" id="tutDots"></div>
+      <div class="coach-row"><div class="coach-vis" id="coachVis"></div><div class="coach-txt"><p id="coachText"></p><small id="coachSub"></small></div></div>
+      <button class="tut-skip hidden" id="tutSkip">SKIP<span class="ic" data-icon="next"></span></button>
+    </div>
   </div>
 
   <!-- =============================== HOME =============================== -->
@@ -73,7 +77,6 @@
       <div class="rank-strip" id="rankStrip"></div>
     </div>
     <div class="corner tr">
-      <button class="pill streak hidden" id="streakChip"><span class="ic" data-icon="gift"></span><b>DAILY</b></button>
       <div class="pill"><span class="ic" data-icon="skull"></span><b id="homeBest">BEST 0</b></div>
       <div class="pill"><span class="ic coin" data-icon="coin"></span><b class="coin-val">0</b></div>
       <button class="round" id="btnSettings" aria-label="Settings"><span class="ic" data-icon="gear"></span></button>
@@ -118,18 +121,18 @@
   <div id="toasts"></div>
   <div id="rotate" class="hidden"><div><span class="ic" data-icon="rotate"></span><p>TURN YOUR DEVICE SIDEWAYS</p><button class="btn primary" id="btnRotateOk"><b>PLAY ANYWAY</b></button></div></div>
 
-  <script src="js/util.js?v=1"></script>
-  <script src="js/platform.js?v=1"></script>
-  <script src="js/audio.js?v=1"></script>
-  <script src="js/data.js?v=1"></script>
-  <script src="js/progress.js?v=1"></script>
-  <script src="js/items.js?v=1"></script>
-  <script src="js/world.js?v=1"></script>
-  <script src="js/ragdoll.js?v=1"></script>
-  <script src="js/fx.js?v=1"></script>
-  <script src="js/game.js?v=1"></script>
-  <script src="js/icons.js?v=1"></script>
-  <script src="js/ui.js?v=1"></script>
-  <script src="js/main.js?v=1"></script>
+  <script src="js/util.js?v=2"></script>
+  <script src="js/platform.js?v=2"></script>
+  <script src="js/audio.js?v=2"></script>
+  <script src="js/data.js?v=2"></script>
+  <script src="js/progress.js?v=2"></script>
+  <script src="js/items.js?v=2"></script>
+  <script src="js/world.js?v=2"></script>
+  <script src="js/ragdoll.js?v=2"></script>
+  <script src="js/fx.js?v=2"></script>
+  <script src="js/game.js?v=2"></script>
+  <script src="js/icons.js?v=2"></script>
+  <script src="js/ui.js?v=2"></script>
+  <script src="js/main.js?v=2"></script>
 </body>
 </html>

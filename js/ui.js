@@ -1,7 +1,9 @@
 'use strict';
 /* =========================================================================
-   UI: home, the stuff shop and bag, upgrades, missions, rank, daily reward,
-   settings, pause, perk picks, results, the HUD and the first-run coaching.
+   UI: home, the stuff shop and bag, upgrades, missions, rank, settings,
+   pause, perk picks, results, the HUD and the first-launch tutorial panel.
+   The game boots straight into a run; the home screen is where you land
+   after one, or from the pause menu.
    ========================================================================= */
 
 const UI = (() => {
@@ -23,11 +25,10 @@ const UI = (() => {
     $('btnMissions').onclick = () => { click(); openMissions(); };
     $('btnRank').onclick = () => { click(); openRank(); };
     $('btnSettings').onclick = () => { click(); openSettings(); };
-    $('streakChip').onclick = () => { click(); openStreak(); };
     $('btnPause').onclick = () => { click(); openPause(); };
     $('btnRotateOk').onclick = () => { rotateDismissed = true; checkRotate(); };
     document.querySelectorAll('[data-back]').forEach(b => { b.onclick = () => { click(); show('home'); }; });
-    $('modal').addEventListener('pointerdown', e => { if (e.target === $('modal') && ['missions', 'rank', 'settings', 'streak'].includes(modalKind)) closeModal(); });
+    $('modal').addEventListener('pointerdown', e => { if (e.target === $('modal') && ['missions', 'rank', 'settings'].includes(modalKind)) closeModal(); });
     const duck = $('btnDuck');
     const duckOn = e => { e.preventDefault(); Game.setDuck(true); duck.classList.add('on'); };
     const duckOff = () => { Game.setDuck(false); duck.classList.remove('on'); };
@@ -36,12 +37,14 @@ const UI = (() => {
     Game.on.over = openResults;
     Game.on.perk = openPerks;
     Game.on.banner = banner;
-    Game.on.toast = (text, icon) => { if (text === 'duck') coach('duck', 6); else toast(text, icon, 4200); };
+    Game.on.toast = (text, icon) => toast(text, icon, 4200);
+    Game.on.tut = tutStep;
+    $('tutSkip').onclick = () => { click(); Game.skipTut(); };
     Platform.onAuth(() => { Save.load(); if (screen === 'home') renderHome(); });
 
-    show('home');
+    // no menu first: a new player lands in the tutorial, everyone else in a run
+    play({ tutorial: !Save.data.tutDone });
     checkRotate();
-    if (Save.streakState().claimable && Save.data.stats.runs > 0) setTimeout(() => { if (screen === 'home' && !modalOpen) openStreak(); }, 600);
   }
 
   function click() { Sfx.ensure(); Sfx.click(); }
@@ -78,17 +81,16 @@ const UI = (() => {
     Game.setMenuInset(screen === 'home' ? r.right : 0);
   }
 
-  function play() {
+  function play(opts = {}) {
     closeModal(true);
     show(null);
-    Game.start();
+    coachKind = null; $('coach').classList.add('hidden');
+    Game.start(opts);
     Sfx.ensure(); Sfx.startMusic();
     Platform.gameplayStart();
     buildSlots(); cache.perks = null; cache.dots = null;
     $('bossBar').classList.add('hidden'); $('combo').classList.add('hidden');
-    coachKind = null; $('coach').classList.add('hidden');
-    if (!Save.data.seenTut) coach('throw', 0);
-    else if (!Save.data.seenSwap && Save.bagItems().length > 1) { coach('swap', 6); Save.data.seenSwap = true; Save.save(); }
+    if (!opts.tutorial && !Save.data.seenSwap && Save.bagItems().length > 1) { coach('swap', 6); Save.data.seenSwap = true; Save.save(); }
   }
 
   /* ----------------------------------------------------------------- home */
@@ -114,12 +116,11 @@ const UI = (() => {
     $('shopDot').classList.toggle('hidden', !ITEMS.some(i => !Save.owns(i.id) && d.coins >= i.price));
     $('upDot').classList.toggle('hidden', !UPGRADES.some(u => Save.lvl(u.id) < u.max && d.coins >= upgradeCost(u, Save.lvl(u.id))));
     $('missionDot').classList.toggle('hidden', !Save.missionsReady());
-    $('streakChip').classList.toggle('hidden', !Save.streakState().claimable);
     bagRow($('homeBag'), () => { click(); show('shop'); });
     const r = Save.rankInfo();
     $('rankStrip').innerHTML = `<div class="rk-top"><b>${esc(r.cur.name.toUpperCase())}</b><span>${r.next ? `${r.kos} / ${r.next.kos} KOs` : 'TOP RANK'}</span></div><div class="rk-track"><i style="width:${(r.t * 100).toFixed(1)}%"></i></div>`;
     const touch = document.body.classList.contains('touch');
-    $('homeHint').innerHTML = touch ? '<span>DRAG BACK AND LET GO TO THROW</span>' : '<span><kbd>DRAG</kbd> AIM AND THROW</span><span><kbd>S</kbd> DUCK</span><span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> SWAP</span><span><kbd>P</kbd> PAUSE</span>';
+    $('homeHint').innerHTML = touch ? '<span>DRAG BACK AND LET GO TO THROW</span>' : '<span><kbd>DRAG</kbd> PULL BACK TO THROW</span><span><kbd>S</kbd> DUCK</span><span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> SWAP</span><span><kbd>P</kbd> PAUSE</span>';
     coins();
   }
 
@@ -146,7 +147,7 @@ const UI = (() => {
     else if (d.coins >= it.price) action = `<button class="btn primary" id="btnBuy"><b>BUY</b><small>${fmt(it.price)} COINS</small></button>`;
     else action = `<button class="btn" disabled><b>${fmt(it.price)} COINS</b><small>${fmt(it.price - d.coins)} MORE TO GO</small></button>`;
     $('shopInfo').innerHTML = `<div class="pv-head"><b>${esc(it.name.toUpperCase())}</b><span class="tag">${esc(it.tag)}</span></div><p>${esc(it.desc)}</p>
-      <div class="stats">${stat('DAMAGE', it.id === 'sack' ? 0.6 : (it.dmg * (it.multi || 1)) / 44)}${stat('SHOVE', it.id === 'plunger' ? 1 : it.kb / 3.2)}${stat('STAMINA', it.sta / 28)}</div>${action}`;
+      <div class="stats">${stat('DAMAGE', it.id === 'sack' ? 0.6 : (it.dmg * (it.multi || 1)) / 44)}${stat('SHOVE', it.id === 'plunger' ? 1 : it.kb / 3.2)}${stat('STAMINA', it.sta / 14)}</div>${action}`;
     const buy = $('btnBuy');
     if (buy) buy.onclick = () => {
       if (Save.buyItem(it.id)) { Sfx.buy(); toast(it.name.toUpperCase() + ' UNLOCKED', 'bag'); renderShop(); coins(); }
@@ -228,7 +229,7 @@ const UI = (() => {
       <button class="btn" id="mRestart">${ic('restart')}<b>RESTART</b></button><button class="btn" id="mHome">${ic('home')}<b>QUIT</b></button></div>`);
     wireToggles();
     $('mResume').onclick = () => { click(); resume(); };
-    $('mRestart').onclick = () => { click(); play(); };
+    $('mRestart').onclick = () => { click(); play({ tutorial: !Save.data.tutDone }); };
     $('mHome').onclick = () => { click(); closeModal(true); show('home'); };
   }
   function resume() {
@@ -277,14 +278,6 @@ const UI = (() => {
       <div class="rk-list">${rows}</div>
       <div class="actions"><button class="btn wide" id="mDone"><b>CLOSE</b></button></div>`);
     $('mDone').onclick = () => { click(); closeModal(); };
-  }
-
-  function openStreak() {
-    const s = Save.streakState();
-    const days = s.table.map((n, i) => `<div class="day ${i < s.day ? 'got' : i === s.day ? 'now' : ''}"><small>DAY ${i + 1}</small>${ic(i === 6 ? 'gift' : 'coin')}<b>${n}</b></div>`).join('');
-    openModal('streak', `<h2>DAILY REWARD</h2><div class="sub">COME BACK EVERY DAY. MISS ONE AND IT STARTS OVER.</div><div class="days">${days}</div>
-      <div class="actions"><button class="btn primary wide" id="mClaim" ${s.claimable ? '' : 'disabled'}><b>${s.claimable ? 'CLAIM ' + s.reward + ' COINS' : 'COME BACK TOMORROW'}</b></button></div>`);
-    $('mClaim').onclick = () => { const n = Save.claimStreak(); if (n) { Sfx.buy(); toast('+' + n + ' COINS', 'coin'); } closeModal(); };
   }
 
   function openPerks(picks, stage) {
@@ -360,16 +353,29 @@ const UI = (() => {
     el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
     bannerT = 2.2;
   }
-  const COACH = {
-    throw: () => [document.body.classList.contains('touch') ? 'DRAG BACK ANYWHERE, THEN LET GO' : 'CLICK, DRAG BACK, THEN LET GO', '<div class="pull"><i></i><u></u></div>'],
-    duck: () => [document.body.classList.contains('touch') ? 'HOLD DUCK TO DODGE. IT USES STAMINA' : 'HOLD S TO DUCK. IT USES STAMINA', document.body.classList.contains('touch') ? '' : '<kbd class="big">S</kbd>'],
-    swap: () => [document.body.classList.contains('touch') ? 'TAP A SLOT TO SWAP WHAT YOU THROW' : 'PRESS 1 2 3 TO SWAP WHAT YOU THROW', document.body.classList.contains('touch') ? '' : '<kbd class="big">1</kbd><kbd class="big">2</kbd><kbd class="big">3</kbd>'],
-  };
+  // the coach panel: the tutorial's four steps, and the one-off slot hint
+  const touchy = () => document.body.classList.contains('touch');
+  const TUT = [
+    () => [touchy() ? 'DRAG BACK ANYWHERE, THEN LET GO' : 'CLICK, DRAG BACK, THEN LET GO', 'HIT THE RED ONE', '<div class="pull"><i></i><u></u></div>'],
+    () => ['KNOCK IT OUT', 'A HEADSHOT HITS TWICE AS HARD', ''],
+    () => [touchy() ? 'HOLD DUCK WHEN THEY THROW' : 'HOLD S WHEN THEY THROW', 'DUCKING COSTS ' + Game.DUCK_COST + ' STAMINA', touchy() ? '' : '<kbd class="big">S</kbd>'],
+    () => ['NOW KNOCK THIS ONE OUT', 'YOU CAN HIT THEIR THROWS OUT OF THE AIR TOO', ''],
+  ];
+  function setCoach(text, sub, vis, dots, skip) {
+    $('coachText').textContent = text; $('coachSub').textContent = sub || ''; $('coachVis').innerHTML = vis || '';
+    $('tutDots').innerHTML = dots; $('tutDots').classList.toggle('hidden', !dots); $('tutSkip').classList.toggle('hidden', !skip);
+    const el = $('coach');
+    el.classList.remove('hidden'); el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+  }
+  function tutStep(n) {
+    if (n < 0) { coachKind = null; $('coach').classList.add('hidden'); return; }
+    const [text, sub, vis] = TUT[n]();
+    coachKind = 'tut';
+    setCoach(text, sub, vis, TUT.map((_, i) => `<i class="${i < n ? 'done' : i === n ? 'cur' : ''}"></i>`).join(''), true);
+  }
   function coach(kind, secs) {
-    const [text, vis] = COACH[kind]();
     coachKind = kind; coachT = secs;
-    $('coachText').textContent = text; $('coachVis').innerHTML = vis;
-    $('coach').classList.remove('hidden');
+    setCoach(touchy() ? 'TAP A SLOT TO SWAP WHAT YOU THROW' : 'PRESS 1 2 3 TO SWAP WHAT YOU THROW', '', touchy() ? '' : '<kbd class="big">1</kbd><kbd class="big">2</kbd><kbd class="big">3</kbd>', '', false);
   }
 
   function tick(dt) {
@@ -378,8 +384,7 @@ const UI = (() => {
     const p = Game.player, r = Game.run;
     if (!p || !r) return;
     if (coachKind) {
-      if (coachKind === 'throw') { if (Save.data.seenTut) { coachKind = null; $('coach').classList.add('hidden'); } }
-      else if (!Game.paused && (coachT -= dt) <= 0) { coachKind = null; $('coach').classList.add('hidden'); }
+      if (coachKind !== 'tut' && !Game.paused && (coachT -= dt) <= 0) { coachKind = null; $('coach').classList.add('hidden'); }
     }
     set('kos', r.kos, v => { $('hudKos').textContent = v; const m = $('hudMid'); m.classList.remove('bump'); void m.offsetWidth; m.classList.add('bump'); });
     set('coins', Save.data.coins, v => { $('hudCoins').textContent = fmt(v); });
