@@ -108,7 +108,6 @@ const UPGRADES = [
   { id: 'guide', name: 'Good Eye', icon: 'eye', max: 6, base: 90, grow: 1.7, text: l => `+${l * 2} AIM DOTS`, step: 'longer aim line' },
   { id: 'armor', name: 'Padding', icon: 'shield', max: 8, base: 120, grow: 1.65, text: l => `-${l * 5}% DAMAGE TAKEN`, step: '-5% damage taken' },
   { id: 'greed', name: 'Deep Pockets', icon: 'coin', max: 8, base: 150, grow: 1.7, text: l => `+${l * 10}% COINS`, step: '+10% coins' },
-  { id: 'wind', name: 'Second Wind', icon: 'wing', max: 1, base: 2500, grow: 1, text: l => (l ? 'GET BACK UP ONCE PER RUN' : 'GET BACK UP ONCE PER RUN'), step: 'one revive per run' },
 ];
 const UPGRADE = Object.fromEntries(UPGRADES.map(u => [u.id, u]));
 const upgradeCost = (u, lvl) => Math.round(u.base * Math.pow(u.grow, lvl) / 10) * 10;

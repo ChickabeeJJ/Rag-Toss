@@ -12,7 +12,7 @@ The game boots **straight into a run**: there's no menu to click through. The ve
 
 ## The game
 
-- **Throwing.** Drag back from anywhere on the screen. A dashed ring shows how far a full-power pull reaches, two elastic strands run from where you pressed to a knob that shows the power as a number (and stops at MAX), an arrow on the far side points the way the throw will go, and a line of dots ending in an arrowhead shows the start of the arc. There's a short beat between throws, and a release that comes a touch early is buffered.
+- **Throwing.** Drag back from anywhere on the screen. A dashed ring shows how far a full-power pull reaches, two elastic strands run from where you pressed to a knob that shows the power as a number (and stops at MAX), an arrow on the far side points the way the throw will go, and a line of dots ending in an arrowhead shows the start of the arc. There's a short beat between throws, and a release that comes a touch early is buffered. The thrower animates through the whole throw: weight sinks onto the back foot as you pull, the hand goes behind the head, then the arm whips through with an overshoot, the front foot plants and the back heel drives up. The item leaves the hand at the top of the whip, with speed lines, a ring and dust at the planted foot. A faint reticle shows where the arc would land, red when it's on a foe, and on release the elastic snaps back past the anchor.
 - **Stamina.** A pool of 200 with small costs. A throw takes 4 to 14 points depending on what it is, holding a wind-up sips 2.5 a second, a duck is a flat 5, and it refills by itself the whole time. You only run dry by spamming the heavy stuff.
 - **Where you hit matters.** Headshots do double damage, limbs do three quarters. Hurt foes fly further when hit, and anyone knocked off their island is out, whatever health they had left.
 - **Throws can be thrown at.** Anything a foe throws can be knocked out of the air (DEFLECT). Barrels take two hits.
@@ -48,7 +48,7 @@ Items are plain data in `ITEMS` in `js/data.js`. What each one does in the air a
 
 ## Foes
 
-A new kind shows up in each of the first seven stages. Every foe winds up before throwing: a red ring closes in on its throwing hand, and a hit during the wind-up interrupts the throw.
+A new kind shows up in each of the first seven stages. Every foe winds up before throwing: a red ring closes in on its throwing hand, and a hit during the wind-up interrupts the throw. Every hit moves the body, whatever it was thrown with: the bone that's struck is pushed, a head snaps back, a limb swings away, and a frozen foe rings like glass. Islands with nobody on them fall away at once.
 
 | Foe | From stage | Behaviour |
 | --- | --- | --- |
@@ -69,7 +69,7 @@ From stage 3 some foes wear a pot that soaks one headshot, and from stage 4 some
 - **The run itself escalates.** More foes at once (up to four), tougher and more accurate every stage, a new foe type each stage, a boss every 8 knockouts and a new sky after each one.
 - **Perks.** Fourteen of them, stackable, offered three at a time after every boss and kept until you're knocked out: Heavy Hands, Second Helping (throws come out twice), Loud Exit (knocked-out foes explode), Hot Hands, Springy, Snack Break and so on.
 - **Coins.** Earned per knockout, multiplied by your streak, plus boss bonuses. They're banked as you earn them, so quitting a run keeps them.
-- **Stuff and upgrades.** 18 items and nine permanent upgrades: Thick Skull (health), Big Lungs (stamina), Second Breath (refill), Strong Arm (damage), Quick Hands (time between throws), Good Eye (longer aim line), Padding (damage taken), Deep Pockets (coins) and Second Wind (get back up once per run).
+- **Stuff and upgrades.** 18 items and eight permanent upgrades: Thick Skull (health), Big Lungs (stamina), Second Breath (refill), Strong Arm (damage), Quick Hands (time between throws), Good Eye (longer aim line), Padding (damage taken), and Deep Pockets (coins).
 - **The results screen always points at the next thing.** It shows the next item you don't own with a bar for how close you are, flags affordable upgrades, and shows your rank bar.
 - **Ranks.** Lifetime knockouts move you through eleven ranks, from Butterfingers to The Last Throw. Each rank-up pays coins.
 - **Missions.** Three at a time from a pool of ten, refreshed at 00:00 UTC, with a 250-coin chest for finishing all three. There is no login reward.

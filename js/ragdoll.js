@@ -39,6 +39,7 @@ const PT_R = [13, 10, 10, 5.5, 5, 5.5, 5, 6.5, 5.5, 6.5, 5.5];
 // one-way hinges [root, joint, tip, side]: knees only fold back, elbows only fold forward
 const HINGES = [[2, 7, 8, -1], [2, 9, 10, -1], [1, 3, 4, 1], [1, 5, 6, 1]];
 const GROUND_FRICTION = 0.3, GROUND_BOUNCE = 0.2;
+const THROW_DUR = 0.46;        // a whole throw: whip, follow-through, recovery
 const STEP = 1 / 120;          // physics step; the game runs whole steps only
 
 class Rag {
@@ -58,6 +59,7 @@ class Rag {
     this.steady = !!o.steady;       // never loses its footing (the player, bosses)
     this.daze = 0;                  // 0..1: how soft the muscles are right now
     this.leanT = 0;                 // the lean the pose is asking for
+    this.jv = { x: 0, y: 0, vx: 0, vy: 0 };   // a small whole-body shake from a hit, drawn on top of the physics
     this.mode = 'active';           // active | tumble | rising | dead
     this.m = 1;                     // muscle strength 0..1
     this.t = Math.random() * 10;
@@ -115,6 +117,8 @@ class Rag {
       this.pts[i].px -= vx * k; this.pts[i].py -= vy * k;
     }
   }
+  // a quick shake of the drawn body: how a frozen foe or a heavy lid takes a hit
+  jolt(x, y) { this.jv.vx += x * 40; this.jv.vy += y * 40; }
   // muscles go soft for a moment after a blow; heavy bodies shrug more of it off
   stagger(a) { if (this.frozen <= 0) this.daze = Math.min(1, this.daze + a / this.weight); }
   // lose the fight to stay upright: let go and fall with whatever speed the body has
@@ -153,7 +157,7 @@ class Rag {
     this.t += dt;
     this.flash = Math.max(0, this.flash - dt * 5);
     this.gild = Math.max(0, this.gild - dt);
-    if (this.throwT >= 0) { this.throwT += dt; if (this.throwT > 0.34) this.throwT = -1; }
+    if (this.throwT >= 0) { this.throwT += dt; if (this.throwT > THROW_DUR) this.throwT = -1; }
     if (this.mode === 'active' || this.mode === 'rising') {
       if (this.plat) {
         const nx = this.plat.x + this.platOff, ny = this.plat.top;
@@ -165,52 +169,72 @@ class Rag {
       if (this.frozen <= 0) this.computeTargets();
       else for (let i = 0; i < 11; i++) { this.Tp[i].x = this.T[i].x; this.Tp[i].y = this.T[i].y; }
     }
+    const j = this.jv;
+    j.vx += (-j.x * 900 - j.vx * 24) * dt; j.vy += (-j.y * 900 - j.vy * 24) * dt; j.x += j.vx * dt; j.y += j.vy * dt;
     this.stepBody(dt, plats);
     if (this.mode === 'active' && this.frozen <= 0) this.balance(dt);
     if (this.mode === 'tumble') this.followBody(dt, plats);
     if (this.mode === 'dead') this.deadT += dt;
   }
 
+  /* The pose. A throw is built from four overlapping curves rather than one:
+       cock   (0..1)  while the pull is held: weight sinks onto the back foot, the
+                      torso leans away, the hand goes behind the head, the off arm
+                      points down the throw and the front foot lifts
+       whip   (0..1)  the arm: fast out, a small overshoot, then back to the hip
+       commit (0..1)  the body: hips drive forward, the front foot plants, the
+                      back heel comes up, the torso folds into the throw
+       over           the overshoot itself, a little extra reach at the peak
+     so the arm leads, the body follows a beat later and recovers more slowly. */
   computeTargets() {
     const s = this.s, f = this.facing, r = this.root, T = this.T, Tp = this.Tp;
     for (let i = 0; i < 11; i++) { Tp[i].x = T[i].x; Tp[i].y = T[i].y; }
-    const t = this.t, duck = this.duck, pull = this.pull, aw = this.aimW;
+    const t = this.t, duck = this.duck, aw = this.aimW;
+    const cock = clamp(this.pull * aw, 0, 1);
     const ca = Math.cos(this.aim), sa = Math.sin(this.aim);
-    // release: the arm whips forward fast, then eases back
-    let swing = 0;
-    if (this.throwT >= 0) { const u = this.throwT / 0.34; swing = u < 0.3 ? easeOut(u / 0.3) : 1 - (u - 0.3) / 0.7; }
+    let whip = 0, commit = 0, over = 0;
+    if (this.throwT >= 0) {
+      const u = this.throwT / THROW_DUR;
+      whip = u < 0.2 ? easeOut(u / 0.2) : u < 0.5 ? 1 : 1 - easeInOut((u - 0.5) / 0.5);
+      commit = u < 0.22 ? easeOut(u / 0.22) : u < 0.58 ? 1 : 1 - easeInOut((u - 0.58) / 0.42);
+      over = u > 0.2 && u < 0.5 ? Math.sin((u - 0.2) / 0.3 * Math.PI) : 0;
+    }
     const dizzy = this.stun > 0 ? Math.sin(t * 7) * 0.16 : 0;
-    const breathe = Math.sin(t * 2.4) * 1.4 * s;
-    const lean = f * (-0.17 * pull * aw + 0.3 * swing + 1.05 * duck) + Math.sin(t * 1.3) * 0.02 + dizzy;
+    const breathe = Math.sin(t * 2.4) * 1.4 * s * (1 - cock);
+    const lean = f * (-0.3 * cock + 0.55 * commit + 1.05 * duck) + Math.sin(t * 1.3) * 0.02 + dizzy;
     this.leanT = lean;
     const fy = r.y - PT_R[P.FFOOT] * s;     // the foot point sits one radius above the ground
-    const px = r.x - f * 5 * s * pull * aw + f * 7 * s * swing, py = r.y - (58 - 33 * duck) * s + breathe;
+    const px = r.x - f * 9 * s * cock + f * 14 * s * commit;
+    const py = r.y - (58 - 33 * duck - 8 * cock - 3 * commit) * s + breathe;
     T[P.PELVIS].x = px; T[P.PELVIS].y = py;
     const nx = px + Math.sin(lean) * 45 * s, ny = py - Math.cos(lean) * 45 * s;
     T[P.NECK].x = nx; T[P.NECK].y = ny;
-    const hl = lean * 1.2 + f * 0.3 * duck + dizzy;
+    const hl = lean * 0.85 + f * 0.3 * duck - f * 0.14 * commit + dizzy;   // the head trails the torso
     T[P.HEAD].x = nx + Math.sin(hl) * 17 * s; T[P.HEAD].y = ny - Math.cos(hl) * 17 * s;
-    // legs: feet planted, knees forward
-    const ffx = r.x + f * (13 + 9 * duck) * s, bfx = r.x - f * (14 + 5 * duck) * s;
-    T[P.FFOOT].x = ffx; T[P.FFOOT].y = fy; T[P.BFOOT].x = bfx; T[P.BFOOT].y = fy;
-    let k = ik2(px, py, ffx, fy, 29 * s, 28 * s, -f);
+    // legs: the front foot lifts as the arm cocks, then plants a long step ahead; the back heel drives up
+    const ffx = r.x + f * (13 + 9 * duck + 6 * cock + 14 * commit) * s, bfx = r.x - f * (14 + 5 * duck + 7 * cock - 1 * commit) * s;
+    const ffy = fy - 4 * s * cock * (1 - commit), bfy = fy - 7 * s * commit;
+    T[P.FFOOT].x = ffx; T[P.FFOOT].y = ffy; T[P.BFOOT].x = bfx; T[P.BFOOT].y = bfy;
+    let k = ik2(px, py, ffx, ffy, 29 * s, 28 * s, -f);
     T[P.FKNEE].x = k.x; T[P.FKNEE].y = k.y;
-    k = ik2(px, py, bfx, fy, 29 * s, 28 * s, -f);
+    k = ik2(px, py, bfx, bfy, 29 * s, 28 * s, -f);
     T[P.BKNEE].x = k.x; T[P.BKNEE].y = k.y;
-    // throwing arm: carried at the hip, drawn back behind the head, whipped forward
+    // throwing arm: rest at the hip, cock behind the head, whip through along the aim and overshoot
     const sx = nx, sy = ny + 3 * s;
     let hx = nx + f * 15 * s, hy = ny + 24 * s + Math.sin(t * 2.4 + 1) * 1.5 * s;
-    const bx = nx - ca * (20 + 22 * pull) * s, by = ny - sa * (20 + 22 * pull) * s - 14 * s * pull;
+    const bx = nx - ca * (20 + 26 * this.pull) * s, by = ny - sa * (20 + 26 * this.pull) * s - 16 * s * this.pull;
     hx = lerp(hx, bx, aw); hy = lerp(hy, by, aw);
-    hx = lerp(hx, nx + ca * 46 * s, swing); hy = lerp(hy, ny + sa * 46 * s, swing);
+    const reach = (46 + 52 * over) * s;
+    hx = lerp(hx, nx + ca * reach, whip); hy = lerp(hy, ny + sa * reach, whip);
+    hy -= Math.sin(whip * Math.PI) * 26 * s * (1 - over * 0.5);       // the hand goes over the top, not through the head
     if (duck > 0) { hx = lerp(hx, nx + f * 12 * s, duck); hy = lerp(hy, ny - 4 * s, duck); }
     T[P.FHAND].x = hx; T[P.FHAND].y = hy;
     k = ik2(sx, sy, hx, hy, 24 * s, 24 * s, f);
     T[P.FELB].x = k.x; T[P.FELB].y = k.y;
-    // off arm: hangs, points down the throw, holds a lid, or covers the head
+    // off arm: points down the throw while aiming, then snaps back into the ribs for balance
     let ox = nx - f * 9 * s, oy = ny + 31 * s + Math.sin(t * 2.4) * 1.5 * s;
-    ox = lerp(ox, nx + ca * 34 * s, aw * (1 - swing)); oy = lerp(oy, ny + sa * 34 * s + 5 * s, aw * (1 - swing));
-    if (swing > 0) { ox = lerp(ox, nx - f * 22 * s, swing); oy = lerp(oy, ny + 20 * s, swing); }
+    ox = lerp(ox, nx + ca * 34 * s, aw * (1 - whip)); oy = lerp(oy, ny + sa * 34 * s + 5 * s, aw * (1 - whip));
+    ox = lerp(ox, nx - f * 24 * s, whip); oy = lerp(oy, ny + 16 * s, whip);
     if (this.shield > 0) { ox = nx + f * 27 * s; oy = ny + 16 * s + Math.sin(t * 2.4) * 1.5 * s; }
     if (duck > 0) { ox = lerp(ox, nx + f * 2 * s, duck); oy = lerp(oy, ny - 8 * s, duck); }
     T[P.BHAND].x = ox; T[P.BHAND].y = oy;
@@ -345,6 +369,7 @@ class Rag {
     ctx.save();
     ctx.globalAlpha = fade;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (this.jv.x || this.jv.y) ctx.translate(this.jv.x, this.jv.y);
     let body = this.body, shade = this.shade;
     if (this.frozen > 0) { body = mixHex(body, '#bfe6ff', 0.7); shade = mixHex(shade, '#8fc4ea', 0.7); }
     if (this.gild > 0) { const g = Math.min(1, this.gild * 2); body = mixHex(body, '#ffd24a', g); shade = mixHex(shade, '#d9a321', g); }

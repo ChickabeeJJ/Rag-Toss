@@ -24,6 +24,8 @@ const Game = (() => {
   const on = { over: null, perk: null, toast: null, banner: null, tut: null };
 
   const HOME_X = 262, HOME_Y = 620;
+  const ARC_T = 0.8;           // the throw rejoins the previewed arc about this far into its flight
+  const RELEASE_AT = 0.07;     // seconds into the whip when the item leaves the hand
   const pk = id => (run && run.perks[id]) || 0;
   // a foe still riding its island up from below the screen can't be hit yet
   const live = f => f.rag.alive && !(f.plat && f.plat.state === 'in' && f.rag.mode === 'active');
@@ -48,13 +50,13 @@ const Game = (() => {
   function freshRun(demo) {
     return {
       demo, kos: 0, stage: 1, stageKills: 0, coins: 0, combo: 0, bestCombo: 0, perks: {}, boss: null, bossT: -1, spawnT: 0.5,
-      crateT: rand(10, 14), lastKoAt: -9, windUsed: false, seq: 0, t: 0, heads: 0, rings: 0, overT: -1, perkT: -1, crates: 0, bosses: 0, firstCrate: true,
+      crateT: rand(10, 14), lastKoAt: -9, seq: 0, t: 0, heads: 0, rings: 0, overT: -1, perkT: -1, crates: 0, bosses: 0, firstCrate: true,
     };
   }
   function buildWorld() {
     plats = []; foes = []; shots = []; crates = []; zones = []; throwLog.clear(); Fx.clear();
     home = new Plat(250, HOME_Y, 300, 'player'); home.h = 300; home.bobA = 0;
-    wall = new Plat(378, HOME_Y - 62, 36, 'wall'); wall.h = 62;
+    wall = new Plat(372, HOME_Y - 66, 44, 'wall'); wall.h = 66;
     plats.push(home, wall);
     const rag = new Rag({ x: HOME_X, y: HOME_Y, facing: 1, isPlayer: true, body: '#f7f2e7', shade: '#d3c8b3', accent: '#ff9a3c', plat: home, weight: 1.3, steady: true });
     player = { rag, hp: 100, maxHp: 100, sta: 100, maxSta: 100, cd: 0, staWait: 0, slot: 0, bonus: null, dead: false, inv: 0 };
@@ -177,7 +179,7 @@ const Game = (() => {
   /* ---------------------------------------------------------------- input */
   function aimStart(x, y, id) {
     if (state !== 'play' || paused || hold || player.dead || aim.on) return;
-    aim.on = true; aim.id = id; aim.sx = aim.cx = x; aim.sy = aim.cy = y; aim.power = 0; aim.t = 0;
+    aim.on = true; aim.id = id; aim.sx = aim.cx = x; aim.sy = aim.cy = y; aim.power = 0; aim.t = 0; aim.maxed = false; aim.snap = null; aim.ux = null;
     aim.max = clamp(Math.min(cw, ch) * 0.3, 110, 230);
   }
   function aimMove(x, y, id) {
@@ -192,6 +194,7 @@ const Game = (() => {
   function aimEnd(id) {
     if (!aim.on || aim.id !== id) return;
     aim.on = false;
+    if (aim.power > 0 && !player.dead && state === 'play' && aim.ux != null) aim.snap = { sx: aim.sx, sy: aim.sy, kx: aim.kx, ky: aim.ky, ux: aim.ux, uy: aim.uy, p: aim.power, col: aim.col || '#ffffff', t: 0 };
     if (aim.power <= 0 || player.dead || state !== 'play') return;
     pending = { ang: aim.ang, power: aim.power, t: 0.22 };
   }
@@ -225,23 +228,40 @@ const Game = (() => {
     rag.aim = ang; rag.throwT = 0;
     let real = def, mul = dmgMul();
     if (id === 'sack') { real = pick(ITEMS.filter(i => i.id !== 'sack')); mul *= 1.3; Fx.text(rag.head.x, rag.head.y - 46, real.name.toUpperCase() + '!', '#ffd9a0', 18); }
-    const p0 = release(rag, ang);
     const twin = Math.random() < 0.25 * pk('twin');
     const n = real.multi || 1;
     const seq = logNew(n * (twin ? 2 : 1));
+    player.rel = RELEASE_AT;
     const volley = (a, delay) => {
       for (let i = 0; i < n; i++) {
         const aa = a + (i - (n - 1) / 2) * 0.11;
-        const v = throwSpeed(real, power);
-        const go = () => launch(real, { owner: 'p', x: p0.x, y: p0.y, vx: Math.cos(aa) * v, vy: Math.sin(aa) * v, dmg: real.dmg * mul, seq, power });
-        if (delay) zones.push({ kind: 'delay', t: delay, fn: go }); else go();
+        const v = throwSpeed(real, power), planned = release(rag, aa);
+        zones.push({ kind: 'delay', t: delay, fn: () => {
+          if (player.dead) { logDone(seq); return; }
+          // the body leans into the throw, so the hand is not where the preview started: leave from the
+          // hand, but bend the velocity so the arc still passes through the previewed path
+          const q = release(rag, aa);
+          launch(real, { owner: 'p', x: q.x, y: q.y, vx: Math.cos(aa) * v + (planned.x - q.x) / ARC_T, vy: Math.sin(aa) * v + (planned.y - q.y) / ARC_T, dmg: real.dmg * mul, seq, power });
+          if (i === 0) releaseFx(rag, aa, power, real);
+        } });
       }
     };
-    volley(ang, 0);
-    if (twin) volley(ang - 0.06, 0.11);
+    volley(ang, RELEASE_AT);
+    if (twin) volley(ang - 0.06, RELEASE_AT + 0.11);
     Sfx.throw(!!real.heavy);
     track('throws');
     return true;
+  }
+
+  // what a release looks like: speed lines off the hand, a snap ring, dust under the planted foot, a small kick
+  function releaseFx(rag, ang, power, def) {
+    const h = rag.hand, f = rag.pts[P.FFOOT];
+    Fx.burst(h.x, h.y, 4 + Math.round(power * 8), { color: '#ffffff', speed: [380 + 500 * power, 900 + 700 * power], life: [0.1, 0.22], size: [1.6, 2.6], grav: 0, drag: 5, shape: 'spark', ang, spread: 0.2 });
+    Fx.ring(h.x, h.y, 5, 24 + 26 * power, 0.2, '#ffffff', 4);
+    Fx.dust(f.x, f.y + 4, 3 + Math.round(power * 4), '#f3ecd8');
+    if (def.heavy) Fx.dust(rag.pts[P.BFOOT].x, rag.pts[P.BFOOT].y + 4, 4);
+    shake = Math.max(shake, 0.06 + 0.12 * power + (def.heavy ? 0.1 : 0));
+    try { if (navigator.vibrate) navigator.vibrate(6 + Math.round(10 * power)); } catch (e) { /* not everywhere */ }
   }
 
   /* ---------------------------------------------------------------- shots */
@@ -449,7 +469,7 @@ const Game = (() => {
             if (s.def.blast) { detonate(s); return; }
             if (s.def.heavy || id === 'magnet') { breakLid(f, true); }
             else {
-              rag.shield--; rag.impulse(P.BHAND, s.vx * 0.5, s.vy * 0.3, 0.2);
+              rag.shield--; rag.impulse(P.BHAND, s.vx * 0.9, s.vy * 0.5, 0.35); rag.stagger(0.2); rag.jolt(Math.sign(s.vx) * 4, 0);
               Sfx.clang(); Fx.hit(s.x, s.y, Math.atan2(s.vy, s.vx), '#dfe5ee', 7);
               if (rag.shield <= 0) breakLid(f, false); else Fx.text(lx, ly - 34, 'BLOCKED', '#c9d0dc', 17);
               if (id === 'hole') { openHole(s); return; }
@@ -633,12 +653,13 @@ const Game = (() => {
      skips that and throws the body clear. Hurt foes take more from every blow. */
   function shove(f, dx, dy, kb, o) {
     const rag = f.rag;
-    if (kb <= 0 || !rag.alive) return;
-    const hurt = 1 + 0.9 * (1 - clamp(f.hp / f.maxHp, 0, 1));
-    const pw = kb * hurt * (1 + 0.4 * pk('shove'));
+    if (!rag.alive) return;
     const hit = o.hit || { seg: 1, u: 0.5 };
+    // Nothing is free: even a weightless hit (bees, a plunger's stick, a rock off a lid) rocks the body.
+    const hurt = 1 + 0.9 * (1 - clamp(f.hp / f.maxHp, 0, 1));
+    const pw = Math.max(0.9, (kb || 0) * hurt * (1 + 0.4 * pk('shove')));
     if (rag.mode === 'tumble') { rag.impulseAt(hit, dx * pw * 340, dy * pw * 290 - 100, 0.7); return; }
-    if (rag.frozen > 0) return;
+    if (rag.frozen > 0) { rag.jolt(dx * 15 * Math.min(pw, 2.5), dy * 8 * Math.min(pw, 2.5)); return; }   // ice rings instead of bending
     if (pw >= f.anchor && !f.dummy && !f.boss) {
       // carried along by the blow, not popped into the air: the lift only comes with real weight
       const v = 250 + 125 * Math.min(pw, 4.5);
@@ -648,6 +669,11 @@ const Game = (() => {
     }
     rag.stagger(0.55 * pw);
     rag.impulseAt(hit, dx * pw * 3300, dy * pw * 2000, 0.3);
+    // and the blow shows: a limb that is hit swings away from it, a head that is hit snaps back
+    if (hit.part === 'head' || hit.seg === 0) rag.impulse(P.HEAD, dx * pw * 380, dy * pw * 220 - 60, 0.1);
+    else if (hit.part === 'arm') { rag.impulse(P.FHAND, dx * pw * 260, dy * pw * 200, 0.05); rag.impulse(P.BHAND, dx * pw * 260, dy * pw * 200, 0.05); }
+    else if (hit.part === 'leg') { rag.impulse(P.FKNEE, dx * pw * 220, dy * pw * 120, 0.05); rag.impulse(P.BKNEE, dx * pw * 220, dy * pw * 120, 0.05); }
+    rag.jolt(dx * 3 * Math.min(pw, 3), dy * 2 * Math.min(pw, 3));
   }
   function style(k, x, y) {
     const [label, coins] = STYLE[k];
@@ -731,15 +757,6 @@ const Game = (() => {
     Fx.text(o.x, o.y - 30, '-' + Math.max(1, Math.round(dmg)), '#ff6b78', o.head ? 26 : 21);
     Fx.hit(o.x, o.y, Math.atan2(o.diry, o.dirx), '#ff9aa0', 8);
     if (player.hp > 0) return;
-    if (Save.lvl('wind') && !run.windUsed) {
-      run.windUsed = true; player.hp = player.maxHp * 0.5; player.inv = 1.5; player.sta = player.maxSta;
-      const c = rag.chest;
-      Fx.ring(c.x, c.y, 20, 520, 0.6, '#ffffff', 10); Fx.text(c.x, c.y - 110, 'SECOND WIND', '#9ff0c0', 30); Sfx.revive();
-      for (const s of shots) if (s.owner === 'e') { Fx.dust(s.x, s.y, 3); kill(s); }
-      for (const f of foes) if (f.rag.alive) { f.rag.stun = 2.2; f.state = 'idle'; f.t = Math.max(f.t, 2.4); }
-      slowT = 0.5; slowK = 0.5;
-      return;
-    }
     player.hp = 0; player.dead = true;
     rag.die(o.dirx * 380 - 160, -460, P.NECK);
     aimCancel(); Sfx.death();
@@ -868,15 +885,21 @@ const Game = (() => {
     const far = clamp(Math.abs(dx) / 950, 0.75, 1.25);
     const T = rand(f.def.flight[0], f.def.flight[1]) * far;
     const err = f.def.err * Math.max(0.35, 1 - 0.06 * (run.stage - 1)) * (f.boss ? 0.75 : 1);
-    const vx = dx / T * (1 + gauss() * 0.21 * err), vy = (dy / T - 0.5 * G * T) * (1 + gauss() * 0.15 * err) + gauss() * 55 * err;
-    return { vx, vy, ang: Math.atan2(vy, vx) };
+    const vx = dx / T * (1 + gauss() * 0.27 * err), vy = (dy / T - 0.5 * G * T) * (1 + gauss() * 0.19 * err) + gauss() * 70 * err;
+    return { vx, vy, ang: Math.atan2(vy, vx), T, ex: n.x + vx * T, ey: n.y + vy * T + 0.5 * G * T * T };
   }
   function foeThrow(f) {
-    const rag = f.rag, def = f.def, ammo = AMMO[def.ammo];
-    const p0 = release(rag, f.sol.ang);
+    const rag = f.rag, def = f.def, ammo = AMMO[def.ammo], sol = f.sol, last = f.left <= 1;
     rag.throwT = 0; rag.pull = 0;
-    launch(ammo, { owner: 'e', x: p0.x, y: p0.y, vx: f.sol.vx, vy: f.sol.vy, dmg: f.tut ? 3 : ammo.dmg * foeDmgMul() * (f.boss ? 1.2 : 1), from: f, scale: f.boss ? 1.25 : 1, life: 6 });
-    Sfx.foeThrow();
+    zones.push({ kind: 'delay', t: RELEASE_AT + 0.01, fn: () => {
+      if (!rag.alive || rag.mode !== 'active' || rag.frozen > 0 || rag.stun > 0) return;      // knocked off its throw
+      const p0 = release(rag, sol.ang);
+      const vx = (sol.ex - p0.x) / sol.T, vy = (sol.ey - p0.y) / sol.T - 0.5 * G * sol.T;     // still arrives where it was aimed
+      launch(ammo, { owner: 'e', x: p0.x, y: p0.y, vx, vy, dmg: f.tut ? 3 : ammo.dmg * foeDmgMul() * (f.boss ? 1.2 : 1), from: f, scale: f.boss ? 1.25 : 1, life: 6 });
+      Sfx.foeThrow();
+      Fx.ring(rag.hand.x, rag.hand.y, 4, 20, 0.16, '#ffb3ba', 3);
+      if (last) { rag.hold = null; f.reload = 0.5; }
+    } });
   }
   function stepFoe(f, dt) {
     const rag = f.rag, def = f.def;
@@ -918,7 +941,8 @@ const Game = (() => {
     if (f.state === 'enter') f.state = 'idle';
     if (f.state === 'idle') {
       rag.aimW = approach(rag.aimW, 0, dt * 4);
-      rag.hold = def.ammo;
+      if (f.reload > 0) f.reload -= dt;
+      rag.hold = f.reload > 0 ? null : def.ammo;
       if (player.dead || state !== 'play') return;
       f.t -= dt;
       if (f.t <= 0) { f.state = 'wind'; f.windMax = f.t = def.wind * Math.max(0.6, 1 - 0.03 * (run.stage - 1)); f.left = f.burst; f.sol = aimAt(f); f.tele = 0.35; Sfx.warn(); }
@@ -928,7 +952,7 @@ const Game = (() => {
       if (f.t <= 0) {
         foeThrow(f);
         if (--f.left > 0) { f.windMax = f.t = 0.3; f.sol = aimAt(f); }
-        else { f.state = 'idle'; f.t = rand(def.rest[0], def.rest[1]) * Math.max(0.6, 1.2 - 0.05 * (run.stage - 1)) * (f.boss ? 0.8 : 1); rag.hold = null; f.reload = 0.45; }
+        else { f.state = 'idle'; f.t = rand(def.rest[0], def.rest[1]) * Math.max(0.6, 1.2 - 0.05 * (run.stage - 1)) * (f.boss ? 0.8 : 1); }
       }
     }
     // bosses whistle up help
@@ -991,7 +1015,8 @@ const Game = (() => {
         else if (rag.throwT < 0) rag.pull = approach(rag.pull, 0, dt * 6);
       }
       const id = currentItemId();
-      rag.hold = player.cd > 0.12 ? null : id; rag.holdR = ITEM[id].r * 0.95;
+      player.rel = Math.max(0, (player.rel || 0) - dt);
+      rag.hold = player.cd > 0.12 && player.rel <= 0 ? null : id; rag.holdR = ITEM[id].r * 0.95;
       if (pending) {
         pending.t -= dt;
         if (ducking || pending.t <= 0) pending = null;
@@ -1004,7 +1029,7 @@ const Game = (() => {
       pl.update(dt, time);
       for (let i = pl.props.length - 1; i >= 0; i--) if ((pl.props[i].life -= dt) <= 0) pl.props.splice(i, 1);
     }
-    wall.y = home.y - 62;
+    wall.y = home.y - 66;
     for (const f of foes) stepFoe(f, dt);
     rag.update(dt, plats);
     for (const f of foes) f.rag.update(dt, plats);
@@ -1012,12 +1037,19 @@ const Game = (() => {
     for (let i = shots.length - 1; i >= 0; i--) if (shots[i].dead) shots.splice(i, 1);
     stepZones(dt);
 
-    // islands crumble once nobody stands on them
+    // an island with nobody on it falls away at once: nobody standing there, nobody about to land there
     for (const pl of plats) {
       if (pl.kind !== 'foe' || pl.falling || pl.state === 'in') continue;
       const o = pl.owner;
-      const used = foes.some(f => f.rag.alive && (f.rag.plat === pl || (f === o && f.rag.mode === 'tumble' && f.rag.pts[P.PELVIS].y < WORLD_H)));
-      if (!used) { pl.t += dt; if (pl.t > 0.6) pl.drop(); } else pl.t = 0;
+      const used = foes.some(f => {
+        const r = f.rag;
+        if (!r.alive) return false;
+        if (r.plat === pl) return true;
+        if (f !== o || r.mode !== 'tumble') return false;
+        const pv = r.pts[P.PELVIS];     // flung off but still above its island and close enough to land back on it
+        return pv.x > pl.left - 70 && pv.x < pl.right + 70 && pv.y < pl.top + 40 && pv.y > pl.top - 320;
+      });
+      if (!used) { pl.t += dt; if (pl.t > 0.12) pl.drop(); } else pl.t = 0;
     }
     for (const f of foes) if (f.rag.alive && f.rag.plat && f.rag.plat.falling && f.rag.mode !== 'tumble') f.rag.knock(rand(-40, 40), 60, P.PELVIS, 0.4);
     for (let i = plats.length - 1; i >= 0; i--) if (plats[i].falling && plats[i].y > WORLD_H + 400) plats.splice(i, 1);
@@ -1125,6 +1157,8 @@ const Game = (() => {
     time += dtReal;
     shake = Math.max(0, shake - dtReal * 2.4);
     if (aim.on) aim.t += dtReal;
+    if (aim.snap) aim.snap.t += dtReal;
+    if (aim.flash > 0) aim.flash -= dtReal;
     hurtFlash = Math.max(0, hurtFlash - dtReal * 2.2); healFlash = Math.max(0, healFlash - dtReal * 1.6); staFlash = Math.max(0, staFlash - dtReal);
     themeT = Math.min(1, themeT + dtReal * 0.6);
     menuT = approach(menuT, state === 'menu' ? 1 : 0, dtReal * 2.2);
@@ -1149,15 +1183,44 @@ const Game = (() => {
     view.s = lerp(ps, ms, t); view.ox = lerp(pox, mox, t); view.oy = lerp(poy, moy, t);
   }
 
-  function drawWall(th) {
-    const L = wall.left, T = wall.top, w = wall.w;
-    for (let i = 0; i < 2; i++) {
-      const y = T + i * 31;
-      ctx.fillStyle = '#b98a52'; ctx.beginPath(); ctx.roundRect(L - 1, y, w + 2, 31, 4); ctx.fill();
-      ctx.strokeStyle = '#8a6236'; ctx.lineWidth = 3; ctx.strokeRect(L + 2.5, y + 2.5, w - 5, 26);
-      ctx.beginPath(); ctx.moveTo(L + 3, y + 3); ctx.lineTo(L + w - 3, y + 28); ctx.stroke();
+  // one wooden crate: planks with grain, a darker frame, steel corner plates with rivets and a cross brace
+  function drawCrate(x, y, w, h, rot, tone) {
+    ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rot);
+    const hw = w / 2, hh = h / 2, pl = 3, ph = h / pl;
+    const light = tone ? '#c99a62' : '#c4935a', mid = tone ? '#b98a52' : '#b2824c', dark = '#6b4724';
+    ctx.fillStyle = 'rgba(30,20,10,0.22)'; ctx.beginPath(); ctx.roundRect(-hw + 2, -hh + 3, w, h, 4); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.roundRect(-hw, -hh, w, h, 4); ctx.clip();
+    for (let i = 0; i < pl; i++) {
+      const py = -hh + i * ph;
+      ctx.fillStyle = i % 2 ? light : mid; ctx.fillRect(-hw, py, w, ph);
+      ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(-hw, py, w, 1.6);
+      ctx.fillStyle = 'rgba(40,24,8,0.28)'; ctx.fillRect(-hw, py + ph - 1.6, w, 1.6);
+      ctx.strokeStyle = 'rgba(80,50,20,0.28)'; ctx.lineWidth = 1; ctx.beginPath();
+      for (let g = 0; g < 3; g++) { const gy = py + ph * (0.3 + 0.2 * g), gx = -hw + 4 + ((i * 11 + g * 17) % 14); ctx.moveTo(gx, gy); ctx.lineTo(gx + 9 + g * 3, gy + (g % 2 ? 0.8 : -0.8)); }
+      ctx.stroke();
     }
-    ctx.fillStyle = th.grassHi; ctx.beginPath(); ctx.roundRect(L - 3, T - 3, w + 6, 6, 3); ctx.fill();
+    ctx.restore();
+    // frame and brace
+    ctx.strokeStyle = dark; ctx.lineWidth = 3.4; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.roundRect(-hw + 1.7, -hh + 1.7, w - 3.4, h - 3.4, 3); ctx.stroke();
+    ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(-hw + 5, -hh + 5); ctx.lineTo(hw - 5, hh - 5); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,230,190,0.28)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-hw + 6, -hh + 4); ctx.lineTo(hw - 4, hh - 6); ctx.stroke();
+    // steel corner plates + rivets
+    for (const [cx, cy, sx, sy] of [[-hw, -hh, 1, 1], [hw, -hh, -1, 1], [-hw, hh, 1, -1], [hw, hh, -1, -1]]) {
+      ctx.fillStyle = '#59616f'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + sx * 11, cy); ctx.lineTo(cx + sx * 11, cy + sy * 3.4); ctx.lineTo(cx + sx * 3.4, cy + sy * 3.4); ctx.lineTo(cx + sx * 3.4, cy + sy * 11); ctx.lineTo(cx, cy + sy * 11); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#8b94a4'; ctx.fillRect(Math.min(cx, cx + sx * 11), Math.min(cy, cy + sy * 1.6), 11, 1.4);
+      ctx.fillStyle = '#c9d0dc'; ctx.beginPath(); ctx.arc(cx + sx * 2.2, cy + sy * 2.2, 1, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  }
+  function drawWall(th) {
+    const L = wall.left, T = wall.top, w = wall.w, h = wall.h / 2;
+    drawCrate(L - 1, T + h, w + 2, h, 0, false);                 // bottom crate sits square on the grass
+    drawCrate(L + 3, T - 0.5, w - 4, h, -0.045, true);            // the top one is plonked on slightly crooked
+    ctx.strokeStyle = th.grassHi; ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.beginPath();
+    for (const [dx, hh, sw] of [[-5, 9, -3], [-1, 12, 1], [3, 8, 4]]) { ctx.moveTo(L + dx, T + wall.h + 1); ctx.lineTo(L + dx + sw, T + wall.h - hh); }
+    for (const [dx, hh, sw] of [[w + 1, 10, 3], [w + 5, 7, 4]]) { ctx.moveTo(L + dx, T + wall.h + 1); ctx.lineTo(L + dx + sw, T + wall.h - hh); }
+    ctx.stroke();
   }
 
   function drawBalloons(pl) {
@@ -1198,7 +1261,26 @@ const Game = (() => {
     ctx.beginPath(); ctx.roundRect(x, y, Math.max(3, w * clamp(f.hp / f.maxHp, 0, 1)), 5, 2.5); ctx.fill();
   }
 
-  // the arc the throw will follow: evenly spaced dots that shrink, ending in an arrowhead
+  // where the throw would land if it flew unobstructed: the first foe or island it meets
+  function predictImpact(def, power, ang) {
+    const v = throwSpeed(def, power), p0 = release(player.rag, ang), g = G * (def.grav != null ? def.grav : 1);
+    let x = p0.x, y = p0.y, vx = Math.cos(ang) * v, vy = Math.sin(ang) * v;
+    const r = Math.max(8, def.r);
+    for (let t = 0; t < 3; t += 0.012) {
+      vy += g * 0.012; x += vx * 0.012; y += vy * 0.012;
+      if (y > WORLD_H + 80 || x > WORLD_W + 200) return null;
+      if (t > 0.1) {
+        for (const f of foes) { if (live(f) && f.rag.hitTest(x, y, r)) return { x, y, foe: true }; }
+        for (const pl of plats) {
+          if (pl === home || pl.falling || pl.state === 'in') continue;
+          if (x > pl.left - r * 0.5 && x < pl.right + r * 0.5 && y + r * 0.6 > pl.top && y - r < pl.bottom && !(pl === wall && x < pl.left)) return { x, y: Math.min(y, pl.top), foe: false };
+        }
+      }
+    }
+    return null;
+  }
+
+  // the arc: dots that flow away from the hand, shrinking, with a reticle where it lands
   function drawAimGuide() {
     if (!aim.on || aim.power <= 0 || player.dead || player.rag.duck > 0.5) return;
     const def = ITEM[currentItemId()];
@@ -1207,35 +1289,56 @@ const Game = (() => {
     const g = G * (def.grav != null ? def.grav : 1);
     const n = 9 + 3 * Save.lvl('guide'), gap = 30, can = player.sta >= staCost(def) || usingBonus();
     const col = can ? '#ffffff' : '#ff8a94';
-    let x = p0.x, y = p0.y, d = gap * 0.6, i = 0, lx = x, ly = y;
+    const hit = can ? predictImpact(def, aim.power, aim.ang) : null;
+    let x = p0.x, y = p0.y, d = (time * 70) % gap, i = 0;
     const h = 0.004;
-    for (let k = 0; k < 900 && i < n; k++) {
+    for (let k = 0; k < 1100 && i < n; k++) {
       vy += g * h; const sx = vx * h, sy = vy * h;
       x += sx; y += sy; d += Math.hypot(sx, sy);
       if (d < gap) continue;
-      d = 0; i++;
+      d -= gap; i++;
       const f = 1 - i / (n + 1);
-      if (i === n) {
-        const a = Math.atan2(y - ly, x - lx);
-        ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.globalAlpha = 0.9;
-        ctx.beginPath(); ctx.moveTo(11, 0); ctx.lineTo(-7, -8); ctx.lineTo(-3, 0); ctx.lineTo(-7, 8); ctx.closePath();
-        ctx.fillStyle = col; ctx.fill(); ctx.strokeStyle = 'rgba(12,14,21,0.7)'; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
-        ctx.restore();
-      } else {
-        ctx.globalAlpha = 0.45 + 0.55 * f;
-        ctx.fillStyle = 'rgba(12,14,21,0.6)'; ctx.beginPath(); ctx.arc(x, y, 4 + 3.6 * f, 0, TAU); ctx.fill();
-        ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, 2.6 + 3.2 * f, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 0.4 + 0.6 * f;
+      ctx.fillStyle = 'rgba(12,14,21,0.6)'; ctx.beginPath(); ctx.arc(x, y, 4.2 + 3.6 * f, 0, TAU); ctx.fill();
+      ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, 2.8 + 3.2 * f, 0, TAU); ctx.fill();
+    }
+    if (hit) {
+      const pulse = 1 + 0.12 * Math.sin(time * 9), r = (hit.foe ? 17 : 11) * pulse;
+      ctx.globalAlpha = hit.foe ? 0.95 : 0.55; ctx.lineCap = 'round';
+      for (const [w, c] of [[5.5, 'rgba(12,14,21,0.65)'], [2.6, hit.foe ? '#ff5d73' : '#ffffff']]) {
+        ctx.strokeStyle = c; ctx.lineWidth = w;
+        ctx.beginPath(); ctx.arc(hit.x, hit.y, r, 0, TAU); ctx.stroke();
+        if (hit.foe) { ctx.beginPath(); for (let q = 0; q < 4; q++) { const a = q * Math.PI / 2 + time * 0.8; ctx.moveTo(hit.x + Math.cos(a) * (r + 3), hit.y + Math.sin(a) * (r + 3)); ctx.lineTo(hit.x + Math.cos(a) * (r + 10), hit.y + Math.sin(a) * (r + 10)); } ctx.stroke(); }
       }
-      lx = x; ly = y;
     }
     ctx.globalAlpha = 1;
   }
 
-  /* The pull, drawn where the finger is. A dashed ring marks how far a
-     full-power pull reaches, two elastic strands run from the anchor to a knob
-     that stops at the ring and shows the power as a number, and a short arrow
-     on the far side of the anchor points the way the throw will go. */
+  /* The pull, drawn where the finger is:
+       a dashed ring for how far a full-power pull reaches, with a ripple when you press
+       a gauge ring around the anchor that fills with power, and notches at 25/50/75/100%
+       two elastic strands from the anchor to a knob that carries the power number
+       an arrow out the far side of the anchor for the way it will fly
+       a burst at MAX, and on release the elastic snaps back past the anchor and settles */
   function drawPull() {
+    const ink = 'rgba(12,14,21,0.72)';
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (!aim.on && aim.snap) {   // the release
+      const S = aim.snap, k = S.t / 0.28;
+      if (k >= 1) { aim.snap = null; return; }
+      const e = easeOutBack(clamp(k / 0.7, 0, 1)), px = lerp(S.kx, S.sx, e), py = lerp(S.ky, S.sy, e);
+      ctx.globalAlpha = 1 - k;
+      const nx = -S.uy * 10 * (1 - k), ny = S.ux * 10 * (1 - k);
+      for (const [w, c] of [[8, ink], [3.4, S.col]]) {
+        ctx.strokeStyle = c; ctx.lineWidth = w * (1 - 0.6 * k);
+        ctx.beginPath(); ctx.moveTo(S.sx + nx, S.sy + ny); ctx.lineTo(px, py); ctx.lineTo(S.sx - nx, S.sy - ny); ctx.stroke();
+      }
+      ctx.fillStyle = S.col; ctx.beginPath(); ctx.arc(px, py, (17 + 5 * S.p) * (1 - 0.5 * k), 0, TAU); ctx.fill();
+      ctx.globalAlpha = (1 - k) * 0.9; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5 * (1 - k);
+      ctx.beginPath(); ctx.arc(S.sx, S.sy, 12 + 70 * easeOut(k) * (0.5 + S.p), 0, TAU); ctx.stroke();
+      ctx.globalAlpha = 1;
+      return;
+    }
     if (!aim.on || state !== 'play' || player.dead) return;
     const p = aim.power, max = aim.max;
     const dx = aim.cx - aim.sx, dy = aim.cy - aim.sy, len = Math.hypot(dx, dy);
@@ -1243,11 +1346,16 @@ const Game = (() => {
     const L = Math.min(len, max), kx = aim.sx + ux * L, ky = aim.sy + uy * L;
     const def = ITEM[currentItemId()];
     const can = usingBonus() || player.sta >= staCost(def);
-    const ink = 'rgba(12,14,21,0.72)';
-    const col = !can ? '#9aa1b3' : p >= 0.985 ? '#ff5d73' : mixHex('#ffffff', '#ff9a3c', p);
+    const full = p >= 0.985;
+    const col = !can ? '#9aa1b3' : full ? '#ff5d73' : mixHex('#ffffff', '#ff9a3c', p);
+    aim.col = col; aim.ux = ux; aim.uy = uy; aim.kx = kx; aim.ky = ky;
     const appear = Math.min(1, aim.t / 0.12);
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    // how far a full pull reaches
+    // press ripple
+    if (aim.t < 0.4) {
+      const k = aim.t / 0.4; ctx.globalAlpha = (1 - k) * 0.8; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 4 * (1 - k) + 1;
+      ctx.beginPath(); ctx.arc(aim.sx, aim.sy, 10 + 46 * easeOut(k), 0, TAU); ctx.stroke();
+    }
+    // reach ring
     ctx.globalAlpha = 0.5 * appear;
     ctx.strokeStyle = ink; ctx.lineWidth = 4; ctx.setLineDash([3, 11]);
     ctx.beginPath(); ctx.arc(aim.sx, aim.sy, max, 0, TAU); ctx.stroke();
@@ -1255,37 +1363,50 @@ const Game = (() => {
     ctx.beginPath(); ctx.arc(aim.sx, aim.sy, max, 0, TAU); ctx.stroke();
     ctx.setLineDash([]); ctx.globalAlpha = appear;
     if (p > 0) {
-      // the way it will fly: an arrow out the other side of the anchor
+      // notches along the pull line
+      for (let q = 1; q <= 4; q++) {
+        const f = q / 4, cx = aim.sx + ux * max * f, cy = aim.sy + uy * max * f, nl = q === 4 ? 11 : 6;
+        ctx.strokeStyle = p >= f - 0.001 ? col : 'rgba(255,255,255,0.45)'; ctx.lineWidth = q === 4 ? 3.5 : 2.4;
+        ctx.beginPath(); ctx.moveTo(cx - uy * nl, cy + ux * nl); ctx.lineTo(cx + uy * nl, cy - ux * nl); ctx.stroke();
+      }
+      // the way it will fly
       const al = 30 + 44 * p, ax = aim.sx - ux * al, ay = aim.sy - uy * al, a = Math.atan2(-uy, -ux);
       for (const [w, c] of [[9, ink], [4.5, col]]) {
         ctx.strokeStyle = c; ctx.lineWidth = w;
-        ctx.beginPath(); ctx.moveTo(aim.sx - ux * 16, aim.sy - uy * 16); ctx.lineTo(ax, ay);
+        ctx.beginPath(); ctx.moveTo(aim.sx - ux * 18, aim.sy - uy * 18); ctx.lineTo(ax, ay);
         ctx.moveTo(ax + Math.cos(a + 2.5) * 13, ay + Math.sin(a + 2.5) * 13); ctx.lineTo(ax, ay); ctx.lineTo(ax + Math.cos(a - 2.5) * 13, ay + Math.sin(a - 2.5) * 13);
         ctx.stroke();
       }
-      // two strands of elastic, thinner the further they stretch
-      const nx = -uy * 10, ny = ux * 10;
+      // elastic: thinner the further it stretches, and it hums a little at full draw
+      const nx = -uy * 10, ny = ux * 10, hum = full ? Math.sin(time * 70) * 1.6 : 0;
       for (const [w, c] of [[lerp(9, 5.5, p), ink], [lerp(5.5, 2.4, p), col]]) {
         ctx.strokeStyle = c; ctx.lineWidth = w;
-        ctx.beginPath(); ctx.moveTo(aim.sx + nx, aim.sy + ny); ctx.lineTo(kx, ky); ctx.lineTo(aim.sx - nx, aim.sy - ny); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(aim.sx + nx, aim.sy + ny); ctx.lineTo(kx + hum * -uy, ky + hum * ux); ctx.lineTo(aim.sx - nx, aim.sy - ny); ctx.stroke();
       }
-      if (len > max + 6) {   // pulled past full power: show the slack
+      if (len > max + 6) {
         ctx.globalAlpha = 0.35; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.setLineDash([2, 7]);
-        ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(aim.cx, aim.cy); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+        ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(aim.cx, aim.cy); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = appear;
       }
     }
-    // anchor
-    ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(aim.sx, aim.sy, 12, 0, TAU); ctx.fill();
-    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(aim.sx, aim.sy, 12, 0, TAU); ctx.stroke();
+    // anchor with a gauge ring that fills with power
+    ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(aim.sx, aim.sy, 13, 0, TAU); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(aim.sx, aim.sy, 18, 0, TAU); ctx.stroke();
+    if (p > 0) { ctx.strokeStyle = col; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.arc(aim.sx, aim.sy, 18, -Math.PI / 2, -Math.PI / 2 + TAU * p); ctx.stroke(); }
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(aim.sx, aim.sy, 13, 0, TAU); ctx.stroke();
     ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(aim.sx, aim.sy, 3.5, 0, TAU); ctx.fill();
+    // burst the moment full power is reached
+    if (full && !aim.maxed) { aim.maxed = true; aim.flash = 0.3; try { if (navigator.vibrate) navigator.vibrate(14); } catch (e) { /* not everywhere */ } }
+    if (!full) aim.maxed = false;
+    if (aim.flash > 0) {
+      const k = 1 - aim.flash / 0.3; ctx.globalAlpha = (1 - k); ctx.strokeStyle = '#ff5d73'; ctx.lineWidth = 6 * (1 - k) + 1;
+      ctx.beginPath(); ctx.arc(kx, ky, 20 + 40 * easeOut(k), 0, TAU); ctx.stroke(); ctx.globalAlpha = appear;
+    }
     // knob with the power on it
-    const r = 19 + 4 * p + (p >= 0.985 ? Math.sin(time * 22) * 1.2 : 0);
+    const r = 19 + 4 * p + (full ? Math.sin(time * 22) * 1.2 : 0) + (aim.flash > 0 ? 5 * aim.flash / 0.3 : 0);
     ctx.fillStyle = p > 0 ? col : 'rgba(255,255,255,0.35)'; ctx.beginPath(); ctx.arc(kx, ky, r, 0, TAU); ctx.fill();
     ctx.strokeStyle = ink; ctx.lineWidth = 3; ctx.stroke();
-    ctx.fillStyle = '#12141c'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.font = '900 14px Rubik, sans-serif';
-    ctx.fillText(p > 0 ? (p >= 0.985 ? 'MAX' : String(Math.round(p * 100))) : '', kx, ky + 1);
-    // a word when it matters
+    ctx.fillStyle = '#12141c'; ctx.font = '900 14px Rubik, sans-serif';
+    ctx.fillText(p > 0 ? (full ? 'MAX' : String(Math.round(p * 100))) : '', kx, ky + 1);
     const label = p <= 0 ? (len > 3 ? 'PULL BACK FURTHER' : '') : !can ? 'NO STAMINA' : '';
     if (label) {
       ctx.font = '900 12px Rubik, sans-serif';
@@ -1366,6 +1487,6 @@ const Game = (() => {
     get hold() { return hold; }, get run() { return run; }, get player() { return player; }, get aiming() { return aim.on; },
     get itemId() { return currentItemId(); }, get usingBonus() { return usingBonus(); }, get staFlash() { return staFlash; }, get tutorial() { return !!(run && run.tut); }, get themeDark() { return theme().dark; },
     get foes() { return foes; }, get shots() { return shots; }, get crates() { return crates; }, get time() { return time; },
-    _spawn: spawnFoe, _crate: spawnCrate,
+    _spawn: spawnFoe, _crate: spawnCrate, __plats: () => plats,
   };
 })();
