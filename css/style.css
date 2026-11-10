@@ -122,13 +122,34 @@ kbd.big { font-size: 18px; padding: 9px 12px; border-radius: 6px; box-shadow: in
   background: linear-gradient(90deg, rgba(9, 11, 17, 0.97) 0%, rgba(9, 11, 17, 0.8) 25%, rgba(9, 11, 17, 0.45) 55%, rgba(9, 11, 17, 0.15) 82%, rgba(9, 11, 17, 0) 100%);
 }
 .title { display: flex; align-items: flex-end; gap: 10px; line-height: 0.9; font-weight: 900; letter-spacing: -0.01em; }
-.title .t1 { font-size: 76px; color: #fff; }
+.title .t1 { font-size: 76px; color: #fff; display: inline-flex; }
+/* RAG drops in letter by letter, then hops each time TOSS lands */
+.title .t1 i {
+  display: inline-block; font-style: normal;
+  animation: letterIn 0.6s cubic-bezier(0.2, 1.5, 0.4, 1) backwards, letterHop 6s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 80ms), calc(4.55s + var(--i) * 60ms);
+}
 .title .t2 {
   padding: 2px 22px 4px 20px; font-size: 70px; color: var(--acc-ink); background: var(--acc);
   clip-path: polygon(10px 0, calc(100% - 14px) 0, calc(100% - 2px) calc(100% - 10px), calc(100% - 10px) 100%, 14px 100%, 2px 10px);
   transform: rotate(-3deg) translateY(-2px);
+  /* slides in, then every few seconds gets tossed up, spins once and lands with a squash */
+  animation: tagIn 0.7s cubic-bezier(0.2, 1.3, 0.4, 1) 0.25s backwards, tagToss 6s ease-in-out 2s infinite;
 }
 .title .t2 i { display: inline-block; font-style: normal; transform: skewX(-8deg); }
+@keyframes letterIn { from { opacity: 0; transform: translateY(-46px) rotate(-14deg); } to { opacity: 1; transform: none; } }
+@keyframes letterHop { 0%, 8%, 100% { transform: none; } 3% { transform: translateY(-9px) rotate(-3deg); } }
+@keyframes tagIn { from { opacity: 0; transform: translateX(70px) rotate(10deg); } to { opacity: 1; transform: rotate(-3deg) translateY(-2px); } }
+@keyframes tagToss {
+  0%, 100% { transform: rotate(-3deg) translateY(-2px); }
+  6% { transform: rotate(-3deg) translateY(2px) scale(1.05, 0.9); }
+  20% { transform: perspective(700px) rotate(-6deg) translateY(-34px) rotateX(-180deg) scale(1.03); }
+  36% { transform: perspective(700px) rotate(-3deg) translateY(-2px) rotateX(-360deg); }
+  40% { transform: rotate(-3deg) translateY(3px) scale(1.07, 0.88); }
+  46% { transform: rotate(-3deg) translateY(-3px) scale(0.99, 1.02); }
+  54% { transform: rotate(-3deg) translateY(-2px); }
+}
+
 .home-menu { display: flex; flex-direction: column; gap: 8px; }
 .home-menu .btn.big { min-height: 72px; font-size: 32px; justify-content: flex-start; padding-left: 24px; text-align: left; }
 .btn-row { display: flex; gap: 8px; }
