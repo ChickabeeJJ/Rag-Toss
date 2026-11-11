@@ -8,7 +8,7 @@ It's pure HTML5 and vanilla JS, with no build step and no dependencies. It has t
 
 To play, serve the folder (for example `python3 -m http.server`) and open `index.html`.
 
-The game boots **straight into a run**: there's no menu to click through. The very first launch starts with a four-step tutorial on the real field (land a throw, knock the foe out, duck a throw, knock out one that fights back; it can be skipped) and carries on into stage 1. The home screen, shop and upgrades are where you land after a run, or from the pause menu.
+The very first launch boots **straight into the tutorial**: a four-step, skippable walk-through on the real field (land a throw, knock the foe out, duck a throw, knock out one that fights back) that carries on into stage 1. Every launch after that opens on the home screen.
 
 ## The game
 
@@ -48,7 +48,7 @@ Items are plain data in `ITEMS` in `js/data.js`. What each one does in the air a
 
 ## Foes
 
-A new kind shows up in each of the first seven stages. Every foe winds up before throwing: a red ring closes in on its throwing hand, and a hit during the wind-up interrupts the throw. Every hit moves the body, whatever it was thrown with: the bone that's struck is pushed, a head snaps back, a limb swings away, and a frozen foe rings like glass. Islands with nobody on them fall away at once.
+A new kind shows up in each of the first seven stages. Every foe winds up before throwing: a red ring closes in on its throwing hand, and a hit during the wind-up interrupts the throw. Every hit ragdolls the body, whatever it was thrown with: the muscles switch off, the bone that was struck takes the impulse, the foe drops limp, slides and gets back up (a heavier throw keeps it down longer and sends it further, and off the edge if it goes far enough). Bosses are too big to fall, so they bend hard around the blow instead. You go limp when you're hit too and can't throw until you're back on your feet. Islands with nobody on them fall away at once.
 
 | Foe | From stage | Behaviour |
 | --- | --- | --- |

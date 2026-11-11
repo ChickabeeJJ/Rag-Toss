@@ -2,8 +2,8 @@
 /* =========================================================================
    UI: home, the stuff shop and bag, upgrades, missions, rank, settings,
    pause, perk picks, results, the HUD and the first-launch tutorial panel.
-   The game boots straight into a run; the home screen is where you land
-   after one, or from the pause menu.
+   A first-ever launch boots straight into the tutorial and a run; after that
+   the game opens on the home screen.
    ========================================================================= */
 
 const UI = (() => {
@@ -42,8 +42,8 @@ const UI = (() => {
     $('tutSkip').onclick = () => { click(); Game.skipTut(); };
     Platform.onAuth(() => { Save.load(); if (screen === 'home') renderHome(); });
 
-    // no menu first: a new player lands in the tutorial, everyone else in a run
-    play({ tutorial: !Save.data.tutDone });
+    // a brand-new player lands straight in the tutorial; everyone else gets the home screen
+    if (!Save.data.tutDone) play({ tutorial: true }); else show('home');
     checkRotate();
   }
 

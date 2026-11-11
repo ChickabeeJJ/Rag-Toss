@@ -220,6 +220,7 @@ const Game = (() => {
 
   function tryThrow(ang, power) {
     const id = currentItemId(), def = ITEM[id];
+    if (player.rag.mode !== 'active') return false;       // knocked flat: no throwing until you are back on your feet
     const free = usingBonus(), cost = free ? 0 : staCost(def);
     if (player.sta < cost) { Sfx.empty(); staFlash = 0.5; return false; }
     player.sta -= cost; player.staWait = 0.25; player.cd = throwCd();
@@ -658,7 +659,7 @@ const Game = (() => {
     // Nothing is free: even a weightless hit (bees, a plunger's stick, a rock off a lid) rocks the body.
     const hurt = 1 + 0.9 * (1 - clamp(f.hp / f.maxHp, 0, 1));
     const pw = Math.max(0.9, (kb || 0) * hurt * (1 + 0.4 * pk('shove')));
-    if (rag.mode === 'tumble') { rag.impulseAt(hit, dx * pw * 340, dy * pw * 290 - 100, 0.7); return; }
+    if (rag.mode === 'tumble') { rag.impulseAt(hit, dx * pw * 340, dy * pw * 290 - 100, 0.7); rag.tumbleT = Math.max(rag.tumbleT, 0.2); return; }
     if (rag.frozen > 0) { rag.jolt(dx * 15 * Math.min(pw, 2.5), dy * 8 * Math.min(pw, 2.5)); return; }   // ice rings instead of bending
     if (pw >= f.anchor && !f.dummy && !f.boss) {
       // carried along by the blow, not popped into the air: the lift only comes with real weight
@@ -667,13 +668,17 @@ const Game = (() => {
       f.state = 'idle'; f.t = Math.max(f.t, 0.9);
       return;
     }
-    rag.stagger(0.55 * pw);
-    rag.impulseAt(hit, dx * pw * 3300, dy * pw * 2000, 0.3);
-    // and the blow shows: a limb that is hit swings away from it, a head that is hit snaps back
-    if (hit.part === 'head' || hit.seg === 0) rag.impulse(P.HEAD, dx * pw * 380, dy * pw * 220 - 60, 0.1);
-    else if (hit.part === 'arm') { rag.impulse(P.FHAND, dx * pw * 260, dy * pw * 200, 0.05); rag.impulse(P.BHAND, dx * pw * 260, dy * pw * 200, 0.05); }
-    else if (hit.part === 'leg') { rag.impulse(P.FKNEE, dx * pw * 220, dy * pw * 120, 0.05); rag.impulse(P.BKNEE, dx * pw * 220, dy * pw * 120, 0.05); }
-    rag.jolt(dx * 3 * Math.min(pw, 3), dy * 2 * Math.min(pw, 3));
+    if (f.boss || f.dummy) {
+      // too big to fall over: the body bends hard around the blow instead
+      rag.stagger(0.7 * pw);
+      rag.impulseAt(hit, dx * pw * 3300, dy * pw * 2000, 0.3);
+      rag.jolt(dx * 3 * Math.min(pw, 3), dy * 2 * Math.min(pw, 3));
+      return;
+    }
+    // everything else goes limp: the struck bone takes the blow, the body drops and slides, then gets up
+    const mag = 150 + 90 * Math.min(pw, 3.5);
+    rag.hitLimp(hit, dx * mag, dy * mag * 0.6 - 70, 0.28 + 0.1 * Math.min(pw, 3));
+    f.state = 'idle'; f.t = Math.max(f.t, 0.5 + 0.12 * Math.min(pw, 3));
   }
   function style(k, x, y) {
     const [label, coins] = STYLE[k];
@@ -752,8 +757,12 @@ const Game = (() => {
     if (run.tut) player.hp = Math.max(player.hp, player.maxHp * 0.5);   // nobody loses the tutorial
     const rag = player.rag;
     rag.flash = 1; hurtFlash = 1; shake = Math.max(shake, 0.45); Sfx.hurt();
-    rag.stagger(0.4 + dmg * 0.012);
-    if (o.hit) rag.impulseAt(o.hit, o.dirx * 1100, o.diry * 760, 0.25); else rag.impulse(rag.nearestPoint(o.x, o.y), o.dirx * 1000, o.diry * 700, 0.4);
+    {
+      const hit = o.hit || { seg: 1, u: 0.5 }, mag = 190 + Math.min(dmg, 30) * 6;
+      if (rag.mode === 'tumble') rag.impulseAt(hit, o.dirx * mag * 2, o.diry * mag, 0.7);
+      else rag.hitLimp(hit, o.dirx * mag, o.diry * mag * 0.6 - 60, 0.4);
+      aimCancel();
+    }
     Fx.text(o.x, o.y - 30, '-' + Math.max(1, Math.round(dmg)), '#ff6b78', o.head ? 26 : 21);
     Fx.hit(o.x, o.y, Math.atan2(o.diry, o.dirx), '#ff9aa0', 8);
     if (player.hp > 0) return;
@@ -1032,6 +1041,14 @@ const Game = (() => {
     wall.y = home.y - 66;
     for (const f of foes) stepFoe(f, dt);
     rag.update(dt, plats);
+    // your own island has invisible walls at both ends, and falling off anyway ends the run
+    if (!player.dead && state === 'play' && rag.mode !== 'active') {
+      for (const p of rag.pts) {
+        if (p.x < home.left + 8) { p.x = home.left + 8; p.px = p.x; }
+        else if (p.x > home.right - 8) { p.x = home.right - 8; p.px = p.x; }
+      }
+      if (rag.pts[P.PELVIS].y > WORLD_H + 120) hurtPlayer(1e9, { x: rag.pts[P.PELVIS].x, y: WORLD_H, dirx: 0, diry: 1 });
+    }
     for (const f of foes) f.rag.update(dt, plats);
     for (let i = 0; i < shots.length; i++) if (!shots[i].dead) stepShot(shots[i], dt);
     for (let i = shots.length - 1; i >= 0; i--) if (shots[i].dead) shots.splice(i, 1);

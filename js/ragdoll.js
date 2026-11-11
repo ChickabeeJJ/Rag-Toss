@@ -40,6 +40,7 @@ const PT_R = [13, 10, 10, 5.5, 5, 5.5, 5, 6.5, 5.5, 6.5, 5.5];
 const HINGES = [[2, 7, 8, -1], [2, 9, 10, -1], [1, 3, 4, 1], [1, 5, 6, 1]];
 const GROUND_FRICTION = 0.3, GROUND_BOUNCE = 0.2;
 const THROW_DUR = 0.46;        // a whole throw: whip, follow-through, recovery
+const MAX_STEP = 26;           // fastest any point may move in one physics step (px)
 const STEP = 1 / 120;          // physics step; the game runs whole steps only
 
 class Rag {
@@ -55,6 +56,7 @@ class Rag {
     this.plat = o.plat || null;
     this.platOff = o.plat ? o.x - o.plat.x : 0;
     this.homeOff = this.platOff;    // where it likes to stand on its island
+    this.homeOff0 = this.platOff;   // the spot it was spawned at (the player walks back to it)
     this.weight = o.weight || 1;    // heavier bodies take less from the same blow
     this.steady = !!o.steady;       // never loses its footing (the player, bosses)
     this.daze = 0;                  // 0..1: how soft the muscles are right now
@@ -127,11 +129,25 @@ class Rag {
     this.mode = 'tumble'; this.m = 0; this.tumbleT = 0.45; this.restT = 0; this.stuckT = 0; this.plat = null;
     this.pull = 0; this.throwT = -1; this.aimW = 0; this.daze = 0;
   }
+  /* A hit: the muscles switch off, the impulse goes into the bone that was struck (shared
+     out along the bone by where on it the blow landed) and the body drops limp for a
+     moment, then stands back up. This is the whole reaction: no flash-and-stand. */
+  hitLimp(hit, vx, vy, dur) {
+    if (this.mode === 'dead') return;
+    const was = this.mode;
+    this.mode = 'tumble'; this.m = 0; this.tumbleT = Math.max(dur, was === 'tumble' ? this.tumbleT : 0); this.restT = 0; this.stuckT = 0; this.plat = null;
+    this.pull = 0; this.throwT = -1; this.aimW = 0; this.daze = 0; this.hurtLimp = true;
+    const a = SEGS[hit.seg][0], b = SEGS[hit.seg][1], u = hit.u == null ? 0.5 : hit.u, w = STEP / this.weight;
+    for (let i = 0; i < 11; i++) {
+      const k = (i === a ? 1.5 * (1 - u * 0.5) : i === b ? 1.5 * (0.5 + u * 0.5) : 0.55) * w;
+      this.pts[i].px -= vx * k; this.pts[i].py -= vy * k;
+    }
+  }
   // thrown clear: go limp with a velocity. The struck point gets more of it than
   // the rest, which is what sets the body spinning.
   knock(vx, vy, idx = P.NECK, dur = 0.55) {
     if (this.mode === 'dead') return;
-    this.mode = 'tumble'; this.m = 0; this.tumbleT = dur; this.restT = 0; this.stuckT = 0; this.plat = null;
+    this.mode = 'tumble'; this.m = 0; this.tumbleT = dur; this.restT = 0; this.stuckT = 0; this.plat = null; this.hurtLimp = false;
     this.pull = 0; this.throwT = -1; this.aimW = 0; this.daze = 0;
     for (let i = 0; i < 11; i++) {
       const k = (i === idx ? 2.3 : 0.7) * STEP;
@@ -164,7 +180,7 @@ class Rag {
         const dx = nx - this.root.x, dy = ny - this.root.y;
         if (dx || dy) { this.root.x = nx; this.root.y = ny; this.shift(dx, dy); }
       }
-      if (this.mode === 'rising') { this.m = Math.min(1, this.m + dt * 1.9); if (this.m >= 1) this.mode = 'active'; }
+      if (this.mode === 'rising') { this.m = Math.min(1, this.m + dt * 3.2); if (this.m >= 1) this.mode = 'active'; }
       this.daze = Math.max(0, this.daze - dt * 1.5);
       if (this.frozen <= 0) this.computeTargets();
       else for (let i = 0; i < 11; i++) { this.Tp[i].x = this.T[i].x; this.Tp[i].y = this.T[i].y; }
@@ -251,7 +267,9 @@ class Rag {
     const firm = this.throwT >= 0 || this.aimW > 0.5;
     for (let i = 0; i < 11; i++) {
       const p = pts[i];
-      const vx = (p.x - p.px) * air, vy = (p.y - p.py) * air;
+      let vx = (p.x - p.px) * air, vy = (p.y - p.py) * air;
+      const vm = Math.hypot(vx, vy);
+      if (vm > MAX_STEP) { vx *= MAX_STEP / vm; vy *= MAX_STEP / vm; }      // nothing is flung faster than this
       p.px = p.x; p.py = p.y;
       p.x += vx; p.y += vy + g;
       if (m > 0.01) {
@@ -311,23 +329,23 @@ class Rag {
     this.tumbleT -= dt;
     const pv = this.pts[P.PELVIS];
     const speed = Math.hypot(pv.x - pv.px, pv.y - pv.py) / dt;
-    if (this.tumbleT > 0 || speed > 150 || this.frozen > 0) { this.restT = 0; this.stuckT = 0; return; }
+    if (this.tumbleT > 0 || speed > (this.hurtLimp ? 260 : 150) || this.frozen > 0) { this.restT = 0; this.stuckT = 0; return; }
     // lying still but not cleanly on top (draped over an edge, wedged underneath):
     // after a moment, accept any island the body is tangled with
     const loose = this.stuckT > 0.8;
     let best = null;
     for (const pl of plats) {
-      if (pl.falling || pl.kind !== 'foe' || pv.x < pl.left + (loose ? -20 : 6) || pv.x > pl.right - (loose ? -20 : 6)) continue;
+      if (pl.falling || pl.kind === 'wall' || (pl.kind === 'player') !== this.isPlayer || pv.x < pl.left + (loose ? -20 : 6) || pv.x > pl.right - (loose ? -20 : 6)) continue;
       const d = pl.top - pv.y;
       if (d > (loose ? -(pl.h + 40) : -8) && d < (loose ? 95 : 60) * this.s && (!best || pl.top < best.top)) best = pl;
     }
     if (!best) { this.restT = 0; this.stuckT += dt; return; }
     this.restT += dt;
-    if (this.restT < 0.35) return;
-    this.plat = best; this.stuckT = 0;
+    if (this.restT < (this.hurtLimp ? 0.12 : 0.35)) return;
+    this.plat = best; this.stuckT = 0; this.hurtLimp = false;
     this.root.x = clamp(pv.x, best.left + 16, best.right - 16); this.root.y = best.top;
     this.platOff = this.root.x - best.x;
-    this.homeOff = clamp(this.platOff, -(best.w / 2 - 24), best.w / 2 - 24);
+    this.homeOff = this.isPlayer ? this.homeOff0 : clamp(this.platOff, -(best.w / 2 - 24), best.w / 2 - 24);
     this.mode = 'rising'; this.m = 0.05; this.daze = 0;
     this.computeTargets();
     for (let i = 0; i < 11; i++) { this.Tp[i].x = this.T[i].x; this.Tp[i].y = this.T[i].y; }
