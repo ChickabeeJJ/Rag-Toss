@@ -135,7 +135,7 @@ const UI = (() => {
       const b = document.createElement('button');
       b.className = 'item' + (it.id === shopSel ? ' sel' : '') + (own ? '' : ' locked');
       b.appendChild(ItemArt.iconEl(it.id, 60));
-      b.insertAdjacentHTML('beforeend', `<b>${esc(it.name)}</b>` + (slot >= 0 ? `<small class="eq">IN SLOT ${slot + 1}</small>` : own ? '<small class="own">OWNED</small>' : `<small class="${d.coins >= it.price ? '' : 'poor'}">${ic('coin')}${fmt(it.price)}</small>`) + `<span class="tag">${esc(it.tag)}</span>`);
+      b.insertAdjacentHTML('beforeend', `<b>${esc(it.name)}</b>` + (slot >= 0 ? `<small class="eq">IN SLOT ${slot + 1}</small>` : own ? '<small class="own">OWNED</small>' : `<small class="${d.coins >= it.price ? '' : 'poor'}">${ic('coin')}${fmt(it.price)}</small>`));
       b.onclick = () => { click(); shopSel = it.id; renderShop(); };
       grid.appendChild(b);
     }

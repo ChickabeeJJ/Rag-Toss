@@ -193,7 +193,7 @@ kbd.big { font-size: 18px; padding: 9px 12px; border-radius: 6px; box-shadow: in
 .bag-label { font-weight: 900; font-size: 12px; letter-spacing: 0.12em; color: var(--muted); }
 .bag-edit small { font-weight: 800; font-size: 11px; letter-spacing: 0.06em; color: var(--muted); }
 .shop-grid { padding: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
-.item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 22px 6px 10px; clip-path: var(--cut-m); background: var(--ink-3); transition: background 0.12s; isolation: isolate; animation: slideUp 0.22s ease backwards; }
+.item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 6px 12px; clip-path: var(--cut-m); background: var(--ink-3); transition: background 0.12s; isolation: isolate; animation: slideUp 0.22s ease backwards; }
 .item:hover { background: var(--ink-4); }
 .item.sel { background: var(--acc); }
 .item.sel::before { content: ''; position: absolute; inset: 2px; z-index: -1; background: #33271a; clip-path: polygon(9px 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%, 0 9px); }
@@ -205,7 +205,6 @@ kbd.big { font-size: 18px; padding: 9px 12px; border-radius: 6px; box-shadow: in
 .item small.eq { color: var(--acc); font-size: 10px; letter-spacing: 0.06em; }
 .item small.poor { color: var(--muted); }
 .item small.poor .ic { color: var(--muted); }
-.item .tag { position: absolute; top: 6px; left: 8px; font-size: 9px; }
 
 /* ------------------------------------------------------------- upgrades */
 .up-list { max-width: 820px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
