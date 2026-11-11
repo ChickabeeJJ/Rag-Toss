@@ -404,7 +404,6 @@ const UI = (() => {
     set('sta', Math.floor(p.sta), v => { $('staNum').textContent = v; });
     $('staFill').style.transform = `scaleX(${clamp(p.sta / p.maxSta, 0, 1).toFixed(3)})`;
     const id = Game.itemId, cost = Game.usingBonus ? 0 : Game.staCost(ITEM[id]);
-    $('staNeed').style.left = (clamp(cost / p.maxSta, 0, 1) * 100).toFixed(1) + '%';
     set('staLow', p.sta < cost, v => $('staRow').classList.toggle('short', v));
     set('staFlash', Game.staFlash > 0, v => $('staRow').classList.toggle('flash', v));
     // slots

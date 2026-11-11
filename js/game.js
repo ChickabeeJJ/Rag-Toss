@@ -893,7 +893,8 @@ const Game = (() => {
     const dx = tx - n.x, dy = ty - n.y;
     const far = clamp(Math.abs(dx) / 950, 0.75, 1.25);
     const T = rand(f.def.flight[0], f.def.flight[1]) * far;
-    const err = f.def.err * Math.max(0.35, 1 - 0.06 * (run.stage - 1)) * (f.boss ? 0.75 : 1);
+    // bosses throw wide and don't sharpen up as the stages go on
+    const err = f.boss ? f.def.err * 3.2 * Math.max(0.9, 1 - 0.015 * (run.stage - 1)) : f.def.err * Math.max(0.35, 1 - 0.06 * (run.stage - 1));
     const vx = dx / T * (1 + gauss() * 0.27 * err), vy = (dy / T - 0.5 * G * T) * (1 + gauss() * 0.19 * err) + gauss() * 70 * err;
     return { vx, vy, ang: Math.atan2(vy, vx), T, ex: n.x + vx * T, ey: n.y + vy * T + 0.5 * G * T * T };
   }

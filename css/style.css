@@ -267,7 +267,6 @@ body.dark-sky .hud-mid { color: #fff; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); }
 .vital .track i { position: absolute; inset: 0; transform-origin: left; border-radius: 6px; }
 .vital.hp .track i { background: linear-gradient(90deg, #e2434b, #ff7a86); }
 .vital.sta .track i { background: linear-gradient(90deg, #5a8cc2, #9fd0ff); }
-.vital .track u { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(12, 14, 21, 0.75); }
 .vital b { width: 34px; text-align: right; font-weight: 900; font-size: 14px; }
 .vitals.low .vital.hp { animation: pulse 0.6s ease-in-out infinite; }
 .vital.sta.short .track i { background: #7a8296; }
