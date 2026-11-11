@@ -843,10 +843,10 @@ const Game = (() => {
   function spawnBoss() {
     const b = BOSSES[(run.stage - 1) % BOSSES.length];
     const f = spawnFoe(b.base, b);
-    f.name = b.name; f.title = b.title;
+    f.name = b.name;
     run.boss = f; run.bossT = -1;
     Sfx.boss(); shake = 0.6;
-    if (on.banner) on.banner(b.name, b.title, true);
+    if (on.banner) on.banner(b.name, '', true);
   }
   function bossDown(f) {
     run.boss = null; run.bosses++;

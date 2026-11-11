@@ -330,8 +330,7 @@ const UI = (() => {
   /* ------------------------------------------------------------------ hud */
   function buildSlots() {
     const el = $('slots');
-    el.innerHTML = '<button class="hslot bonus hidden" id="slotBonus"><span class="hs-ic"></span><kbd>4</kbd><b id="bonusN">3</b><small>FREE</small></button>';
-    $('slotBonus').addEventListener('pointerdown', e => { e.stopPropagation(); Game.selectSlot(3); });
+    el.innerHTML = '';
     Save.data.bag.forEach((id, i) => {
       if (!id) return;
       const b = document.createElement('button');
@@ -341,6 +340,9 @@ const UI = (() => {
       b.addEventListener('pointerdown', e => { e.stopPropagation(); Game.selectSlot(i); });
       el.appendChild(b);
     });
+    // a temporary weapon from a crate always sits at the right-hand end of the row
+    el.insertAdjacentHTML('beforeend', '<button class="hslot bonus hidden" id="slotBonus"><span class="hs-ic"></span><kbd>4</kbd><b id="bonusN">3</b><small>FREE</small></button>');
+    $('slotBonus').addEventListener('pointerdown', e => { e.stopPropagation(); Game.selectSlot(3); });
     Icons.hydrate(el);
     cache.slot = null; cache.bonus = undefined;
   }
@@ -422,7 +424,7 @@ const UI = (() => {
     });
     // boss
     const boss = r.boss && r.boss.rag.alive ? r.boss : null;
-    set('boss', boss ? boss.name : '', v => { $('bossBar').classList.toggle('hidden', !v); if (v) { $('bossName').textContent = v; $('bossTitle').textContent = boss.title; } });
+    set('boss', boss ? boss.name : '', v => { $('bossBar').classList.toggle('hidden', !v); if (v) $('bossName').textContent = v; });
     if (boss) $('bossFill').style.transform = `scaleX(${clamp(boss.hp / boss.maxHp, 0, 1).toFixed(3)})`;
     const pkKey = Object.entries(r.perks).map(([k, n]) => k + n).join(',');
     set('perks', pkKey, () => { $('perkRow').innerHTML = Object.entries(r.perks).map(([k, n]) => `<span title="${esc(PERK[k].name)}">${Icons.svg(PERK[k].icon)}${n > 1 ? `<b>${n}</b>` : ''}</span>`).join(''); });

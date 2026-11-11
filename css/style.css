@@ -251,7 +251,6 @@ body.dark-sky .hud-mid { color: #fff; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6); }
 .boss-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .boss-top .ic { width: 18px; height: 18px; color: var(--gold); }
 .boss-top b { font-weight: 900; font-size: 15px; letter-spacing: 0.06em; }
-.boss-top small { margin-left: auto; font-weight: 800; font-size: 10px; letter-spacing: 0.1em; color: var(--muted); }
 .boss-track { height: 10px; border-radius: 5px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
 .boss-fill { height: 100%; background: linear-gradient(90deg, #e2434b, #ff8a5c); transform-origin: left; transition: transform 0.15s; }
 .banner { position: absolute; top: 27%; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 36px 14px; clip-path: var(--cut-l); background: var(--panel); animation: bannerIn 2.2s ease forwards; white-space: nowrap; }

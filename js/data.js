@@ -89,12 +89,12 @@ const FOES = {
 const FOE_UNLOCK = [['chucker', 1], ['lobber', 2], ['pitcher', 3], ['juggler', 4], ['guard', 5], ['floater', 6], ['brute', 7]];
 
 const BOSSES = [
-  { base: 'chucker', name: 'KING CHUCK', title: 'THROWS IN THREES', hp: 210, burst: 3, scale: 1.55 },
-  { base: 'lobber', name: 'MADAME LOB', title: 'IT RAINS BOMBS', hp: 250, burst: 2, scale: 1.55 },
-  { base: 'pitcher', name: 'FASTBALL FRANK', title: 'BLINK AND YOU MISS IT', hp: 260, burst: 2, scale: 1.5 },
-  { base: 'guard', name: 'SIR LIDSALOT', title: 'AIM FOR THE HEAD', hp: 300, burst: 2, scale: 1.55, shield: 6 },
-  { base: 'floater', name: 'BARON VON FLOAT', title: 'POP HIS RIDE', hp: 300, burst: 3, scale: 1.4, balloons: 6 },
-  { base: 'brute', name: 'THE WALL', title: 'BRING SOMETHING HEAVY', hp: 420, burst: 1, scale: 1.75 },
+  { base: 'chucker', name: 'KING CHUCK', hp: 210, burst: 3, scale: 1.55 },
+  { base: 'lobber', name: 'MADAME LOB', hp: 250, burst: 2, scale: 1.55 },
+  { base: 'pitcher', name: 'FASTBALL FRANK', hp: 260, burst: 2, scale: 1.5 },
+  { base: 'guard', name: 'SIR LIDSALOT', hp: 300, burst: 2, scale: 1.55, shield: 6 },
+  { base: 'floater', name: 'BARON VON FLOAT', hp: 300, burst: 3, scale: 1.4, balloons: 6 },
+  { base: 'brute', name: 'THE WALL', hp: 420, burst: 1, scale: 1.75 },
 ];
 const STAGE_KILLS = 8;        // knockouts before the stage boss walks in
 
