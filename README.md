@@ -113,6 +113,7 @@ js/icons.js       UI icons
 js/ui.js          home, stuff shop and bag, upgrades, missions, rank, pause, perk picks, results, HUD, tutorial panel
 js/main.js        boot, loop, pointer and keyboard input
 assets/fonts/     Rubik (SIL Open Font License)
+crazygames/       listing trailers: 1920x1080 landscape and 1080x1680 portrait, 19 s, 30 fps, H.264 + AAC
 ```
 
 ## Credits

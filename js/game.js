@@ -1191,7 +1191,10 @@ const Game = (() => {
   }
 
   /* --------------------------------------------------------------- render */
+  // a directed camera (used to film the trailer): w = how many world units fit across the screen, centred on x, y
+  let cine = null;
   function camera() {
+    if (cine) { const k = cw / cine.w; view.s = k; view.ox = cw / 2 - cine.x * k; view.oy = ch / 2 - cine.y * k; return; }
     const s0 = Math.min(cw / WORLD_W, ch / WORLD_H);
     const ps = s0, pox = (cw - WORLD_W * ps) / 2, poy = (ch - WORLD_H * ps) / 2;
     // menu: zoom in on the two throwers, to the right of the ink panel
@@ -1499,7 +1502,7 @@ const Game = (() => {
   const toScreen = (x, y) => ({ x: x * view.s + view.ox, y: y * view.s + view.oy });
 
   return {
-    init, resize, update, render, start, toMenu, skipTut: endTut, DUCK_COST, setMenuInset, aimStart, aimMove, aimEnd, aimCancel, setDuck, selectSlot, cycleSlot, pickPerk, toScreen, on,
+    init, resize, update, render, start, toMenu, setCine(o) { cine = o; }, setTheme(i) { themeFrom = themeTo = i; themeT = 1; }, pullMax() { return aim.max; }, skipTut: endTut, DUCK_COST, setMenuInset, aimStart, aimMove, aimEnd, aimCancel, setDuck, selectSlot, cycleSlot, pickPerk, toScreen, on,
     staCost, refreshBag() { if (player) { selectFirstSlot(); } },
     get state() { return state; }, get paused() { return paused; }, set paused(v) { paused = v; if (v) aimCancel(); },
     get hold() { return hold; }, get run() { return run; }, get player() { return player; }, get aiming() { return aim.on; },
