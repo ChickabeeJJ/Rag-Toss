@@ -1412,10 +1412,11 @@ const Game = (() => {
   function drawPull() {
     const ink = 'rgba(0,0,0,0)';           // no dark outlines: a soft shadow keeps the white readable on light skies
     ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.save();
     ctx.shadowColor = 'rgba(10,12,22,0.5)'; ctx.shadowBlur = 9;
     if (!aim.on && aim.snap) {   // the release
       const S = aim.snap, k = S.t / 0.28;
-      if (k >= 1) { aim.snap = null; return; }
+      if (k >= 1) { aim.snap = null; ctx.restore(); return; }
       const e = easeOutBack(clamp(k / 0.7, 0, 1)), px = lerp(S.kx, S.sx, e), py = lerp(S.ky, S.sy, e);
       ctx.globalAlpha = 1 - k;
       const nx = -S.uy * 10 * (1 - k), ny = S.ux * 10 * (1 - k);
@@ -1427,9 +1428,9 @@ const Game = (() => {
       ctx.globalAlpha = (1 - k) * 0.9; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5 * (1 - k);
       ctx.beginPath(); ctx.arc(S.sx, S.sy, 12 + 70 * easeOut(k) * (0.5 + S.p), 0, TAU); ctx.stroke();
       ctx.globalAlpha = 1;
-      return;
+      ctx.restore(); return;
     }
-    if (!aim.on || state !== 'play' || player.dead) return;
+    if (!aim.on || state !== 'play' || player.dead) { ctx.restore(); return; }
     const p = aim.power, max = aim.max;
     const dx = aim.cx - aim.sx, dy = aim.cy - aim.sy, len = Math.hypot(dx, dy);
     const ux = len > 0.5 ? dx / len : 0, uy = len > 0.5 ? dy / len : 1;
@@ -1504,11 +1505,13 @@ const Game = (() => {
       ctx.lineWidth = 4; ctx.strokeStyle = ink; ctx.strokeText(label, kx, ly);
       ctx.fillStyle = can || p <= 0 ? '#ffffff' : '#ff8a94'; ctx.fillText(label, kx, ly);
     }
-    ctx.globalAlpha = 1; ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   function render() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0; ctx.globalAlpha = 1;
     World.draw(ctx, canvas.width, canvas.height, themeFrom, themeTo, themeT);
     camera();
     const th = theme();
