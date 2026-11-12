@@ -18,7 +18,7 @@ The very first launch boots **straight into the tutorial**: a four-step, skippab
 - **Throws can be thrown at.** Anything a foe throws can be knocked out of the air (DEFLECT). Barrels take two hits.
 - **Ducking.** Hold **S** to drop behind your crates. Flat throws sail over you or hit the crates, bombs do half damage. A duck costs 5 stamina, lasts up to a second and a half, and you can't throw while you're down, so it's a dodge, not a hiding place.
 - **Streak.** Every throw that hits something adds one to your streak, worth +10% coins each, up to +100%. A throw that hits nothing resets it.
-- **Mystery crates.** A crate on a balloon drifts up the middle of the screen every so often. Pop it for a few free throws of something you don't have in your bag (it gets its own slot, key **4**), or for health or coins.
+- **Mystery crates.** A crate on a balloon drifts up the middle of the screen every so often. Pop it for a few free throws of something you don't have in your bag (it gets its own slot, key **4**), or for health or coins. When you're below 60% health, the next crate to drift up is always a **healing crate** (it looks exactly the same): pop it for 45% of your health back.
 - **Style.** Knockouts pay extra for HEADSHOT, RING OUT, AIRBORNE, LONG SHOT, TRICK SHOT, DOUBLE KO and SHATTER.
 
 ## Stuff to throw
@@ -56,7 +56,7 @@ Items are plain data in `ITEMS` in `js/data.js`. What each one does in the air a
 
 ## Foes
 
-A new kind shows up in each of the first seven stages. Every foe winds up before throwing: a red ring closes in on its throwing hand, and a hit during the wind-up interrupts the throw. Every hit ragdolls the body, whatever it was thrown with: the muscles switch off, the bone that was struck takes the impulse, the foe drops limp, slides and gets back up (a heavier throw keeps it down longer and sends it further, and off the edge if it goes far enough). Bosses are too big to fall, so they bend hard around the blow instead. You go limp when you're hit too and can't throw until you're back on your feet. Islands with nobody on them fall away at once.
+A new kind shows up in each of the first seven stages. Every foe winds up before throwing: a red ring closes in on its throwing hand, and a hit during the wind-up interrupts the throw. Every hit ragdolls the body, whatever it was thrown with: the muscles switch off, the bone that was struck takes the impulse, the foe drops limp, slides and gets back up (a heavier throw keeps it down longer and sends it further, and off the edge if it goes far enough). Bosses are too big to fall, so they bend hard around the blow instead. Foes' islands are wide, but a few plain hits in a row will still slide a foe over the edge (about three rocks), and a heavy throw does it at once. You go limp too when a real blow lands (and not twice within a few seconds) and can't throw until you're back on your feet. Islands with nobody on them fall away at once.
 
 | Foe | From stage | Behaviour |
 | --- | --- | --- |
@@ -87,6 +87,7 @@ From stage 3 some foes wear a pot that soaks one headshot, and from stage 4 some
 - **Perks.** Fourteen of them with their own icons, in four kinds (offence, survival, utility, wealth), stackable, offered three at a time after every boss (click, or press 1, 2 or 3) and kept until you're knocked out: Heavy Hands, Second Helping (throws come out twice), Loud Exit (knocked-out foes explode), Hot Hands, Springy, Snack Break and so on.
 - **Runs are saved.** Quitting from the pause menu (or closing the tab) keeps your stage, knockouts, perks and health. The home screen then says CONTINUE, with a smaller button to start over. Dying ends the saved run.
 - **Coins.** Earned per knockout, multiplied by your streak, plus boss bonuses. They're banked as you earn them, so quitting a run keeps them.
+- **Characters.** Eight to wear (Rookie, Cowboy, Viking, Chef, Wizard, Knight, Pirate, Royal), each with its own colour and hat, bought with coins on the Characters tab of the Stuff screen. They are looks only; nothing about throwing changes.
 - **Stuff and upgrades.** 26 items and eight permanent upgrades: Thick Skull (health), Big Lungs (stamina), Second Breath (refill), Strong Arm (damage), Quick Hands (time between throws), Good Eye (longer aim line), Padding (damage taken), and Deep Pockets (coins).
 - **The results screen always points at the next thing.** It shows the next item you don't own with a bar for how close you are, flags affordable upgrades, and shows your rank bar.
 - **Ranks.** Lifetime knockouts move you through eleven ranks, from Butterfingers to The Last Throw. Each rank-up pays coins.

@@ -453,7 +453,7 @@ class Rag {
   // drawn in head space: origin at the head centre, up is -y
   drawHeadgear(ctx, hr, time) {
     const f = this.facing, s = this.s;
-    if (this.isPlayer) {
+    if (this.isPlayer && !this.hat) {
       // headband with two tails that trail behind
       ctx.fillStyle = this.accent;
       ctx.fillRect(-hr, -hr * 0.62, hr * 2, hr * 0.42);
@@ -494,6 +494,45 @@ class Rag {
         ctx.fillStyle = '#3a2a5a'; ctx.beginPath(); ctx.ellipse(0, -hr * 0.75, hr * 1.75, hr * 0.36, 0, 0, TAU); ctx.fill();
         ctx.beginPath(); ctx.moveTo(-hr * 0.9, -hr * 0.8); ctx.quadraticCurveTo(-hr * 0.2, -hr * 2.4, hr * 0.9, -hr * 3.0); ctx.quadraticCurveTo(hr * 0.5, -hr * 1.6, hr * 0.9, -hr * 0.8); ctx.closePath(); ctx.fill();
         ctx.fillStyle = '#ffcf3a'; ctx.fillRect(-hr * 0.9, -hr * 1.05, hr * 1.8, hr * 0.28);
+        break;
+      case 'cowboy':
+        ctx.fillStyle = '#a8602f'; ctx.beginPath(); ctx.ellipse(0, -hr * 0.78, hr * 2.0, hr * 0.34, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#c4763a'; ctx.beginPath(); ctx.moveTo(-hr * 0.95, -hr * 0.8); ctx.quadraticCurveTo(-hr * 1.0, -hr * 2.0, -hr * 0.3, -hr * 1.75); ctx.quadraticCurveTo(0, -hr * 1.5, hr * 0.3, -hr * 1.75); ctx.quadraticCurveTo(hr * 1.0, -hr * 2.0, hr * 0.95, -hr * 0.8); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#6b3a18'; ctx.fillRect(-hr * 0.97, -hr * 1.12, hr * 1.94, hr * 0.26);
+        break;
+      case 'viking':
+        ctx.fillStyle = '#a3acbd'; ctx.beginPath(); ctx.arc(0, -hr * 0.45, hr * 1.08, Math.PI, 0); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#c9d0dc'; ctx.fillRect(-hr * 1.08, -hr * 0.58, hr * 2.16, hr * 0.2);
+        ctx.fillStyle = '#f0e6d0';
+        for (const sd of [-1, 1]) { ctx.beginPath(); ctx.moveTo(sd * hr * 0.95, -hr * 0.6); ctx.quadraticCurveTo(sd * hr * 2.1, -hr * 0.75, sd * hr * 1.75, -hr * 1.9); ctx.quadraticCurveTo(sd * hr * 1.45, -hr * 1.0, sd * hr * 0.75, -hr * 0.95); ctx.closePath(); ctx.fill(); }
+        break;
+      case 'chef':
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-hr * 0.9, -hr * 1.45, hr * 1.8, hr * 0.95);
+        for (const [x, y, r] of [[-hr * 0.7, -hr * 1.55, hr * 0.62], [0, -hr * 1.95, hr * 0.78], [hr * 0.7, -hr * 1.55, hr * 0.62]]) { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
+        ctx.fillStyle = '#e3e7f0'; ctx.fillRect(-hr * 0.95, -hr * 0.78, hr * 1.9, hr * 0.28);
+        break;
+      case 'wizard':
+        ctx.fillStyle = '#3f34b3'; ctx.beginPath(); ctx.ellipse(0, -hr * 0.78, hr * 1.7, hr * 0.32, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#5646e0'; ctx.beginPath(); ctx.moveTo(-hr * 0.9, -hr * 0.82); ctx.quadraticCurveTo(-hr * 0.3, -hr * 2.6, hr * 0.6, -hr * 3.2); ctx.quadraticCurveTo(hr * 0.5, -hr * 1.8, hr * 0.9, -hr * 0.82); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ffe14d'; for (const [x, y, r] of [[-hr * 0.15, -hr * 1.5, hr * 0.17], [hr * 0.3, -hr * 2.2, hr * 0.13], [hr * 0.1, -hr * 1.1, hr * 0.12]]) { ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
+        break;
+      case 'knight':
+        ctx.fillStyle = '#aeb7c6'; ctx.beginPath(); ctx.arc(0, -hr * 0.1, hr * 1.14, Math.PI, 0); ctx.lineTo(hr * 1.14, hr * 0.55); ctx.lineTo(-hr * 1.14, hr * 0.55); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#d8dee9'; ctx.beginPath(); ctx.arc(-f * hr * 0.3, -hr * 0.65, hr * 0.5, Math.PI * 1.1, Math.PI * 1.7); ctx.lineTo(-f * hr * 0.3, -hr * 0.65); ctx.fill();
+        ctx.fillStyle = '#3a4152'; ctx.fillRect(f > 0 ? -hr * 0.1 : -hr * 1.1, -hr * 0.2, hr * 1.2, hr * 0.26);
+        ctx.fillStyle = '#e2434b'; ctx.beginPath(); ctx.moveTo(-f * hr * 0.2, -hr * 1.2); ctx.quadraticCurveTo(-f * hr * 1.4, -hr * 2.0, -f * hr * 1.9, -hr * 1.1); ctx.quadraticCurveTo(-f * hr * 1.0, -hr * 1.4, -f * hr * 0.4, -hr * 0.9); ctx.closePath(); ctx.fill();
+        break;
+      case 'pirate':
+        ctx.fillStyle = '#2d2d3a'; ctx.beginPath(); ctx.moveTo(-hr * 1.7, -hr * 0.7); ctx.lineTo(-hr * 0.9, -hr * 1.85); ctx.lineTo(hr * 0.9, -hr * 1.85); ctx.lineTo(hr * 1.7, -hr * 0.7); ctx.quadraticCurveTo(0, -hr * 1.1, -hr * 1.7, -hr * 0.7); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ffc933'; ctx.beginPath(); ctx.moveTo(-hr * 1.55, -hr * 0.78); ctx.quadraticCurveTo(0, -hr * 1.18, hr * 1.55, -hr * 0.78); ctx.lineTo(hr * 1.5, -hr * 0.9); ctx.quadraticCurveTo(0, -hr * 1.3, -hr * 1.5, -hr * 0.9); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#f4f1ea'; ctx.beginPath(); ctx.arc(0, -hr * 1.45, hr * 0.28, 0, TAU); ctx.fill(); ctx.fillRect(-hr * 0.12, -hr * 1.3, hr * 0.24, hr * 0.2);
+        break;
+      case 'tophat':
+        ctx.fillStyle = '#262633'; ctx.beginPath(); ctx.ellipse(0, -hr * 0.78, hr * 1.55, hr * 0.3, 0, 0, TAU); ctx.fill();
+        ctx.fillRect(-hr * 0.85, -hr * 2.35, hr * 1.7, hr * 1.6);
+        ctx.fillStyle = this.accent; ctx.fillRect(-hr * 0.85, -hr * 1.2, hr * 1.7, hr * 0.32);
+        ctx.fillStyle = '#ff5d73'; ctx.beginPath(); ctx.arc(hr * 0.2, -hr * 1.04, hr * 0.14, 0, TAU); ctx.fill();
         break;
       case 'pot': break;   // the guard's pot is its helmet
       default: break;

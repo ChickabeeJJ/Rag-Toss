@@ -17,6 +17,7 @@ const Save = (() => {
     stats: { kills: 0, headshots: 0, ringouts: 0, bosses: 0, deflects: 0, earned: 0, crates: 0, combo5: 0, runs: 0, tricks: 0, throws: 0 },
     rank: 0,
     daily: { day: -1, list: [], bonus: false },
+    chars: ['rookie'], char: 'rookie',
     run: null,                 // a run left half-way, so it can be picked up again
     tutDone: false, seenSwap: false,
   });
@@ -36,6 +37,9 @@ const Save = (() => {
         data.bag = data.bag.map(id => (id && data.items.includes(id) ? id : null));
         if (!data.bag.some(Boolean)) data.bag[0] = 'rock';
         if (typeof data.upgrades !== 'object' || !data.upgrades) data.upgrades = {};
+        if (!Array.isArray(data.chars)) data.chars = ['rookie'];
+        data.chars = data.chars.filter(id => CHAR[id]); if (!data.chars.includes('rookie')) data.chars.unshift('rookie');
+        if (!CHAR[data.char] || !data.chars.includes(data.char)) data.char = 'rookie';
         if (!data.run || typeof data.run !== 'object' || !(data.run.stage >= 1) || typeof data.run.perks !== 'object') data.run = null;
       }
     } catch (e) { data = fresh(); }
@@ -74,6 +78,15 @@ const Save = (() => {
   }
   const bagItems = () => data.bag.filter(Boolean);
   const nextItem = () => ITEMS.find(i => !owns(i.id)) || null;
+
+  /* ----------------------------------------------------------- characters */
+  const ownsChar = id => data.chars.includes(id);
+  function buyChar(id) {
+    const c = CHAR[id];
+    if (!c || ownsChar(id) || data.coins < c.price) return false;
+    data.coins -= c.price; data.chars.push(id); data.char = id; save(); return true;
+  }
+  function equipChar(id) { if (!ownsChar(id)) return false; data.char = id; save(); return true; }
 
   /* ------------------------------------------------------------- upgrades */
   const lvl = id => data.upgrades[id] || 0;
@@ -157,7 +170,7 @@ const Save = (() => {
   }
 
   return {
-    load, save, reset, setRun, clearRun, addCoins, owns, buyItem, equip, unequip, bagItems, nextItem, lvl, buyUpgrade, canAffordAny,
+    load, save, reset, setRun, clearRun, addCoins, ownsChar, buyChar, equipChar, owns, buyItem, equip, unequip, bagItems, nextItem, lvl, buyUpgrade, canAffordAny,
     track, claimMission, claimBonus, allClaimed, missionsReady, rollDaily, rankInfo, claimRanks, recordRun,
     get data() { return data; },
   };

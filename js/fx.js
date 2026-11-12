@@ -132,9 +132,9 @@ const Fx = (() => {
       const pop = k > 0.85 ? 1 + (k - 0.85) * 3 : 1;
       ctx.globalAlpha = Math.min(1, k * 3);
       ctx.font = `900 ${Math.round(t.size * pop)}px Rubik, sans-serif`;
-      ctx.lineWidth = Math.max(3, t.size * 0.22); ctx.strokeStyle = 'rgba(12,14,21,0.85)';
-      ctx.strokeText(t.str, t.x, t.y);
+      ctx.shadowColor = 'rgba(8,10,20,0.55)'; ctx.shadowBlur = Math.max(5, t.size * 0.3); ctx.shadowOffsetY = 2;     // a soft shadow, not an outline
       ctx.fillStyle = t.color; ctx.fillText(t.str, t.x, t.y);
+      ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
     }
     ctx.globalAlpha = 1;
   }

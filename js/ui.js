@@ -11,7 +11,7 @@ const UI = (() => {
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const ic = name => `<span class="ic" data-icon="${name}"></span>`;
   let screen = 'home', modalOpen = false, modalKind = null, rotateDismissed = false;
-  let shopSel = 'rock', coachT = 0, coachKind = null, bannerT = 0;
+  let shopSel = 'rock', shopTab = 'items', charSel = 'rookie', coachT = 0, coachKind = null, bannerT = 0;
   const cache = {};
 
   function init() {
@@ -21,6 +21,7 @@ const UI = (() => {
     $('btnPlay').onclick = () => { click(); play(Save.data.run ? { resume: true } : {}); };
     $('btnNew').onclick = () => { click(); Save.clearRun(); play(); };
     $('btnShop').onclick = () => { click(); show('shop'); };
+    document.querySelectorAll('#shopTabs [data-tab]').forEach(b => { b.onclick = () => { click(); shopTab = b.dataset.tab; renderShop(); }; });
     $('btnBag').onclick = () => { click(); show('shop'); };
     $('btnUpgrades').onclick = () => { click(); show('upgrades'); };
     $('btnMissions').onclick = () => { click(); openMissions(); };
@@ -129,8 +130,51 @@ const UI = (() => {
   }
 
   /* ----------------------------------------------------------------- shop */
+  // a standing preview of a character, drawn with the real ragdoll
+  function charCanvas(c, size) {
+    const dpr = Math.min(3, window.devicePixelRatio || 1), cv = document.createElement('canvas');
+    cv.width = cv.height = Math.round(size * dpr); cv.style.width = cv.style.height = size + 'px';
+    const g = cv.getContext('2d'); g.scale(dpr, dpr);
+    const r = new Rag({ x: 0, y: 0, facing: 1, isPlayer: true, body: c.body, shade: c.shade, accent: c.accent, hat: c.hat });
+    r.aim = -0.3; r.snap();
+    const k = size / 185; g.translate(size * 0.46, size * 0.93); g.scale(k, k); r.draw(g, 0.4);
+    return cv;
+  }
+  function renderChars() {
+    const d = Save.data, grid = $('shopGrid');
+    if (!CHAR[charSel]) charSel = d.char;
+    grid.innerHTML = '';
+    for (const c of CHARACTERS) {
+      const own = Save.ownsChar(c.id), b = document.createElement('button');
+      b.className = 'item char' + (c.id === charSel ? ' sel' : '') + (own ? '' : ' locked');
+      b.appendChild(charCanvas(c, 92));
+      b.insertAdjacentHTML('beforeend', `<b>${esc(c.name)}</b>` + (d.char === c.id ? '<small class="eq">WEARING</small>' : own ? '<small class="own">OWNED</small>' : `<small class="${d.coins >= c.price ? '' : 'poor'}">${ic('coin')}${fmt(c.price)}</small>`));
+      b.onclick = () => { click(); charSel = c.id; renderShop(); };
+      grid.appendChild(b);
+    }
+    const c = CHAR[charSel], own = Save.ownsChar(c.id);
+    const pv = $('shopPreview'); pv.innerHTML = ''; pv.appendChild(charCanvas(c, 210));
+    let action;
+    if (d.char === c.id) action = '<div class="note">YOU ARE THROWING AS THIS ONE</div>';
+    else if (own) action = '<button class="btn primary" id="btnWear"><b>WEAR</b></button>';
+    else if (d.coins >= c.price) action = `<button class="btn primary" id="btnWear"><b>BUY</b><small>${fmt(c.price)} COINS</small></button>`;
+    else action = `<button class="btn" disabled><b>${fmt(c.price)} COINS</b><small>${fmt(c.price - d.coins)} MORE TO GO</small></button>`;
+    $('shopInfo').innerHTML = `<div class="pv-head"><b>${esc(c.name.toUpperCase())}</b></div><p>Just a different look. It changes nothing about how you throw.</p>${action}`;
+    const w = $('btnWear');
+    if (w) w.onclick = () => {
+      if (own) { Save.equipChar(c.id); Sfx.equip(); }
+      else if (Save.buyChar(c.id)) { Sfx.buy(); toast(c.name.toUpperCase() + ' UNLOCKED', 'bag'); coins(); }
+      else { Sfx.deny(); return; }
+      renderShop();
+    };
+    Icons.hydrate($('shop'));
+  }
+
   function renderShop() {
     const d = Save.data;
+    document.querySelectorAll('#shopTabs [data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === shopTab));
+    $('shop').classList.toggle('chars', shopTab === 'chars');
+    if (shopTab === 'chars') { renderChars(); return; }
     if (!ITEM[shopSel]) shopSel = 'rock';
     const grid = $('shopGrid');
     grid.innerHTML = '';

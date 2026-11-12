@@ -58,7 +58,8 @@ const Game = (() => {
     home = new Plat(250, HOME_Y, 300, 'player'); home.h = 300; home.bobA = 0;
     wall = new Plat(372, HOME_Y - 66, 44, 'wall'); wall.h = 66;
     plats.push(home, wall);
-    const rag = new Rag({ x: HOME_X, y: HOME_Y, facing: 1, isPlayer: true, body: '#f7f2e7', shade: '#d3c8b3', accent: '#ff9a3c', plat: home, weight: 1.3, steady: true });
+    const who = CHAR[Save.data.char] || CHAR.rookie;
+    const rag = new Rag({ x: HOME_X, y: HOME_Y, facing: 1, isPlayer: true, body: who.body, shade: who.shade, accent: who.accent, hat: who.hat, plat: home, weight: 1.3, steady: true });
     player = { rag, hp: 100, maxHp: 100, sta: 100, maxSta: 100, cd: 0, staWait: 0, slot: 0, bonus: null, dead: false, inv: 0 };
     refreshStats(true);
     selectFirstSlot();
@@ -721,7 +722,7 @@ const Game = (() => {
       return;
     }
     // everything else goes limp: the struck bone takes the blow, the body drops and slides, then gets up
-    const mag = 150 + 90 * Math.min(pw, 3.5);
+    const mag = 185 + 105 * Math.min(pw, 3.5);
     rag.hitLimp(hit, dx * mag, dy * mag * 0.6 - 70, 0.28 + 0.1 * Math.min(pw, 3));
     f.state = 'idle'; f.t = Math.max(f.t, 0.35 + 0.08 * Math.min(pw, 3));
   }
@@ -850,7 +851,7 @@ const Game = (() => {
     const def = FOES[type];
     const sc = boss ? boss.scale : def.scale;
     const floater = !!def.balloons;
-    const w = boss ? 200 : type === 'brute' ? 150 : floater ? 96 : rand(104, 138);
+    const w = boss ? 260 : type === 'brute' ? 200 : floater ? 130 : rand(144, 182);
     const pos = at || pickSpot(w, !!boss, floater);
     const pl = new Plat(pos.x, pos.y, w, 'foe');
     pl.state = 'in'; pl.bobA = floater ? (boss ? 36 : 13) : 5; pl.bobS = rand(0.8, 1.4);
@@ -982,7 +983,8 @@ const Game = (() => {
     }
     // ring-out
     const pv = rag.pts[P.PELVIS];
-    if (pv.y > WORLD_H + 150 || (rag.mode === 'tumble' && (pv.x > WORLD_W + 320 || pv.x < -320))) {
+    const rising = f.plat && f.plat.state === 'in' && rag.mode === 'active';      // still riding its island up from below the screen
+    if (!rising && (pv.y > WORLD_H + 150 || (rag.mode === 'tumble' && (pv.x > WORLD_W + 320 || pv.x < -320)))) {
       f.hp = 0;
       killFoe(f, { ring: true, x: clamp(rag.chest.x, 60, WORLD_W - 60), y: Math.min(rag.chest.y, WORLD_H - 40), dirx: 0, diry: 1, head: false });
       return;
@@ -1028,13 +1030,18 @@ const Game = (() => {
   }
 
   /* --------------------------------------------------------------- crates */
-  function spawnCrate() { crates.push({ x: rand(520, 720), y: WORLD_H + 60, ph: rand(0, TAU), popped: false, t: 0 }); }
+  function spawnCrate(kind) { crates.push({ x: rand(520, 720), y: WORLD_H + 60, ph: rand(0, TAU), popped: false, t: 0, kind: kind || (player && player.hp < player.maxHp * 0.6 ? 'heal' : 'mystery') }); }
   function popCrate(c, s) {
     if (c.popped) return;
     c.popped = true;
     Fx.confetti(c.x, c.y, 26); Fx.burst(c.x, c.y, 8, { colors: ['#b98a52', '#8a6236'], speed: [120, 360], life: [0.4, 0.8], size: [4, 8], shape: 'rect' });
     Sfx.crate(); track('crates'); run.crates++;
     if (s) logHit(s.seq);
+    if (c.kind === 'heal') {      // looks like any other crate; this one is always food
+      const n = Math.round(player.maxHp * 0.45); heal(n); Sfx.heal();
+      Fx.text(c.x, c.y - 40, 'HEALTH +' + n, '#9ff0c0', 26); Fx.ring(c.x, c.y, 8, 70, 0.4, '#9ff0c0', 5);
+      run.firstCrate = false; return;
+    }
     const low = player.hp < player.maxHp * 0.55;
     const r = Math.random();
     if (!run.firstCrate && low && r < 0.45 || !run.firstCrate && r < 0.14) {
@@ -1104,15 +1111,7 @@ const Game = (() => {
       }
       if (rag.pts[P.PELVIS].y > WORLD_H + 120) hurtPlayer(1e9, { x: rag.pts[P.PELVIS].x, y: WORLD_H, dirx: 0, diry: 1 });
     }
-    for (const f of foes) {
-      const r = f.rag;
-      r.update(dt, plats);
-      // a plain hit knocks a foe flat but never off its island: only heavy throws and blasts send them over the edge
-      if (r.mode === 'tumble' && r.hurtLimp && r.hurtPlat && !r.hurtPlat.falling) {
-        const hp = r.hurtPlat;
-        for (const q of r.pts) { if (q.x < hp.left + 6) { q.x = hp.left + 6; q.px = q.x; } else if (q.x > hp.right - 6) { q.x = hp.right - 6; q.px = q.x; } }
-      }
-    }
+    for (const f of foes) f.rag.update(dt, plats);
     for (let i = 0; i < shots.length; i++) if (!shots[i].dead) stepShot(shots[i], dt);
     for (let i = shots.length - 1; i >= 0; i--) if (shots[i].dead) shots.splice(i, 1);
     stepZones(dt);
@@ -1161,6 +1160,9 @@ const Game = (() => {
       if (run.spawnT <= 0) { spawnWave(); run.spawnT = rand(1.4, 2.4) * Math.max(0.55, 1 - 0.04 * run.stage); }
     }
     if ((run.crateT -= dt * (1 + pk('crate'))) <= 0 && crates.length === 0) { spawnCrate(); run.crateT = rand(20, 30); }
+    // hurt badly and nothing floating by: a healing crate drifts up (same crate, same look)
+    run.healT = (run.healT == null ? 12 : run.healT) - dt;
+    if (player.hp < player.maxHp * 0.6 && run.healT <= 0 && crates.length === 0) { spawnCrate('heal'); run.healT = 22; }
   }
 
   function stepZones(dt) {
@@ -1271,7 +1273,7 @@ const Game = (() => {
   function drawCrate(x, y, w, h, rot, tone) {
     ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.rotate(rot);
     const hw = w / 2, hh = h / 2, pl = 3, ph = h / pl;
-    const light = tone ? '#c99a62' : '#c4935a', mid = tone ? '#b98a52' : '#b2824c', dark = '#6b4724';
+    const light = tone ? '#c99a62' : '#c4935a', mid = tone ? '#b98a52' : '#b2824c', dark = '#94673a';
     ctx.fillStyle = 'rgba(30,20,10,0.22)'; ctx.beginPath(); ctx.roundRect(-hw + 2, -hh + 3, w, h, 4); ctx.fill();
     ctx.save(); ctx.beginPath(); ctx.roundRect(-hw, -hh, w, h, 4); ctx.clip();
     for (let i = 0; i < pl; i++) {
@@ -1387,13 +1389,12 @@ const Game = (() => {
       d -= gap; i++;
       const f = 1 - i / (n + 1);
       ctx.globalAlpha = 0.4 + 0.6 * f;
-      ctx.fillStyle = 'rgba(12,14,21,0.6)'; ctx.beginPath(); ctx.arc(x, y, 4.2 + 3.6 * f, 0, TAU); ctx.fill();
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, 2.8 + 3.2 * f, 0, TAU); ctx.fill();
     }
     if (hit) {
       const pulse = 1 + 0.12 * Math.sin(time * 9), r = (hit.foe ? 17 : 11) * pulse;
       ctx.globalAlpha = hit.foe ? 0.95 : 0.55; ctx.lineCap = 'round';
-      for (const [w, c] of [[5.5, 'rgba(12,14,21,0.65)'], [2.6, hit.foe ? '#ff5d73' : '#ffffff']]) {
+      for (const [w, c] of [[3, hit.foe ? '#ff5d73' : '#ffffff']]) {
         ctx.strokeStyle = c; ctx.lineWidth = w;
         ctx.beginPath(); ctx.arc(hit.x, hit.y, r, 0, TAU); ctx.stroke();
         if (hit.foe) { ctx.beginPath(); for (let q = 0; q < 4; q++) { const a = q * Math.PI / 2 + time * 0.8; ctx.moveTo(hit.x + Math.cos(a) * (r + 3), hit.y + Math.sin(a) * (r + 3)); ctx.lineTo(hit.x + Math.cos(a) * (r + 10), hit.y + Math.sin(a) * (r + 10)); } ctx.stroke(); }
@@ -1409,8 +1410,9 @@ const Game = (() => {
        an arrow out the far side of the anchor for the way it will fly
        a burst at MAX, and on release the elastic snaps back past the anchor and settles */
   function drawPull() {
-    const ink = 'rgba(12,14,21,0.72)';
+    const ink = 'rgba(0,0,0,0)';           // no dark outlines: a soft shadow keeps the white readable on light skies
     ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(10,12,22,0.5)'; ctx.shadowBlur = 9;
     if (!aim.on && aim.snap) {   // the release
       const S = aim.snap, k = S.t / 0.28;
       if (k >= 1) { aim.snap = null; return; }
@@ -1502,7 +1504,7 @@ const Game = (() => {
       ctx.lineWidth = 4; ctx.strokeStyle = ink; ctx.strokeText(label, kx, ly);
       ctx.fillStyle = can || p <= 0 ? '#ffffff' : '#ff8a94'; ctx.fillText(label, kx, ly);
     }
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = 1; ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
   }
 
   function render() {

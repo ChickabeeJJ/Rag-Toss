@@ -462,3 +462,12 @@ body.result-open #toasts { top: calc(8px + var(--safe-t)); bottom: auto; }
   .hud-mid span, .stage-chip .chip-body b { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; } }
+
+/* ---- stuff screen tabs and the character cards ---- */
+.seg { flex: 1; display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--panel); max-width: 420px; margin-right: auto; }
+.seg button { flex: 1; padding: 10px 14px; border-radius: 7px; font-weight: 900; font-size: 13px; letter-spacing: 0.08em; color: var(--muted); transition: background 0.12s, color 0.12s; }
+.seg button:hover { color: var(--text); background: rgba(255, 255, 255, 0.06); }
+.seg button.active { background: var(--acc); color: var(--acc-ink); }
+#shop.chars .bag-edit { display: none; }
+.item.char { padding-top: 8px; }
+.item.char canvas { margin-bottom: 2px; }

@@ -204,3 +204,17 @@ const STYLE = {
   head: ['HEADSHOT', 2], ring: ['RING OUT', 4], deflect: ['DEFLECT', 2], long: ['LONG SHOT', 3], air: ['AIRBORNE', 4],
   double: ['DOUBLE KO', 6], trick: ['TRICK SHOT', 4], shatter: ['SHATTER', 3], pop: ['POP!', 2], stop: ['INTERRUPT', 1],
 };
+
+/* -------------------------------------------------------------- characters
+   Who you throw as. Pure looks: a colour and a hat, bought with coins. */
+const CHARACTERS = [
+  { id: 'rookie', name: 'Rookie', price: 0, body: '#f7f2e7', shade: '#d3c8b3', accent: '#ff9a3c', hat: null },
+  { id: 'cowboy', name: 'Cowboy', price: 300, body: '#efd9b4', shade: '#cdb088', accent: '#c4642a', hat: 'cowboy' },
+  { id: 'viking', name: 'Viking', price: 600, body: '#e9dcc7', shade: '#c9b99f', accent: '#5a86b8', hat: 'viking' },
+  { id: 'chef', name: 'Chef', price: 900, body: '#ffffff', shade: '#dcdfe8', accent: '#e2434b', hat: 'chef' },
+  { id: 'wizard', name: 'Wizard', price: 1400, body: '#dcd6f5', shade: '#b7afe0', accent: '#7b6cff', hat: 'wizard' },
+  { id: 'knight', name: 'Knight', price: 2200, body: '#cfd6e2', shade: '#a6b0c2', accent: '#5b6c82', hat: 'knight' },
+  { id: 'pirate', name: 'Pirate', price: 3200, body: '#f1e3c8', shade: '#cfbf9f', accent: '#2d2d3a', hat: 'pirate' },
+  { id: 'royal', name: 'Royal', price: 5000, body: '#fff2c4', shade: '#e6d08a', accent: '#ffc933', hat: 'tophat' },
+];
+const CHAR = Object.fromEntries(CHARACTERS.map(c => [c.id, c]));
