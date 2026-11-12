@@ -135,6 +135,7 @@ class Rag {
   hitLimp(hit, vx, vy, dur) {
     if (this.mode === 'dead') return;
     const was = this.mode;
+    if (was !== 'tumble') this.hurtPlat = this.plat;     // a body knocked flat by a plain hit stays on its island
     this.mode = 'tumble'; this.m = 0; this.tumbleT = Math.max(dur, was === 'tumble' ? this.tumbleT : 0); this.restT = 0; this.stuckT = 0; this.plat = null;
     this.pull = 0; this.throwT = -1; this.aimW = 0; this.daze = 0; this.hurtLimp = true;
     const a = SEGS[hit.seg][0], b = SEGS[hit.seg][1], u = hit.u == null ? 0.5 : hit.u, w = STEP / this.weight;
@@ -147,7 +148,7 @@ class Rag {
   // the rest, which is what sets the body spinning.
   knock(vx, vy, idx = P.NECK, dur = 0.55) {
     if (this.mode === 'dead') return;
-    this.mode = 'tumble'; this.m = 0; this.tumbleT = dur; this.restT = 0; this.stuckT = 0; this.plat = null; this.hurtLimp = false;
+    this.mode = 'tumble'; this.m = 0; this.tumbleT = dur; this.restT = 0; this.stuckT = 0; this.plat = null; this.hurtLimp = false; this.hurtPlat = null;
     this.pull = 0; this.throwT = -1; this.aimW = 0; this.daze = 0;
     for (let i = 0; i < 11; i++) {
       const k = (i === idx ? 2.3 : 0.7) * STEP;
@@ -488,6 +489,11 @@ class Rag {
       case 'goggles':
         ctx.fillStyle = '#3a3f52'; ctx.fillRect(-hr, -hr * 0.5, hr * 2, hr * 0.5);
         ctx.fillStyle = '#9fe0ff'; ctx.beginPath(); ctx.arc(f * hr * 0.45, -hr * 0.25, hr * 0.42, 0, TAU); ctx.fill();
+        break;
+      case 'witch':
+        ctx.fillStyle = '#3a2a5a'; ctx.beginPath(); ctx.ellipse(0, -hr * 0.75, hr * 1.75, hr * 0.36, 0, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(-hr * 0.9, -hr * 0.8); ctx.quadraticCurveTo(-hr * 0.2, -hr * 2.4, hr * 0.9, -hr * 3.0); ctx.quadraticCurveTo(hr * 0.5, -hr * 1.6, hr * 0.9, -hr * 0.8); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#ffcf3a'; ctx.fillRect(-hr * 0.9, -hr * 1.05, hr * 1.8, hr * 0.28);
         break;
       case 'pot': break;   // the guard's pot is its helmet
       default: break;

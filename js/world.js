@@ -1,7 +1,7 @@
 'use strict';
 /* =========================================================================
    World: floating islands (blocky tile pyramids, as in Element Rag) and the
-   backdrop for each theme: a sky gradient and rolling hills, nothing else. Islands are solid boxes for physics; the
+   backdrop for each theme: a sky gradient and five layers of hills, nothing else. Islands are solid boxes for physics; the
    pyramid underneath is only drawn.
    ========================================================================= */
 
@@ -94,10 +94,22 @@ class Plat {
 
 const World = (() => {
   const cache = new Map();
-
   function init() { cache.clear(); }
 
-  // A theme's backdrop is just sky and three bands of rolling hills, painted once per size.
+  const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+  // ridge height 0..1 at u (0..1 across the screen); each theme gets its own kind of skyline
+  function ridge(kind, u, f) {
+    const s1 = Math.sin(u * TAU * f.f1 + f.p1), s2 = Math.sin(u * TAU * f.f2 + f.p2), s3 = Math.sin(u * TAU * f.f3 + f.p3);
+    switch (kind) {
+      case 'peaks': return 0.62 * (1 - Math.pow(Math.abs(s1), 0.85)) + 0.3 * (1 - Math.abs(s2)) + 0.08 * (s3 * 0.5 + 0.5);
+      case 'jag': return 0.5 * (1 - Math.abs(s1)) + 0.34 * (1 - Math.abs(Math.sin(u * TAU * f.f2 * 1.7 + f.p2))) + 0.16 * (1 - Math.abs(s3));
+      case 'dunes': { const v = s1 * 0.5 + 0.5; return 0.7 * Math.pow(v, 1.7) + 0.22 * (s2 * 0.5 + 0.5) + 0.08 * (s3 * 0.5 + 0.5); }
+      case 'mesa': { const n = 0.5 + 0.5 * (s1 * 0.65 + s2 * 0.35), q = n * 3, fl = Math.floor(q); return (fl + sstep(0.42, 0.58, q - fl)) / 3 * 0.9 + 0.1 * (s3 * 0.5 + 0.5); }
+      default: return 0.5 + 0.5 * (s1 * 0.6 + s2 * 0.3 + s3 * 0.1);
+    }
+  }
+
+  // A theme's backdrop: sky and five layers of ridges, far ones hazy and pale, near ones dark and crisp, painted once per size.
   function backdrop(i, w, h) {
     const key = i + ':' + w + 'x' + h;
     if (cache.has(key)) return cache.get(key);
@@ -107,19 +119,53 @@ const World = (() => {
     const g = c.getContext('2d');
     const R = mulberry32(1234 + i * 77);
     const sky = g.createLinearGradient(0, 0, 0, h);
-    sky.addColorStop(0, th.sky[0]); sky.addColorStop(0.55, th.sky[1]); sky.addColorStop(1, th.sky[2]);
+    sky.addColorStop(0, th.sky[0]); sky.addColorStop(0.5, th.sky[1]); sky.addColorStop(0.78, th.sky[2]); sky.addColorStop(1, shade(th.sky[2], th.dark ? -0.3 : -0.08));
     g.fillStyle = sky; g.fillRect(0, 0, w, h);
-    for (let L = 0; L < 3; L++) {
-      const base = h * (0.56 + L * 0.13), amp = h * (0.07 - L * 0.012);
-      const p1 = R() * 10, p2 = R() * 10, f1 = 1.2 + R() * 1.2, f2 = 2.8 + R() * 2;
-      g.fillStyle = th.hills[L];
-      g.beginPath(); g.moveTo(0, h);
-      for (let x = 0; x <= w; x += 8) {
-        const u = x / w;
-        g.lineTo(x, base + Math.sin(u * TAU * f1 + p1) * amp + Math.sin(u * TAU * f2 + p2) * amp * 0.4);
+    // a soft glow where the sky meets the far ridges
+    const glow = g.createLinearGradient(0, h * 0.34, 0, h * 0.7);
+    glow.addColorStop(0, rgba(th.sky[2], 0)); glow.addColorStop(0.7, rgba(th.sky[2], th.dark ? 0.16 : 0.4)); glow.addColorStop(1, rgba(th.sky[2], 0));
+    g.fillStyle = glow; g.fillRect(0, h * 0.34, w, h * 0.36);
+
+    const LAYERS = 5;
+    const bases = [0.47, 0.56, 0.65, 0.75, 0.87];
+    const amps = th.ridge === 'mesa' ? [0.15, 0.14, 0.12, 0.1, 0.08] : th.ridge === 'peaks' || th.ridge === 'jag' ? [0.2, 0.17, 0.14, 0.11, 0.08] : [0.13, 0.11, 0.095, 0.08, 0.06];
+    const cols = [mixHex(th.hills[0], th.sky[1], 0.6), mixHex(th.hills[0], th.sky[1], 0.34), mixHex(th.hills[0], th.sky[1], 0.08), th.hills[1], th.hills[2]];
+    const rim = th.dark ? '#9fb4ff' : '#ffffff';
+    for (let L = 0; L < LAYERS; L++) {
+      const f = { f1: 0.7 + R() * 0.9 + L * 0.15, f2: 1.9 + R() * 1.6 + L * 0.3, f3: 4.2 + R() * 3, p1: R() * 10, p2: R() * 10, p3: R() * 10 };
+      const base = h * bases[L], amp = h * amps[L];
+      const pts = [];
+      for (let x = 0; x <= w + 6; x += 6) pts.push([x, base - ridge(th.ridge, x / w, f) * amp]);
+      // body: a gradient that darkens toward the bottom of the layer
+      const body = g.createLinearGradient(0, base - amp, 0, Math.min(h, base + h * 0.2));
+      body.addColorStop(0, cols[L]); body.addColorStop(1, shade(cols[L], th.dark ? -0.3 : -0.16));
+      g.fillStyle = body;
+      const path = () => { g.beginPath(); g.moveTo(0, h); for (const [x, y] of pts) g.lineTo(x, y); g.lineTo(w, h); g.closePath(); };
+      path(); g.fill();
+      g.save(); path(); g.clip();
+      // strata on the mesas
+      if (th.ridge === 'mesa') { g.strokeStyle = 'rgba(60,20,40,0.12)'; g.lineWidth = 2; for (let k = 1; k < 4; k++) { g.beginPath(); for (let q = 0; q < pts.length; q++) { const [x, y] = pts[q]; if (q) g.lineTo(x, y + k * amp * 0.17); else g.moveTo(x, y + k * amp * 0.17); } g.stroke(); } }
+      // haze settling into the lower part of each far layer, only inside its own shape
+      if (L < LAYERS - 1) {
+        const fog = g.createLinearGradient(0, base - amp, 0, base + h * 0.14);
+        fog.addColorStop(0, rgba(th.sky[2], 0)); fog.addColorStop(1, rgba(th.sky[2], th.dark ? 0.16 : 0.3 - L * 0.05));
+        g.fillStyle = fog; g.fillRect(0, base - amp, w, amp + h * 0.14);
       }
-      g.lineTo(w, h); g.closePath(); g.fill();
+      // shadow side: a darker wash under the crest gives each ridge some volume
+      const vol = g.createLinearGradient(0, base - amp, 0, base - amp * 0.35);
+      vol.addColorStop(0, 'rgba(255,255,255,' + (th.dark ? 0.05 : 0.1) + ')'); vol.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = vol; g.fillRect(0, base - amp, w, amp);
+      g.restore();
+      // rim light along the crest
+      g.strokeStyle = rgba(rim, L < 2 ? 0.12 : 0.26); g.lineWidth = L < 2 ? 1.2 : 2.2; g.lineJoin = 'round';
+      g.beginPath(); pts.forEach(([x, y], q) => (q ? g.lineTo(x, y - 0.6) : g.moveTo(x, y - 0.6))); g.stroke();
+      // grass flecks on the near rolling layers
+      if (th.ridge === 'round' && L >= 3) { g.strokeStyle = rgba(rim, 0.07); g.lineWidth = 2; g.beginPath(); for (let x = 0; x < w; x += 22) { const k = Math.floor(x / 6); const y = pts[k][1] + 12 + R() * (h * 0.1); g.moveTo(x, y); g.lineTo(x + 5, y - 6); } g.stroke(); }
     }
+    // darken the very bottom a touch so the HUD reads
+    const bot = g.createLinearGradient(0, h * 0.82, 0, h);
+    bot.addColorStop(0, 'rgba(8,10,18,0)'); bot.addColorStop(1, `rgba(8,10,18,${th.dark ? 0.35 : 0.2})`);
+    g.fillStyle = bot; g.fillRect(0, h * 0.82, w, h * 0.18);
     cache.set(key, c);
     return c;
   }

@@ -50,7 +50,25 @@ const ITEMS = [
     tag: 'x3 COINS', desc: 'A knockout with the duck pays triple coins. It bounces once, too.' },
   { id: 'sack', name: 'Mystery Sack', price: 9000, sta: 7, dmg: 0, r: 14, kb: 1, spd: 1, grav: 1, spin: 6,
     tag: '???', desc: 'Every throw pulls out something random, even things you do not own, and it hits 30% harder.' },
+  { id: 'pie', name: 'Cream Pie', price: 230, sta: 5, dmg: 6, r: 14, kb: 0.3, spd: 0.95, grav: 1, spin: 5, stick: true,
+    tag: 'BLINDS', desc: 'Splats in the face and blinds the foe: their throws go wildly off target for five seconds.' },
+  { id: 'knife', name: 'Throwing Knife', price: 400, sta: 6, dmg: 12, r: 11, kb: 0.2, spd: 1.3, grav: 0.6, spin: 0, stick: true,
+    tag: 'CRIT', desc: 'Fast and flat. A headshot hits four times as hard. Sticks wherever it lands.' },
+  { id: 'sauce', name: 'Hot Sauce', price: 560, sta: 6, dmg: 5, r: 12, kb: 0.3, spd: 1, grav: 1, spin: 7,
+    tag: 'BURNS', desc: 'Smashes open and sets the foe on fire for five seconds.' },
+  { id: 'slime', name: 'Slime', price: 740, sta: 6, dmg: 6, r: 13, kb: 0.4, spd: 0.95, grav: 1, spin: 4, stick: true,
+    tag: 'SLOWS', desc: 'Sticky goo that halves how fast a foe winds up and throws, for six seconds.' },
+  { id: 'pan', name: 'Frying Pan', price: 980, sta: 9, dmg: 18, r: 15, kb: 1.5, spd: 0.95, grav: 1, spin: 9,
+    tag: 'STUNS', desc: 'CLANG. Stuns a foe for a second and a half and smashes any lid they hold.' },
+  { id: 'glove', name: 'Boxing Glove', price: 1250, sta: 8, dmg: 16, r: 14, kb: 3.2, spd: 1.35, grav: 0.15, spin: 0, life: 0.55,
+    tag: 'PUNCH', desc: 'A spring-loaded punch. Short range, almost instant, with a huge knockback.' },
+  { id: 'beachball', name: 'Beach Ball', price: 1600, sta: 8, dmg: 5, r: 24, kb: 1.4, spd: 0.7, grav: 0.3, spin: 3, bounce: 3,
+    tag: 'LAUNCHES', desc: 'Big, bouncy and floaty. Whatever it hits is thrown straight up in the air.' },
+  { id: 'glue', name: 'Glue Bomb', price: 3500, sta: 11, dmg: 10, r: 12, kb: 0.6, spd: 0.95, grav: 1, spin: 6,
+    tag: 'TIMED', desc: 'Sticks to whatever it hits, then goes off a second and a half later.' },
 ];
+// the shop lists things cheapest first
+ITEMS.sort((a, b) => a.price - b.price);
 const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 
 /* sub-projectiles and enemy ammo (never in the shop) */
@@ -88,13 +106,22 @@ const FOES = {
 // the stage a foe first shows up in
 const FOE_UNLOCK = [['chucker', 1], ['lobber', 2], ['pitcher', 3], ['juggler', 4], ['guard', 5], ['floater', 6], ['brute', 7]];
 
+/* Six bosses, each with its own rhythm, so no two fights feel alike.
+   wind / rest / flight: seconds. fan + spread: projectiles per throw and the angle between them.
+   dmg scales their throws. hp is the base health (stage scaling is gentle). */
 const BOSSES = [
-  { base: 'chucker', name: 'KING CHUCK', hp: 210, burst: 3, scale: 1.55 },
-  { base: 'lobber', name: 'MADAME LOB', hp: 250, burst: 2, scale: 1.55 },
-  { base: 'pitcher', name: 'FASTBALL FRANK', hp: 260, burst: 2, scale: 1.5 },
-  { base: 'guard', name: 'SIR LIDSALOT', hp: 300, burst: 2, scale: 1.55, shield: 6 },
-  { base: 'floater', name: 'BARON VON FLOAT', hp: 300, burst: 3, scale: 1.4, balloons: 6 },
-  { base: 'brute', name: 'THE WALL', hp: 420, burst: 1, scale: 1.75 },
+  { base: 'chucker', name: 'KING CHUCK', hp: 170, scale: 1.55, body: '#e8a23a', shade: '#b97a1f', hat: null,
+    ammo: 'e_rock', fan: 3, spread: 0.2, burst: 1, wind: 1.35, rest: [3.4, 4.4], flight: [1.2, 1.5], dmg: 0.8 },
+  { base: 'lobber', name: 'MADAME LOB', hp: 190, scale: 1.5, body: '#a35bd6', shade: '#7b3fa8', hat: 'witch',
+    ammo: 'e_bomb', burst: 2, gap: 0.6, wind: 1.6, rest: [4, 5], flight: [2, 2.5], dmg: 0.75, mark: true },
+  { base: 'pitcher', name: 'FASTBALL FRANK', hp: 180, scale: 1.45, body: '#2f7de0', shade: '#235ba8', hat: 'cap',
+    ammo: 'e_ball', burst: 1, wind: 1.7, rest: [2.6, 3.4], flight: [0.5, 0.62], dmg: 0.7, errMul: 2.6, laser: true, tired: 1.3 },
+  { base: 'guard', name: 'SIR LIDSALOT', hp: 215, scale: 1.55, body: '#7f93ab', shade: '#5b6c82', hat: 'pot',
+    ammo: 'e_rock', burst: 1, wind: 1.3, rest: [2.8, 3.6], flight: [1.1, 1.4], dmg: 0.8, shield: 5, enrage: true },
+  { base: 'floater', name: 'BARON VON FLOAT', hp: 200, scale: 1.4, body: '#e0508f', shade: '#b03a6e', hat: 'goggles',
+    ammo: 'e_dart', fan: 5, spread: 0.15, burst: 1, wind: 1.3, rest: [3.2, 4.2], flight: [0.95, 1.2], dmg: 0.42, balloons: 6 },
+  { base: 'brute', name: 'THE WALL', hp: 300, scale: 1.75, body: '#6b7080', shade: '#4d515f', hat: 'horns',
+    ammo: 'e_barrel', burst: 1, wind: 1.8, rest: [4.2, 5.2], flight: [1.5, 1.8], dmg: 0.7, resist: 0.55 },
 ];
 const STAGE_KILLS = 8;        // knockouts before the stage boss walks in
 
@@ -115,31 +142,32 @@ const upgradeCost = (u, lvl) => Math.round(u.base * Math.pow(u.grow, lvl) / 10) 
 /* -------------------------------------------------------------- run perks
    Offered three at a time after every boss; they last until the run ends. */
 const PERKS = [
-  { id: 'heavy', name: 'Heavy Hands', icon: 'fist', text: '+25% damage' },
-  { id: 'twin', name: 'Second Helping', icon: 'hand', text: 'One throw in four comes out twice' },
-  { id: 'skin', name: 'Extra Padding', icon: 'heart', text: '+35 max health, and heal it now' },
-  { id: 'lungs', name: 'Deep Breath', icon: 'bolt', text: '+40% stamina refill' },
-  { id: 'leech', name: 'Snack Break', icon: 'heart', text: 'Heal 6 with every knockout' },
-  { id: 'eye', name: 'Sharp Eye', icon: 'eye', text: 'Headshots hit 50% harder' },
-  { id: 'pop', name: 'Loud Exit', icon: 'boom', text: 'Knocked-out foes explode' },
-  { id: 'big', name: 'Family Size', icon: 'bag', text: 'Everything you throw is 30% bigger' },
-  { id: 'crate', name: 'Special Delivery', icon: 'gift', text: 'Mystery crates float by twice as often' },
-  { id: 'rich', name: 'Loose Change', icon: 'coin', text: '+30% coins' },
-  { id: 'shove', name: 'Big Shove', icon: 'wing', text: '+40% knockback' },
-  { id: 'hot', name: 'Hot Hands', icon: 'flame', text: 'Every hit sets the foe on fire' },
-  { id: 'spring', name: 'Springy', icon: 'up', text: 'Everything bounces one more time' },
-  { id: 'cheap', name: 'Light Load', icon: 'bolt', text: 'Throws cost 20% less stamina' },
+  { id: 'heavy', kind: 'offense', name: 'Heavy Hands', icon: 'fist', text: '+25% damage' },
+  { id: 'twin', kind: 'offense', name: 'Second Helping', icon: 'hand', text: 'One throw in four comes out twice' },
+  { id: 'skin', kind: 'sustain', name: 'Extra Padding', icon: 'heart', text: '+35 max health, and heal it now' },
+  { id: 'lungs', kind: 'utility', name: 'Deep Breath', icon: 'bolt', text: '+40% stamina refill' },
+  { id: 'leech', kind: 'sustain', name: 'Snack Break', icon: 'heart', text: 'Heal 6 with every knockout' },
+  { id: 'eye', kind: 'offense', name: 'Sharp Eye', icon: 'eye', text: 'Headshots hit 50% harder' },
+  { id: 'pop', kind: 'offense', name: 'Loud Exit', icon: 'boom', text: 'Knocked-out foes explode' },
+  { id: 'big', kind: 'offense', name: 'Family Size', icon: 'bag', text: 'Everything you throw is 30% bigger' },
+  { id: 'crate', kind: 'utility', name: 'Special Delivery', icon: 'gift', text: 'Mystery crates float by twice as often' },
+  { id: 'rich', kind: 'wealth', name: 'Loose Change', icon: 'coin', text: '+30% coins' },
+  { id: 'shove', kind: 'offense', name: 'Big Shove', icon: 'wing', text: '+40% knockback' },
+  { id: 'hot', kind: 'offense', name: 'Hot Hands', icon: 'flame', text: 'Every hit sets the foe on fire' },
+  { id: 'spring', kind: 'utility', name: 'Springy', icon: 'up', text: 'Everything bounces one more time' },
+  { id: 'cheap', kind: 'utility', name: 'Light Load', icon: 'bolt', text: 'Throws cost 20% less stamina' },
 ];
 const PERK = Object.fromEntries(PERKS.map(p => [p.id, p]));
+const PERK_KIND = { offense: { name: 'OFFENCE', color: '#ff7a3a' }, sustain: { name: 'SURVIVAL', color: '#45e08a' }, utility: { name: 'UTILITY', color: '#4fa8ff' }, wealth: { name: 'WEALTH', color: '#ffc933' } };
 
 /* ----------------------------------------------------------------- themes */
 const THEMES = [
-  { name: 'Meadow', sky: ['#7fc4e8', '#bfe6e2', '#e8f2c8'], hills: ['#8cc79a', '#6fb184', '#4f9a70'], grass: '#8ed65a', grassHi: '#b4ec7a', dirt: '#8a6a4c', dirt2: '#72563d', dirt3: '#5f4732', dark: false },
-  { name: 'Sunset', sky: ['#3d3a78', '#d46a6a', '#ffc27a'], hills: ['#b0647a', '#8a4868', '#5e3358'], grass: '#e0a04a', grassHi: '#f2c06a', dirt: '#7a4a44', dirt2: '#643a38', dirt3: '#4e2c2e', dark: false },
-  { name: 'Snowfield', sky: ['#8aa6d6', '#c6d6ee', '#eef4fb'], hills: ['#c9d8ea', '#a9bfd9', '#8aa5c6'], grass: '#f3f7fc', grassHi: '#ffffff', dirt: '#7d8aa0', dirt2: '#687489', dirt3: '#566074', dark: false },
-  { name: 'Night', sky: ['#0d1230', '#1e2a5a', '#3a4a7c'], hills: ['#2b3a66', '#1f2b50', '#16203d'], grass: '#4a8f7c', grassHi: '#66b39c', dirt: '#3c3f5c', dirt2: '#30324b', dirt3: '#25273b', dark: true },
-  { name: 'Dunes', sky: ['#e8a25c', '#f4cf8e', '#fbeccb'], hills: ['#e2b676', '#cf9a58', '#b87f44'], grass: '#f0d08a', grassHi: '#fae3ab', dirt: '#b98552', dirt2: '#a06f42', dirt3: '#875b35', dark: false },
-  { name: 'Storm', sky: ['#2a3140', '#4a5568', '#77839a'], hills: ['#56637a', '#414d62', '#2f394b'], grass: '#6f9a6a', grassHi: '#8bb586', dirt: '#55505a', dirt2: '#454049', dirt3: '#36323a', dark: true },
+  { name: 'Meadow', ridge: 'round', sky: ['#7fc4e8', '#bfe6e2', '#e8f2c8'], hills: ['#8cc79a', '#6fb184', '#4f9a70'], grass: '#8ed65a', grassHi: '#b4ec7a', dirt: '#8a6a4c', dirt2: '#72563d', dirt3: '#5f4732', dark: false },
+  { name: 'Sunset', ridge: 'mesa', sky: ['#3d3a78', '#d46a6a', '#ffc27a'], hills: ['#b0647a', '#8a4868', '#5e3358'], grass: '#e0a04a', grassHi: '#f2c06a', dirt: '#7a4a44', dirt2: '#643a38', dirt3: '#4e2c2e', dark: false },
+  { name: 'Snowfield', ridge: 'peaks', sky: ['#8aa6d6', '#c6d6ee', '#eef4fb'], hills: ['#c9d8ea', '#a9bfd9', '#8aa5c6'], grass: '#f3f7fc', grassHi: '#ffffff', dirt: '#7d8aa0', dirt2: '#687489', dirt3: '#566074', dark: false },
+  { name: 'Night', ridge: 'round', sky: ['#0d1230', '#1e2a5a', '#3a4a7c'], hills: ['#2b3a66', '#1f2b50', '#16203d'], grass: '#4a8f7c', grassHi: '#66b39c', dirt: '#3c3f5c', dirt2: '#30324b', dirt3: '#25273b', dark: true },
+  { name: 'Dunes', ridge: 'dunes', sky: ['#e8a25c', '#f4cf8e', '#fbeccb'], hills: ['#e2b676', '#cf9a58', '#b87f44'], grass: '#f0d08a', grassHi: '#fae3ab', dirt: '#b98552', dirt2: '#a06f42', dirt3: '#875b35', dark: false },
+  { name: 'Storm', ridge: 'jag', sky: ['#2a3140', '#4a5568', '#77839a'], hills: ['#56637a', '#414d62', '#2f394b'], grass: '#6f9a6a', grassHi: '#8bb586', dirt: '#55505a', dirt2: '#454049', dirt3: '#36323a', dark: true },
 ];
 
 /* --------------------------------------------------------------- missions */

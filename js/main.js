@@ -62,12 +62,14 @@
     }
   });
   window.addEventListener('keyup', e => { if (DUCK.has(e.code)) Game.setDuck(false); });
+  window.addEventListener('pagehide', () => { Game.saveRun(); Save.save(); });
   window.addEventListener('blur', () => { Game.setDuck(false); Game.aimCancel(); });
 
   window.addEventListener('resize', () => { Game.resize(); UI.checkRotate(); UI.applyUiScale(); UI.syncInset(); });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       if (UI.screen === null && !UI.modalOpen() && Game.state === 'play') UI.openPause();
+      Game.saveRun();
       Save.save();
       Sfx.suspend(true);
     } else Sfx.suspend(false);

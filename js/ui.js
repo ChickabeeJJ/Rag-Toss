@@ -18,7 +18,8 @@ const UI = (() => {
     Icons.hydrate();
     applyUiScale();
     Sfx.setSfx(Save.data.settings.sfx); Sfx.setMusic(Save.data.settings.music);
-    $('btnPlay').onclick = () => { click(); play(); };
+    $('btnPlay').onclick = () => { click(); play(Save.data.run ? { resume: true } : {}); };
+    $('btnNew').onclick = () => { click(); Save.clearRun(); play(); };
     $('btnShop').onclick = () => { click(); show('shop'); };
     $('btnBag').onclick = () => { click(); show('shop'); };
     $('btnUpgrades').onclick = () => { click(); show('upgrades'); };
@@ -108,7 +109,10 @@ const UI = (() => {
   }
   function renderHome() {
     const d = Save.data, b = d.best;
-    $('playSub').textContent = b.kos > 0 ? `BEST ${b.kos} KNOCKOUTS · STAGE ${b.stage}` : 'HOW FAR CAN YOU GET?';
+    const run = d.run;
+    $('playTitle').textContent = run ? 'CONTINUE' : 'PLAY';
+    $('playSub').textContent = run ? `STAGE ${run.stage} · ${run.kos} KNOCKOUTS` : b.kos > 0 ? `BEST ${b.kos} KNOCKOUTS · STAGE ${b.stage}` : 'HOW FAR CAN YOU GET?';
+    $('btnNew').classList.toggle('hidden', !run);
     $('homeBest').textContent = 'BEST ' + b.kos;
     $('shopSub').textContent = `${d.items.length} / ${ITEMS.length} FOUND`;
     const lv = UPGRADES.reduce((a, u) => a + Save.lvl(u.id), 0), mx = UPGRADES.reduce((a, u) => a + u.max, 0);
@@ -222,15 +226,15 @@ const UI = (() => {
     if (screen !== null || modalOpen || Game.state !== 'play' || Game.hold) return;
     Game.paused = true; Platform.gameplayStop(); Save.save();
     const r = Game.run;
-    const perks = Object.entries(r.perks).map(([id, n]) => `<span class="chip">${ic(PERK[id].icon)}${esc(PERK[id].name.toUpperCase())}${n > 1 ? ' x' + n : ''}</span>`).join('');
+    const perks = Object.entries(r.perks).map(([id, n]) => `<span class="chip"><span class="ic">${Icons.perk(id)}</span>${esc(PERK[id].name.toUpperCase())}${n > 1 ? ' x' + n : ''}</span>`).join('');
     openModal('pause', `<h2>PAUSED</h2><div class="sub">STAGE ${r.stage} · ${r.kos} KNOCKOUTS</div>
       ${perks ? `<div class="chips">${perks}</div>` : ''}${toggleRow()}
       <div class="actions"><button class="btn primary wide" id="mResume"><b>RESUME</b></button>
-      <button class="btn" id="mRestart">${ic('restart')}<b>RESTART</b></button><button class="btn" id="mHome">${ic('home')}<b>QUIT</b></button></div>`);
+      <button class="btn" id="mRestart">${ic('restart')}<b>RESTART</b></button><button class="btn" id="mHome">${ic('home')}<b>SAVE &amp; QUIT</b></button></div>`);
     wireToggles();
     $('mResume').onclick = () => { click(); resume(); };
-    $('mRestart').onclick = () => { click(); play({ tutorial: !Save.data.tutDone }); };
-    $('mHome').onclick = () => { click(); closeModal(true); show('home'); };
+    $('mRestart').onclick = () => { click(); Save.clearRun(); play({ tutorial: !Save.data.tutDone }); };
+    $('mHome').onclick = () => { click(); Game.saveRun(); closeModal(true); show('home'); toast('RUN SAVED. CONTINUE ANY TIME.', 'check'); };
   }
   function resume() {
     if (modalKind !== 'pause') return;
@@ -283,17 +287,34 @@ const UI = (() => {
   function openPerks(picks, stage) {
     Platform.gameplayStop();
     const r = Game.run;
-    const cards = picks.map(p => `<button class="perk" data-perk="${p.id}"><span class="perk-ic">${ic(p.icon)}</span><b>${esc(p.name.toUpperCase())}</b><p>${esc(p.text)}</p>${r.perks[p.id] ? `<small>YOU HAVE ${r.perks[p.id]}</small>` : '<small>NEW</small>'}</button>`).join('');
-    openModal('perks', `<h2 class="win">BOSS DOWN</h2><div class="sub">PICK ONE. IT LASTS UNTIL YOU ARE KNOCKED OUT.</div><div class="perk-row">${cards}</div><div class="sub">NEXT: STAGE ${stage}</div>`);
-    let armed = false;
-    setTimeout(() => { armed = true; }, 350);   // so a throw still held down can't pick one by accident
-    $('sheet').querySelectorAll('[data-perk]').forEach(b => {
-      b.onclick = () => {
-        if (!armed) return;
-        closeModal(true); Game.pickPerk(b.dataset.perk); Platform.gameplayStart();
-        cache.perks = null;
-      };
-    });
+    const cards = picks.map((p, i) => {
+      const kind = PERK_KIND[p.kind] || PERK_KIND.offense, have = r.perks[p.id] || 0;
+      const stack = have
+        ? `<div class="pk-stack"><span>OWNED x${have}</span><i>›</i><b>x${have + 1}</b></div>`
+        : '<div class="pk-stack new"><b>NEW</b></div>';
+      return `<button class="perk" data-perk="${p.id}" style="--c:${kind.color};--i:${i}">
+        <span class="pk-key"><kbd>${i + 1}</kbd></span>
+        <span class="pk-kind">${kind.name}</span>
+        <span class="pk-badge"><span class="pk-glow"></span><span class="pk-ic">${Icons.perk(p.id)}</span></span>
+        <b class="pk-name">${esc(p.name.toUpperCase())}</b>
+        <p class="pk-text">${esc(p.text)}</p>${stack}</button>`;
+    }).join('');
+    const owned = Object.entries(r.perks).map(([id, n]) => `<span class="pk-own" title="${esc(PERK[id].name)}">${Icons.perk(id)}${n > 1 ? `<b>${n}</b>` : ''}</span>`).join('');
+    openModal('perks', `<div class="pk-head"><small>STAGE ${stage - 1} CLEARED</small><h2 class="win">BOSS DOWN</h2><div class="sub">CHOOSE A PERK. IT LASTS UNTIL YOU ARE KNOCKED OUT.</div></div>
+      <div class="perk-row">${cards}</div>
+      <div class="pk-foot"><span>NEXT: STAGE ${stage}</span>${owned ? `<div class="pk-owned"><em>YOUR PERKS</em>${owned}</div>` : ''}</div>`);
+    let armed = false, chosen = false;
+    setTimeout(() => { armed = true; }, 450);   // so a throw still held down can't pick one by accident
+    const choose = el => {
+      if (!armed || chosen) return;
+      chosen = true; Sfx.perk();
+      $('sheet').classList.add('picked'); el.classList.add('chosen');
+      setTimeout(() => { closeModal(true); Game.pickPerk(el.dataset.perk); Platform.gameplayStart(); cache.perks = null; window.removeEventListener('keydown', keys); }, 380);
+    };
+    const keys = e => { const k = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 }[e.code]; if (k != null) { const el = $('sheet').querySelectorAll('[data-perk]')[k]; if (el) { e.stopPropagation(); choose(el); } } };
+    window.addEventListener('keydown', keys, true);
+    $('sheet').querySelectorAll('[data-perk]').forEach(b => { b.onclick = () => choose(b); });
+    Icons.hydrate($('sheet'));
   }
 
   function openResults(s) {
@@ -426,7 +447,7 @@ const UI = (() => {
     set('boss', boss ? boss.name : '', v => { $('bossBar').classList.toggle('hidden', !v); if (v) $('bossName').textContent = v; });
     if (boss) $('bossFill').style.transform = `scaleX(${clamp(boss.hp / boss.maxHp, 0, 1).toFixed(3)})`;
     const pkKey = Object.entries(r.perks).map(([k, n]) => k + n).join(',');
-    set('perks', pkKey, () => { $('perkRow').innerHTML = Object.entries(r.perks).map(([k, n]) => `<span title="${esc(PERK[k].name)}">${Icons.svg(PERK[k].icon)}${n > 1 ? `<b>${n}</b>` : ''}</span>`).join(''); });
+    set('perks', pkKey, () => { $('perkRow').innerHTML = Object.entries(r.perks).map(([k, n]) => `<span title="${esc(PERK[k].name)}">${Icons.perk(k)}${n > 1 ? `<b>${n}</b>` : ''}</span>`).join(''); });
   }
 
   function toast(text, icon = 'check', ms = 2400) {

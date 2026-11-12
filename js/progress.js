@@ -17,6 +17,7 @@ const Save = (() => {
     stats: { kills: 0, headshots: 0, ringouts: 0, bosses: 0, deflects: 0, earned: 0, crates: 0, combo5: 0, runs: 0, tricks: 0, throws: 0 },
     rank: 0,
     daily: { day: -1, list: [], bonus: false },
+    run: null,                 // a run left half-way, so it can be picked up again
     tutDone: false, seenSwap: false,
   });
   let data = fresh();
@@ -35,6 +36,7 @@ const Save = (() => {
         data.bag = data.bag.map(id => (id && data.items.includes(id) ? id : null));
         if (!data.bag.some(Boolean)) data.bag[0] = 'rock';
         if (typeof data.upgrades !== 'object' || !data.upgrades) data.upgrades = {};
+        if (!data.run || typeof data.run !== 'object' || !(data.run.stage >= 1) || typeof data.run.perks !== 'object') data.run = null;
       }
     } catch (e) { data = fresh(); }
     rollDaily();
@@ -42,6 +44,8 @@ const Save = (() => {
   function save() { try { Platform.setItem(KEY, JSON.stringify(data)); } catch (e) { /* ignore */ } }
   function reset() { data = fresh(); rollDaily(); save(); }
 
+  const setRun = r => { data.run = r; save(); };
+  const clearRun = () => { if (data.run) { data.run = null; save(); } };
   function addCoins(n) { data.coins = Math.max(0, data.coins + Math.round(n)); save(); }
 
   /* ------------------------------------------------------------------ bag */
@@ -153,7 +157,7 @@ const Save = (() => {
   }
 
   return {
-    load, save, reset, addCoins, owns, buyItem, equip, unequip, bagItems, nextItem, lvl, buyUpgrade, canAffordAny,
+    load, save, reset, setRun, clearRun, addCoins, owns, buyItem, equip, unequip, bagItems, nextItem, lvl, buyUpgrade, canAffordAny,
     track, claimMission, claimBonus, allClaimed, missionsReady, rollDaily, rankInfo, claimRanks, recordRun,
     get data() { return data; },
   };

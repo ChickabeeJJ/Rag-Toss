@@ -2,7 +2,7 @@
 
 A ragdoll throwing duel on floating islands. You stand on your island, the other ragdolls stand on theirs, and everybody throws things. Press anywhere, **pull back and let go** to throw. Every thrower is a **physical ragdoll that can also stand**: a verlet skeleton with mass, collision radii and one-way knee and elbow hinges, held up by muscle springs. Nothing about a hit is scripted. A throw pushes the bone it lands on, the muscles go soft for a moment, the body bends around the blow and the feet shuffle to catch up. Push the hips past the edge of the island or tip the trunk too far and the body lets go and falls limp, either onto the island (it gets back up) or off it for a **ring-out**.
 
-You don't throw arrows. You throw **stuff**: a rubber chicken, a bowling ball, a beehive, an anvil. There are **18 things to throw**, each with its own gimmick, and you carry three of them into a run. A run never ends on its own: foes keep coming, every 8 knockouts a **boss** walks in, and every boss you beat lets you pick a **perk** before the next stage. Coins from a run buy more stuff and permanent upgrades, so the next run goes further.
+You don't throw arrows. You throw **stuff**: a rubber chicken, a bowling ball, a beehive, an anvil. There are **26 things to throw**, each with its own gimmick, and you carry three of them into a run. A run never ends on its own: foes keep coming, every 8 knockouts a **boss** walks in, and every boss you beat lets you pick a **perk** before the next stage. Coins from a run buy more stuff and permanent upgrades, so the next run goes further.
 
 It's pure HTML5 and vanilla JS, with no build step and no dependencies. It has the same structure as Element Rag and Slo-Mo: all art is drawn procedurally, every sound is synthesized, and the CrazyGames SDK v3 is wrapped in `js/platform.js`.
 
@@ -27,18 +27,26 @@ The very first launch boots **straight into the tutorial**: a four-step, skippab
 | --- | --- | --- |
 | Rock | No tricks. Cheap to throw | free |
 | Rubber Chicken | Bounces four times off islands and foes; every bounce adds 50% damage | 150 |
+| Cream Pie | Splats in the face and blinds the foe: their throws go wildly off target for five seconds | 230 |
 | Boomerang | Cuts through everyone, turns round and cuts through them again. Catch it for the stamina back | 320 |
+| Throwing Knife | Fast and flat. A headshot hits four times as hard. Sticks where it lands | 400 |
 | Cactus | Sticks in and keeps hurting for five seconds; it stacks | 480 |
+| Hot Sauce | Smashes open and sets the foe on fire for five seconds | 560 |
 | Snowball | Freezes a foe solid. The next hit shatters the ice for double damage | 640 |
+| Slime | Sticky goo that halves how fast a foe winds up and throws, for six seconds | 740 |
 | Bowling Ball | Ploughs through bodies, smashes lids and helmets, sends nearly anyone flying | 850 |
+| Frying Pan | CLANG. Stuns a foe for a second and a half and smashes any lid they hold | 980 |
 | Cutlery | Three forks in a fan, and they stick | 1100 |
+| Boxing Glove | A spring-loaded punch. Short range, almost instant, with a huge knockback | 1250 |
 | Dynamite | Explodes on anything it touches. The blast ignores lids | 1400 |
+| Beach Ball | Big, bouncy and floaty. Whatever it hits is thrown straight up | 1600 |
 | Beehive | Cracks open into six bees that each chase a foe | 1800 |
 | Plunger | Sticks on and yanks the foe towards you, usually off their island | 2200 |
 | Firework | Ignores gravity, keeps speeding up, bursts and sets foes on fire | 2700 |
 | Magnet | Curves towards the nearest foe, rips off helmets and lids, makes them fumble | 3200 |
+| Glue Bomb | Sticks to whatever it hits, then goes off a second and a half later | 3500 |
 | Anvil | The moment it's above a foe it stops dead and drops straight down | 3800 |
-| Pinata | Pops at the top of its arc and rains nine candies | 4400 |
+| Pinata | A donkey that pops at the top of its arc and rains nine candies | 4400 |
 | Storm Jar | Smashes into lightning that jumps to every foe in reach and stuns them | 5200 |
 | Pocket Hole | Opens a hole that drags foes and their throws in, then spits everyone out | 6200 |
 | Golden Duck | A knockout with the duck pays triple coins. Bounces once | 7500 |
@@ -62,14 +70,24 @@ A new kind shows up in each of the first seven stages. Every foe winds up before
 
 From stage 3 some foes wear a pot that soaks one headshot, and from stage 4 some islands travel up and down.
 
-**Bosses** are crowned, heavy enough that they never lose their footing, throw in bursts and whistle up help: King Chuck, Madame Lob, Fastball Frank, Sir Lidsalot, Baron von Float and The Wall, then round again. When a boss falls, its reinforcements fall with it, you get a quarter of your health back, the sky changes and you pick one of three perks.
+**Bosses** are crowned and heavy enough that they never lose their footing, and each one fights differently. When a boss falls, its reinforcements fall with it, you get a quarter of your health back, the sky changes and you pick one of three perks.
+
+| Boss | Pattern |
+| --- | --- |
+| King Chuck | A fan of three rocks, slowly |
+| Madame Lob | Two bombs per throw, with a red circle on the floor showing where each one will land |
+| Fastball Frank | Very fast pitches after a long wind-up with a dashed aim line, then he is winded for a second and a half |
+| Sir Lidsalot | Hides behind five lids. Break them all and he enrages and throws faster |
+| Baron von Float | His island bobs high and low and he throws a fan of five darts. Pop his six balloons to drop him |
+| The Wall | Slow barrels, and he shrugs off light throws: bring something heavy or explosive |
 
 ## Why you play another run
 
 - **The run itself escalates.** More foes at once (up to four), tougher and more accurate every stage, a new foe type each stage, a boss every 8 knockouts and a new sky after each one.
-- **Perks.** Fourteen of them, stackable, offered three at a time after every boss and kept until you're knocked out: Heavy Hands, Second Helping (throws come out twice), Loud Exit (knocked-out foes explode), Hot Hands, Springy, Snack Break and so on.
+- **Perks.** Fourteen of them with their own icons, in four kinds (offence, survival, utility, wealth), stackable, offered three at a time after every boss (click, or press 1, 2 or 3) and kept until you're knocked out: Heavy Hands, Second Helping (throws come out twice), Loud Exit (knocked-out foes explode), Hot Hands, Springy, Snack Break and so on.
+- **Runs are saved.** Quitting from the pause menu (or closing the tab) keeps your stage, knockouts, perks and health. The home screen then says CONTINUE, with a smaller button to start over. Dying ends the saved run.
 - **Coins.** Earned per knockout, multiplied by your streak, plus boss bonuses. They're banked as you earn them, so quitting a run keeps them.
-- **Stuff and upgrades.** 18 items and eight permanent upgrades: Thick Skull (health), Big Lungs (stamina), Second Breath (refill), Strong Arm (damage), Quick Hands (time between throws), Good Eye (longer aim line), Padding (damage taken), and Deep Pockets (coins).
+- **Stuff and upgrades.** 26 items and eight permanent upgrades: Thick Skull (health), Big Lungs (stamina), Second Breath (refill), Strong Arm (damage), Quick Hands (time between throws), Good Eye (longer aim line), Padding (damage taken), and Deep Pockets (coins).
 - **The results screen always points at the next thing.** It shows the next item you don't own with a bar for how close you are, flags affordable upgrades, and shows your rank bar.
 - **Ranks.** Lifetime knockouts move you through eleven ranks, from Butterfingers to The Last Throw. Each rank-up pays coins.
 - **Missions.** Three at a time from a pool of ten, refreshed at 00:00 UTC, with a 250-coin chest for finishing all three. There is no login reward.
