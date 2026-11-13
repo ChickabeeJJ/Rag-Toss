@@ -12,7 +12,7 @@ const Save = (() => {
     items: ['rock'],
     bag: ['rock', null, null],
     upgrades: {},
-    settings: { sfx: true, music: true, shake: true },
+    settings: { sfx: true, music: true, shake: true, accent: 'volt' },
     best: { kos: 0, stage: 1, streak: 0 },
     stats: { kills: 0, headshots: 0, ringouts: 0, bosses: 0, deflects: 0, earned: 0, crates: 0, combo5: 0, runs: 0, tricks: 0, throws: 0 },
     rank: 0,

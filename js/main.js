@@ -49,12 +49,14 @@
       else if (!UI.modalOpen()) UI.openPause();
       return;
     }
+    // in play the keys belong to the game: a button that kept focus would swallow Space or Enter and draw a focus ring
+    if (inPlay() && document.activeElement && document.activeElement !== document.body && document.activeElement.blur) document.activeElement.blur();
     if (DUCK.has(e.code)) { if (inPlay()) { e.preventDefault(); Game.setDuck(true); } return; }
     if (!inPlay() || e.repeat) return;
     switch (e.code) {
-      case 'Digit1': case 'Numpad1': Game.selectSlot(0); break;
-      case 'Digit2': case 'Numpad2': Game.selectSlot(1); break;
-      case 'Digit3': case 'Numpad3': Game.selectSlot(2); break;
+      case 'Digit1': case 'Numpad1': Game.selectNth(0); break;
+      case 'Digit2': case 'Numpad2': Game.selectNth(1); break;
+      case 'Digit3': case 'Numpad3': Game.selectNth(2); break;
       case 'Digit4': case 'Numpad4': case 'KeyF': Game.selectSlot(3); break;
       case 'KeyQ': Game.cycleSlot(-1); break;
       case 'KeyE': case 'Tab': e.preventDefault(); Game.cycleSlot(1); break;

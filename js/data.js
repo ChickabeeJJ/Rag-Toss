@@ -221,7 +221,7 @@ const STYLE = {
 /* -------------------------------------------------------------- characters
    Who you throw as. Pure looks: a colour and a hat, bought with coins. */
 const CHARACTERS = [
-  { id: 'rookie', name: 'Rookie', price: 0, body: '#f7f2e7', shade: '#d3c8b3', accent: '#c8ff2e', hat: null },
+  { id: 'rookie', name: 'Rookie', price: 0, body: '#f7f2e7', shade: '#d3c8b3', accent: null, hat: null },   // the Rookie's headband takes the theme colour
   { id: 'cowboy', name: 'Cowboy', price: 300, body: '#efd9b4', shade: '#cdb088', accent: '#c4642a', hat: 'cowboy' },
   { id: 'viking', name: 'Viking', price: 600, body: '#e9dcc7', shade: '#c9b99f', accent: '#5a86b8', hat: 'viking' },
   { id: 'chef', name: 'Chef', price: 900, body: '#ffffff', shade: '#dcdfe8', accent: '#e2434b', hat: 'chef' },
@@ -231,3 +231,30 @@ const CHARACTERS = [
   { id: 'royal', name: 'Royal', price: 5000, body: '#fff2c4', shade: '#e6d08a', accent: '#ffc933', hat: 'tophat' },
 ];
 const CHAR = Object.fromEntries(CHARACTERS.map(c => [c.id, c]));
+
+/* ------------------------------------------------------------ theme colour
+   The accent the whole interface is drawn in. Picked in settings; everything
+   in the CSS reads it from custom properties, the canvas reads Theme.acc. */
+const ACCENTS = [
+  { id: 'volt', name: 'Volt', hex: '#c8ff2e' },
+  { id: 'orange', name: 'Orange', hex: '#ff9a3c' },
+  { id: 'pink', name: 'Pink', hex: '#ff4f93' },
+  { id: 'red', name: 'Red', hex: '#ff5a4d' },
+  { id: 'purple', name: 'Purple', hex: '#a98bff' },
+  { id: 'cyan', name: 'Cyan', hex: '#35e0ff' },
+  { id: 'mint', name: 'Mint', hex: '#3dffb0' },
+  { id: 'white', name: 'White', hex: '#f2f4fa' },
+];
+const Theme = {
+  id: 'volt', acc: '#c8ff2e',
+  set(id) {
+    const a = ACCENTS.find(q => q.id === id) || ACCENTS[0];
+    this.id = a.id; this.acc = a.hex;
+    const n = parseInt(a.hex.slice(1), 16), st = document.documentElement.style;
+    st.setProperty('--acc', a.hex);
+    st.setProperty('--acc-hi', mixHex(a.hex, '#ffffff', 0.35));
+    st.setProperty('--acc-ink', mixHex(a.hex, '#000000', 0.9));
+    st.setProperty('--acc-rgb', `${n >> 16}, ${(n >> 8) & 255}, ${n & 255}`);
+    st.setProperty('--acc-dim', mixHex('#161a25', a.hex, 0.16));
+  },
+};

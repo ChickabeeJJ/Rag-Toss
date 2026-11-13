@@ -17,7 +17,7 @@ const UI = (() => {
   function init() {
     Icons.hydrate();
     applyUiScale();
-    Sfx.setSfx(Save.data.settings.sfx); Sfx.setMusic(Save.data.settings.music);
+    Sfx.setSfx(Save.data.settings.sfx); Sfx.setMusic(Save.data.settings.music); Theme.set(Save.data.settings.accent);
     $('btnPlay').onclick = () => { click(); play(Save.data.run ? { resume: true } : {}); };
     $('btnNew').onclick = () => { click(); Save.clearRun(); play(); };
     $('btnShop').onclick = () => { click(); show('shop'); };
@@ -86,6 +86,7 @@ const UI = (() => {
   function play(opts = {}) {
     closeModal(true);
     show(null);
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // PLAY must not keep the keyboard
     coachKind = null; $('coach').classList.add('hidden');
     Game.start(opts);
     Sfx.ensure(); Sfx.startMusic();
@@ -136,7 +137,7 @@ const UI = (() => {
     const dpr = Math.min(3, window.devicePixelRatio || 1), cv = document.createElement('canvas');
     cv.width = cv.height = Math.round(size * dpr); cv.style.width = cv.style.height = size + 'px';
     const g = cv.getContext('2d'); g.scale(dpr, dpr);
-    const r = new Rag({ x: 0, y: 0, facing: 1, isPlayer: true, body: c.body, shade: c.shade, accent: c.accent, hat: c.hat });
+    const r = new Rag({ x: 0, y: 0, facing: 1, isPlayer: true, body: c.body, shade: c.shade, accent: c.accent || Theme.acc, hat: c.hat });
     r.aim = -0.3; r.snap();
     const k = size / 185; g.translate(size * 0.46, size * 0.93); g.scale(k, k); r.draw(g, 0.4);
     return cv;
@@ -304,14 +305,22 @@ const UI = (() => {
   }
 
   function openSettings() {
-    openModal('settings', `<h2>SETTINGS</h2>${toggleRow()}
+    const sw = ACCENTS.map(a => `<button class="sw${a.id === Theme.id ? ' on' : ''}" data-acc="${a.id}" style="--s:${a.hex}" title="${a.name}" aria-label="${a.name}"></button>`).join('');
+    openModal('settings', `<h2>SETTINGS</h2>${toggleRow()}<div class="set-label">THEME COLOUR</div><div class="swatches">${sw}</div>
       <div class="actions"><button class="btn primary wide" id="mDone"><b>DONE</b></button><button class="btn wide danger" id="mReset"><b>RESET PROGRESS</b></button></div>`);
     wireToggles();
+    $('sheet').querySelectorAll('[data-acc]').forEach(b => {
+      b.onclick = () => {
+        Save.data.settings.accent = b.dataset.acc; Save.save(); Theme.set(b.dataset.acc); click();
+        $('sheet').querySelectorAll('[data-acc]').forEach(o => o.classList.toggle('on', o === b));
+        if (Game.player && !CHAR[Save.data.char].accent) Game.player.rag.accent = Theme.acc;
+      };
+    });
     $('mDone').onclick = () => { click(); closeModal(); };
     let armed = false;
     $('mReset').onclick = () => {
       if (!armed) { armed = true; $('mReset').innerHTML = '<b>TAP AGAIN TO WIPE EVERYTHING</b>'; Sfx.deny(); return; }
-      Save.reset(); Game.toMenu(); closeModal(); toast('PROGRESS RESET', 'restart');
+      Save.reset(); Theme.set(Save.data.settings.accent); Game.toMenu(); closeModal(); toast('PROGRESS RESET', 'restart');
     };
   }
 
@@ -425,18 +434,21 @@ const UI = (() => {
   function buildSlots() {
     const el = $('slots');
     el.innerHTML = '';
+    let shown = 0;
     Game.bag.forEach((id, i) => {
       if (!id) return;
+      const key = ++shown;
       const b = document.createElement('button');
       b.className = 'hslot'; b.dataset.i = i;
       b.appendChild(ItemArt.iconEl(id, 44));
-      b.insertAdjacentHTML('beforeend', `<kbd>${i + 1}</kbd><small>${ic('bolt')}<span>${Math.round(Game.staCost(ITEM[id]))}</span></small>`);
-      b.addEventListener('pointerdown', e => { e.stopPropagation(); Game.selectSlot(i); });
+      b.insertAdjacentHTML('beforeend', `<kbd>${key}</kbd><small>${ic('bolt')}<span>${Math.round(Game.staCost(ITEM[id]))}</span></small>`);
+      b.tabIndex = -1;
+      b.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); Game.selectSlot(i); });
       el.appendChild(b);
     });
     // a temporary weapon from a crate always sits at the right-hand end of the row
-    el.insertAdjacentHTML('beforeend', '<button class="hslot bonus hidden" id="slotBonus"><span class="hs-ic"></span><kbd>4</kbd><b id="bonusN">3</b><small>FREE</small></button>');
-    $('slotBonus').addEventListener('pointerdown', e => { e.stopPropagation(); Game.selectSlot(3); });
+    el.insertAdjacentHTML('beforeend', '<button class="hslot bonus hidden" id="slotBonus" tabindex="-1"><span class="hs-ic"></span><kbd>4</kbd><b id="bonusN">3</b><small>FREE</small></button>');
+    $('slotBonus').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); Game.selectSlot(3); });
     Icons.hydrate(el);
     cache.slot = null; cache.bonus = undefined;
   }

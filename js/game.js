@@ -62,7 +62,7 @@ const Game = (() => {
     wall = new Plat(372, HOME_Y - 66, 44, 'wall'); wall.h = 66;
     plats.push(home, wall);
     const who = CHAR[Save.data.char] || CHAR.rookie;
-    const rag = new Rag({ x: HOME_X, y: HOME_Y, facing: 1, isPlayer: true, body: who.body, shade: who.shade, accent: who.accent, hat: who.hat, plat: home, weight: 1.3, steady: true });
+    const rag = new Rag({ x: HOME_X, y: HOME_Y, facing: 1, isPlayer: true, body: who.body, shade: who.shade, accent: who.accent || Theme.acc, hat: who.hat, plat: home, weight: 1.3, steady: true });
     player = { rag, hp: 100, maxHp: 100, sta: 100, maxSta: 100, cd: 0, staWait: 0, slot: 0, bonus: null, dead: false, inv: 0 };
     refreshStats(true);
     selectFirstSlot();
@@ -685,7 +685,7 @@ const Game = (() => {
     const rag = f.rag, def = s.def, id = def.id;
     let head = hit.part === 'head' || (id === 'anvil' && s.st === 1);
     let mult = head ? 2 * (1 + 0.5 * pk('eye')) : hit.part === 'body' ? 1 : 0.75;
-    if (!head && !f.dummy && !run.tut && Math.random() < 0.09 + 0.03 * Save.lvl('crit')) { mult *= 1.8; hitStop = Math.max(hitStop, 0.05); Fx.text(hit.x, hit.y - 56, 'CRIT!', '#c8ff2e', 21, -90); Fx.ring(hit.x, hit.y, 6, 54, 0.22, '#c8ff2e', 4); }
+    if (!head && !f.dummy && !run.tut && Math.random() < 0.09 + 0.03 * Save.lvl('crit')) { mult *= 1.8; hitStop = Math.max(hitStop, 0.05); Fx.text(hit.x, hit.y - 56, 'CRIT!', Theme.acc, 21, -90); Fx.ring(hit.x, hit.y, 6, 54, 0.22, Theme.acc, 4); }
     if (head && rag.helmet) {
       rag.helmet = false;
       Fx.chunk('pot', rag.head.x, rag.head.y - 10, rand(80, 260), -rand(300, 460), 16 * rag.s, 1.5); Sfx.clang();
@@ -1604,7 +1604,7 @@ const Game = (() => {
     const def = ITEM[currentItemId()];
     const can = usingBonus() || player.sta >= staCost(def);
     const full = p >= 0.985;
-    const col = !can ? '#9aa1b3' : full ? '#ff5d73' : mixHex('#ffffff', '#c8ff2e', p);
+    const col = !can ? '#9aa1b3' : full ? '#ff5d73' : mixHex('#ffffff', Theme.acc, p);
     aim.col = col; aim.ux = ux; aim.uy = uy; aim.kx = kx; aim.ky = ky;
     const appear = Math.min(1, aim.t / 0.12);
     // press ripple
@@ -1766,6 +1766,8 @@ const Game = (() => {
     get itemId() { return currentItemId(); }, get usingBonus() { return usingBonus(); }, get staFlash() { return staFlash; }, get tutorial() { return !!(run && run.tut); }, get themeDark() { return theme().dark; },
     get foes() { return foes; }, get shots() { return shots; }, get crates() { return crates; }, get time() { return time; },
     get bag() { return bag(); },
+    // the hotbar closes up gaps in the bag, so key 2 is always the second thing shown
+    selectNth(n) { const b = bag(), idx = b.map((id, i) => (id ? i : -1)).filter(i => i >= 0); if (idx[n] != null) selectSlot(idx[n]); },
     get fever() { return run ? clamp(run.fever / FEVER_T, 0, 1) : 0; }, get stand() { return run && !player.dead ? clamp(run.stand / STAND_T, 0, 1) : 0; }, get feverEvery() { return FEVER_EVERY; },
     get coinPing() { return coinPing; }, setCoinTarget(x, y) { coinTarget = { x, y }; },
     _spawn: spawnFoe, _crate: spawnCrate, _gold: spawnGold, _bump: bump, __plats: () => plats,
