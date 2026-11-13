@@ -227,7 +227,7 @@ kbd.big { font-size: 18px; padding: 9px 12px; border-radius: 6px; box-shadow: in
 body.result-open #hud { display: none; }
 #hud button { pointer-events: auto; }
 .stage-chip { position: absolute; top: calc(12px + var(--safe-t)); left: calc(14px + var(--safe-l)); display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 6px; clip-path: var(--cut-m); background: var(--panel); }
-.chip-num { display: grid; place-items: center; min-width: 38px; height: 38px; padding: 0 6px; clip-path: polygon(11px 0, 100% 0, 100% 100%, 0 100%, 0 11px); background: var(--acc); color: var(--acc-ink); font-weight: 900; font-size: 18px; }
+.chip-num { display: grid; place-items: center; min-width: 38px; height: 38px; padding: 0 6px; clip-path: polygon(7px 0, 100% 0, 100% 100%, 0 100%, 0 7px); background: var(--acc); color: var(--acc-ink); font-weight: 900; font-size: 18px; }
 .chip-body b { display: block; font-weight: 900; font-size: 15px; letter-spacing: 0.04em; white-space: nowrap; }
 .chip-sub { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
 .dots { display: flex; gap: 3px; }
