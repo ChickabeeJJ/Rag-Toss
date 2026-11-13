@@ -45,27 +45,40 @@ const Icons = (() => {
     swap: `<path d="M4 8.5h13M13 4.5l4 4-4 4M20 15.5H7M11 11.5l-4 4 4 4" ${S} stroke-width="2.4"/>`,
   };
 
-  /* ---- the perk icons: full colour, drawn on a 64x64 grid with one outline style ---- */
-  const K = '#1b1722';
-  const O = 'stroke="none"';        // no outlines: shapes are told apart by colour
+  /* ---- line icons: one thin stroke, no fills, no outlines. Used for perks and upgrades. ---- */
   const star = (cx, cy, n, r1, r2, rot = 0) => { let d = ''; for (let i = 0; i < n * 2; i++) { const r = i % 2 ? r2 : r1, a = rot + i * Math.PI / n; d += (i ? 'L' : 'M') + (cx + Math.cos(a) * r).toFixed(1) + ' ' + (cy + Math.sin(a) * r).toFixed(1); } return d + 'Z'; };
-  const PERK_ICONS = {
-    heavy: `<rect x="17" y="50" width="30" height="10" rx="3" fill="#3a6bff" ${O}/><path d="M13 28c0-6 4-10 9-10 3 0 5 1 6 3 1-3 4-5 7-5s6 2 7 5c1-2 3-3 6-3 5 0 8 4 8 10v14c0 6-4 10-9 10H22c-5 0-9-4-9-10z" fill="#ff9a3c" ${O}/><path d="M23 28v12M32 26v12M41 28v12" stroke="#b5561a" stroke-width="2.6" stroke-linecap="round"/><path d="M14 44c-1-4 2-7 6-7h16c4 0 6 3 5 6s-3 5-7 5H20c-3 0-5-1-6-4z" fill="#ffc47a" ${O}/><path d="M18 24c1-2 3-3 5-3M30 22c1-1 3-2 4-2" stroke="#fff" stroke-width="2.6" stroke-linecap="round" fill="none" opacity=".8"/><path d="M52 10l6-4M56 20l6-1M54 30l6 3" stroke="#ff5d3c" stroke-width="3" stroke-linecap="round"/>`,
-    twin: `<circle cx="24" cy="38" r="16" fill="#a9bbff" ${O}/><circle cx="40" cy="30" r="17" fill="#5b7cff" ${O}/><ellipse cx="34" cy="22" rx="6" ry="3" fill="#fff" opacity=".6" transform="rotate(-30 34 22)"/><path d="M50 8l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#ffe14d" ${O.replace('3','2')}/><path d="M40 24v12M34 30h12" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/>`,
-    skin: `<path d="M32 56C8 40 4 24 15 15c6-4 13-1 17 5 4-6 11-9 17-5 11 9 7 25-17 41z" fill="#ff5d73" ${O}/><path d="M16 22c2-4 6-5 10-3" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".7" fill="none"/><rect x="27" y="22" width="10" height="24" rx="2.5" fill="#fff" ${O.replace('3','2.4')}/><rect x="20" y="29" width="24" height="10" rx="2.5" fill="#fff" ${O.replace('3','2.4')}/><rect x="28.6" y="23.6" width="6.8" height="20.8" rx="1.4" fill="#fff"/>`,
-    lungs: `<rect x="28" y="6" width="8" height="22" rx="4" fill="#d6e0ff" ${O}/><path d="M28 24C13 24 7 44 9 54c2 5 16 5 20-5z" fill="#6fc0ff" ${O}/><path d="M36 24c15 0 21 20 19 30-2 5-16 5-20-5z" fill="#6fc0ff" ${O}/><path d="M26 28c-5 3-8 9-9 16M38 28c5 3 8 9 9 16" stroke="#fff" stroke-width="2.6" stroke-linecap="round" fill="none" opacity=".75"/><path d="M12 50c3 1 6 1 9-1M43 49c3 2 6 2 9 1" stroke="#fff" stroke-width="2" stroke-linecap="round" fill="none" opacity=".6"/>`,
-    leech: `<path d="M32 22c-9-7-22 0-22 15 0 13 9 23 15 23 3 0 5-1 7-1s4 1 7 1c6 0 15-10 15-23 0-15-13-22-22-15z" fill="#ff4d5e" ${O}/><path d="M32 22c0-6 2-11 6-14" fill="none" stroke="#6b4a2a" stroke-width="3.6" stroke-linecap="round"/><path d="M38 12c6-5 14-3 15 2-5 4-12 3-15-2z" fill="#4be08a" ${O.replace('3','2.4')}/><path d="M17 33c0-5 3-8 7-9" stroke="#fff" stroke-width="3.4" stroke-linecap="round" fill="none" opacity=".75"/><circle cx="48" cy="44" r="7" fill="#ffd9a0" ${O.replace('3','2.2')}/><path d="M45 44h6M48 41v6" stroke="#e2434b" stroke-width="2.4" stroke-linecap="round"/>`,
-    eye: `<path d="M3 32C11 17 21 11 32 11s21 6 29 21C53 47 43 53 32 53S11 47 3 32z" fill="#fff" ${O}/><circle cx="32" cy="32" r="13" fill="#4fa8ff" ${O}/><circle cx="32" cy="32" r="6.4" fill="${K}"/><circle cx="28" cy="27" r="3.2" fill="#fff"/><path d="M32 4v9M32 51v9M4 32h8M52 32h8" stroke="#ff4a5e" stroke-width="3.4" stroke-linecap="round"/>`,
-    pop: `<path d="${star(32, 32, 10, 29, 16, -0.2)}" fill="#ff9a3c" ${O}/><path d="${star(32, 32, 10, 21, 12, 0.1)}" fill="#ffd23a" ${O.replace('3','2.4')}/><circle cx="32" cy="32" r="8.5" fill="#fff6c8" ${O.replace('3','2.4')}/><path d="M28 30h2M34 30h2M28.5 35.5c2 2 5 2 7 0" stroke="${K}" stroke-width="2.4" stroke-linecap="round" fill="none"/>`,
-    big: `<circle cx="32" cy="32" r="19" fill="#ffb347" ${O}/><ellipse cx="25" cy="23" rx="7" ry="3.4" fill="#fff" opacity=".55" transform="rotate(-35 25 23)"/><text x="32" y="40" text-anchor="middle" font-family="Rubik,sans-serif" font-weight="900" font-size="23" fill="${K}">XL</text><path d="M8 20V8h12M44 8h12v12M56 44v12H44M20 56H8V44" fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/>`,
-    crate: `<ellipse cx="32" cy="16" rx="12" ry="14" fill="#ff7a3a" ${O}/><ellipse cx="27" cy="11" rx="3.4" ry="5.4" fill="#fff" opacity=".55" transform="rotate(-20 27 11)"/><path d="M29 29h6l-3 4z" fill="#ff7a3a" ${O.replace('3','2')}/><path d="M32 33v7" stroke="#fff" stroke-width="2.4"/><rect x="14" y="40" width="36" height="20" rx="3" fill="#c79a62" ${O}/><path d="M14 46h36M14 54h36" stroke="#8a6236" stroke-width="2.4"/><path d="M16 42l32 16M48 42L16 58" stroke="#8a6236" stroke-width="2.6" stroke-linecap="round"/><text x="32" y="55" text-anchor="middle" font-family="Rubik,sans-serif" font-weight="900" font-size="15" fill="#fff">?</text>`,
-    rich: `<ellipse cx="32" cy="50" rx="20" ry="8" fill="#d49a1a" ${O}/><path d="M12 50v-8c0 4.4 9 8 20 8s20-3.6 20-8v8" fill="#f0b82e" ${O}/><ellipse cx="32" cy="40" rx="20" ry="8" fill="#e8a822" ${O}/><path d="M12 40v-8c0 4.4 9 8 20 8s20-3.6 20-8v8" fill="#ffd24a" ${O}/><ellipse cx="32" cy="30" rx="20" ry="8" fill="#ffd24a" ${O}/><ellipse cx="32" cy="30" rx="13" ry="4.6" fill="none" stroke="#c98a12" stroke-width="2.4"/><path d="M22 28c3-2 7-3 11-3" stroke="#fff" stroke-width="2.6" stroke-linecap="round" fill="none" opacity=".8"/><path d="M50 8l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#fff6c8" ${O.replace('3','2')}/>`,
-    shove: `<path d="M8 14l18 18L8 50h12l18-18L20 14z" fill="#ff5d3c" ${O}/><path d="M30 14l18 18-18 18h12l18-18L42 14z" fill="#ff9a3c" ${O}/><path d="M12 22l9 9" stroke="#fff" stroke-width="2.6" stroke-linecap="round" opacity=".7"/><path d="M34 22l9 9" stroke="#fff" stroke-width="2.6" stroke-linecap="round" opacity=".7"/><path d="M4 56h14M4 8h10" stroke="${K}" stroke-width="3" stroke-linecap="round" opacity=".5"/>`,
-    hot: `<path d="M32 4C38 16 54 22 51 40 49 53 40 60 32 60 22 60 13 53 13 41 13 31 21 27 22 16 27 21 29 18 32 4z" fill="#ff4a2a" ${O}/><path d="M32 22c4 8 13 11 11 22-1 8-6 12-11 12s-10-4-11-11c-1-7 6-10 7-16 2 3 3 2 4-7z" fill="#ff9a3c" ${O.replace('3','2.4')}/><path d="M32 38c3 5 7 7 6 13-1 4-3 6-6 6s-6-2-6-6c0-5 4-6 6-13z" fill="#ffe14d" ${O.replace('3','2.2')}/><path d="M28 50c0 3 1 4 4 4" stroke="#fff" stroke-width="2.4" stroke-linecap="round" fill="none"/>`,
-    spring: `<rect x="12" y="52" width="40" height="7" rx="3" fill="#8b94a8" ${O}/><rect x="12" y="5" width="40" height="7" rx="3" fill="#8b94a8" ${O}/><path d="M16 49L48 43L16 37L48 31L16 25L48 19L16 13" fill="none" stroke="#3fe0a2" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 47l14-2.6M20 35l14-2.6M20 23l14-2.6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" opacity=".65"/>`,
-    cheap: `<path d="M12 56C8 30 24 8 54 6c-2 24-16 44-42 50z" fill="#b8e4ff" ${O}/><path d="M12 56C26 40 38 26 52 8" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/><path d="M24 44c2-5 6-9 12-11M30 36c0-5 2-8 6-11M20 50c4-1 9-2 13-5" stroke="#5aa8e0" stroke-width="2.2" stroke-linecap="round" fill="none"/><path d="M46 44l7 8M54 44l-7 8" stroke="none"/><path d="M42 50h14M49 43v14" stroke="none"/>`,
+  const FIST = '<path d="M13 24v-5a3.2 3.2 0 0 1 6.4 0v-1.4a3.2 3.2 0 0 1 6.4 0v1.4a3.2 3.2 0 0 1 6.4 0v1.8a3.2 3.2 0 0 1 6.4 0V31c0 7-5.5 12-12 12h-2.5C16.5 43 13 38.5 13 33z"/><path d="M19.4 20v7M25.8 18.4v8.6M32.2 20v7"/>';
+  const HEART = '<path d="M24 41S8 31.5 8 20.5A8.5 8.5 0 0 1 24 16a8.5 8.5 0 0 1 16 4.5C40 31.5 24 41 24 41z"/>';
+  const BOLT = '<path d="M26 6 11 27h11l-2 15 17-23H26z"/>';
+  const LINE = {
+    // perks
+    heavy: FIST,
+    twin: '<circle cx="19" cy="24" r="10"/><circle cx="29" cy="24" r="10"/>',
+    skin: HEART + '<path d="M24 20.5v9M19.5 25h9"/>',
+    lungs: '<path d="M24 8v14M24 22l-5 5M24 22l5 5"/><path d="M19 22c-7 0-10 9-10 16 0 3 8 3 10-2z"/><path d="M29 22c7 0 10 9 10 16 0 3-8 3-10-2z"/>',
+    leech: '<path d="M24 15c-6-4-14 0-14 9 0 9 6 17 11 17 2 0 2-1 3-1s1 1 3 1c5 0 11-8 11-17 0-9-8-13-14-9z"/><path d="M24 15c0-4 1-7 4-9"/>',
+    eye: '<path d="M4 24c5-9 12-13 20-13s15 4 20 13c-5 9-12 13-20 13S9 33 4 24z"/><circle cx="24" cy="24" r="6"/>',
+    pop: `<path d="${star(24, 24, 8, 19, 11, -0.2)}"/>`,
+    big: '<rect x="17" y="17" width="14" height="14" rx="2"/><path d="M8 17V8h9M31 8h9v9M40 31v9h-9M17 40H8v-9"/>',
+    crate: '<rect x="8" y="21" width="32" height="19" rx="2"/><path d="M6 21h36v-5H6zM24 16v24"/><path d="M24 16c-3-6-9-6-9-2.5s6 2.5 9 2.5zM24 16c3-6 9-6 9-2.5s-6 2.5-9 2.5z"/>',
+    rich: '<ellipse cx="24" cy="15" rx="12" ry="5"/><path d="M12 15v8c0 2.8 5.4 5 12 5s12-2.2 12-5v-8M12 23v8c0 2.8 5.4 5 12 5s12-2.2 12-5v-8"/>',
+    shove: '<path d="M9 12l12 12-12 12M24 12l12 12-12 12"/>',
+    hot: '<path d="M24 5c1 7 11 11 11 22a11 11 0 0 1-22 0c0-5 3-8 5-11 1 3 3 4 4 3 1-4 1-9 2-14z"/><path d="M24 40a5 5 0 0 1-5-5c0-3 3-5 5-8 2 3 5 5 5 8a5 5 0 0 1-5 5z"/>',
+    spring: '<path d="M12 9h24M12 39h24"/><path d="M16 36l16-4-16-4 16-4-16-4 16-4-16-4"/>',
+    cheap: '<path d="M10 38C8 22 20 8 38 8c0 16-10 28-28 30z"/><path d="M10 38C18 28 26 20 34 12"/>',
+    // upgrades
+    health: HEART,
+    stamina: BOLT,
+    regen: '<path d="M38 24a14 14 0 1 1-4.1-9.9M38 8v7h-7"/><path d="M25 17l-5 8h8l-4 8"/>',
+    power: FIST,
+    quick: '<circle cx="24" cy="24" r="15"/><path d="M24 14v10l7 4"/>',
+    guide: '<circle cx="24" cy="24" r="14"/><circle cx="24" cy="24" r="5"/><path d="M24 4v6M24 38v6M4 24h6M38 24h6"/>',
+    armor: '<path d="M24 6l15 5v11c0 9-6 16-15 20-9-4-15-11-15-20V11z"/>',
+    greed: '<circle cx="24" cy="24" r="15"/><circle cx="24" cy="24" r="8"/>',
   };
-  function perk(id) { return `<svg viewBox="0 0 64 64" aria-hidden="true">${PERK_ICONS[id] || ''}</svg>`; }
+  const line = id => `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LINE[id] || ''}</svg>`;
+  const perk = line;
+
   function svg(name) { return `<svg viewBox="0 0 24 24" aria-hidden="true">${P[name] || ''}</svg>`; }
   function hydrate(root = document) {
     root.querySelectorAll('[data-icon]').forEach(el => {
@@ -74,5 +87,5 @@ const Icons = (() => {
       el.dataset.hydrated = el.dataset.icon;
     });
   }
-  return { svg, hydrate, perk };
+  return { svg, hydrate, perk, line };
 })();
