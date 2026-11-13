@@ -18,7 +18,7 @@ The very first launch boots **straight into the tutorial**: a four-step, skippab
 - **Throws can be thrown at.** Anything a foe throws can be knocked out of the air (DEFLECT). Barrels take two hits.
 - **Ducking.** Hold **S** to drop behind your crates. Flat throws sail over you or hit the crates, bombs do half damage. A duck costs 5 stamina, lasts up to a second and a half, and you can't throw while you're down, so it's a dodge, not a hiding place.
 - **Streak.** Every throw that hits something adds one to your streak, worth +10% coins each, up to +100%. A throw that hits nothing resets it.
-- **Mystery crates.** A crate on a balloon drifts up the middle of the screen every so often. Pop it for a few free throws of something you don't have in your bag (it gets its own slot, key **4**), or for health or coins. When you're below 60% health, the next crate to drift up is always a **healing crate** (it looks exactly the same): pop it for 45% of your health back.
+- **Mystery crates.** A crate on a balloon drifts up the middle of the screen every so often. Pop it for a few free throws of something you don't have in your bag (it gets its own slot, key **4**), or for health, stamina or coins. Health and stamina are a 15% chance each, rising to 25% as that bar runs low (35% of your health back, or half your stamina).
 - **Style.** Knockouts pay extra for HEADSHOT, RING OUT, AIRBORNE, LONG SHOT, TRICK SHOT, DOUBLE KO and SHATTER.
 
 ## Stuff to throw

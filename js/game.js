@@ -52,7 +52,7 @@ const Game = (() => {
   function freshRun(demo) {
     return {
       demo, kos: 0, stage: 1, stageKills: 0, coins: 0, combo: 0, bestCombo: 0, perks: {}, boss: null, bossT: -1, spawnT: 0.5,
-      crateT: rand(10, 14), lastKoAt: -9, seq: 0, t: 0, heads: 0, rings: 0, overT: -1, perkT: -1, crates: 0, bosses: 0, firstCrate: true,
+      crateT: rand(10, 14), lastKoAt: -9, seq: 0, t: 0, heads: 0, rings: 0, overT: -1, perkT: -1, crates: 0, bosses: 0,
       fever: 0, fevers: 0, stand: 0, stood: false, bounty: null, bountyN: 0, bountyT: 3, bountyLast: '', goldT: rand(26, 40), beatBest: false, closeCalls: 0, mastered: [],
     };
   }
@@ -1161,24 +1161,24 @@ const Game = (() => {
   }
 
   /* --------------------------------------------------------------- crates */
-  function spawnCrate(kind) { crates.push({ x: rand(520, 720), y: WORLD_H + 60, ph: rand(0, TAU), popped: false, t: 0, kind: kind || (player && player.hp < player.maxHp * 0.6 ? 'heal' : 'mystery') }); }
+  function spawnCrate(kind) { crates.push({ x: rand(520, 720), y: WORLD_H + 60, ph: rand(0, TAU), popped: false, t: 0, kind: kind || 'mystery' }); }
   function popCrate(c, s) {
     if (c.popped) return;
     c.popped = true;
     Fx.confetti(c.x, c.y, 26); Fx.burst(c.x, c.y, 8, { colors: ['#b98a52', '#8a6236'], speed: [120, 360], life: [0.4, 0.8], size: [4, 8], shape: 'rect' });
     Sfx.crate(); track('crates'); run.crates++;
     if (s) logHit(s.seq);
-    if (c.kind === 'heal') {      // looks like any other crate; this one is always food
-      const n = Math.round(player.maxHp * 0.45); heal(n); Sfx.heal();
-      Fx.text(c.x, c.y - 40, 'HEALTH +' + n, '#9ff0c0', 26); Fx.ring(c.x, c.y, 8, 70, 0.4, '#9ff0c0', 5);
-      run.firstCrate = false; return;
-    }
-    const low = player.hp < player.maxHp * 0.55;
+    // health and stamina are 15% each, climbing to 25% as that bar runs low (full odds at 60% and above, top odds when empty)
+    const odds = frac => 0.15 + 0.10 * clamp(1 - frac / 0.6, 0, 1);
+    const pHp = odds(player.hp / player.maxHp), pSta = odds(player.sta / player.maxSta);
     const r = Math.random();
-    if (!run.firstCrate && low && r < 0.45 || !run.firstCrate && r < 0.14) {
-      heal(player.maxHp * 0.35); Sfx.heal();
-      Fx.text(c.x, c.y - 40, 'HEALTH +' + Math.round(player.maxHp * 0.35), '#9ff0c0', 24);
-    } else if (!run.firstCrate && r > 0.84) {
+    if (r < pHp) {
+      const n = Math.round(player.maxHp * 0.35); heal(n); Sfx.heal();
+      Fx.text(c.x, c.y - 40, 'HEALTH +' + n, '#9ff0c0', 24); Fx.ring(c.x, c.y, 8, 70, 0.4, '#9ff0c0', 5);
+    } else if (r < pHp + pSta) {
+      const n = Math.round(player.maxSta * 0.5); player.sta = Math.min(player.maxSta, player.sta + n); Sfx.heal();
+      Fx.text(c.x, c.y - 40, 'STAMINA +' + n, '#9fd0ff', 24); Fx.ring(c.x, c.y, 8, 70, 0.4, '#9fd0ff', 5);
+    } else if (r > 0.88) {
       const n = Math.round(rand(20, 40) * coinMul());
       gain(n); Sfx.coin(4);
       Fx.text(c.x, c.y - 40, 'COINS +' + n, '#ffc933', 24);
@@ -1190,7 +1190,6 @@ const Game = (() => {
       Fx.text(c.x, c.y - 40, it.name.toUpperCase() + ' x' + player.bonus.n, '#ffffff', 24);
       if (on.toast) on.toast('FREE THROWS: ' + it.name.toUpperCase() + ' - ' + it.desc, 'gift');
     }
-    run.firstCrate = false;
   }
 
   /* ------------------------------------------------------------ the step */
@@ -1302,9 +1301,6 @@ const Game = (() => {
     }
     if ((run.goldT -= dt) <= 0 && alive.length && !alive.some(f => f.gold)) { spawnGold(); run.goldT = rand(42, 65); }
     if ((run.crateT -= dt * (1 + pk('crate'))) <= 0 && crates.length === 0) { spawnCrate(); run.crateT = rand(20, 30); }
-    // hurt badly and nothing floating by: a healing crate drifts up (same crate, same look)
-    run.healT = (run.healT == null ? 12 : run.healT) - dt;
-    if (player.hp < player.maxHp * 0.6 && run.healT <= 0 && crates.length === 0) { spawnCrate('heal'); run.healT = 22; }
   }
 
   function stepZones(dt) {
