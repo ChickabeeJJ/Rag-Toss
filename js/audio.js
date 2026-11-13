@@ -1,14 +1,13 @@
 'use strict';
 /* =========================================================================
-   Audio: every sound is synthesized with WebAudio, and the music is a small
-   generative loop (bass, plucked melody, soft hats) that picks up pace as the
-   stage number climbs. Nothing is loaded from disk.
+   Audio: every sound effect is synthesized with WebAudio. The music is one
+   looping track (assets/music.mp3) that picks up pace as the stage number climbs.
    ========================================================================= */
 
 const Sfx = (() => {
   let ac = null, master = null, sfxBus = null, musicBus = null, noiseBuf = null;
   let sfxOn = true, musicOn = true, platMuted = false, paused = false;
-  let musicTimer = null, mstep = 0, nextAt = 0, tempo = 104, mood = 0, musicPlaying = false;
+  let track = null, rate = 1, hype = false, ducked = true, musicPlaying = false;
   const last = {};
 
   function ensure() {
@@ -26,13 +25,13 @@ const Sfx = (() => {
     noiseBuf = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    if (musicPlaying) startMusic();
+    musicPlaying = true; loadTrack(); playTrack();     // the first tap anywhere starts the music
     return true;
   }
   function applyGains() {
     if (!ac) return;
     sfxBus.gain.value = sfxOn && !platMuted ? 1 : 0;
-    musicBus.gain.setTargetAtTime(musicOn && !platMuted ? 0.5 : 0, ac.currentTime, 0.08);
+    musicBus.gain.setTargetAtTime(musicOn && !platMuted ? (ducked ? 0.2 : 0.42) : 0, ac.currentTime, 0.25);
   }
   // don't let the same sound stack up in one frame (nine candies landing at once)
   function gate(id, ms = 40) { const n = performance.now(); if (last[id] && n - last[id] < ms) return false; last[id] = n; return true; }
@@ -111,61 +110,39 @@ const Sfx = (() => {
     stage() { tone(392, 0.12, 'triangle', 0.2); tone(523, 0.12, 'triangle', 0.2, 0, 0.1); tone(659, 0.22, 'triangle', 0.2, 0, 0.2); },
     death() { tone(330, 0.5, 'sawtooth', 0.16, 0.25); tone(220, 0.7, 'sawtooth', 0.14, 0.25, 0.15); noise(0.5, 0.4, 500, 'lowpass', 1, 0, 0.3); },
     revive() { tone(330, 0.12, 'triangle', 0.22); tone(494, 0.12, 'triangle', 0.22, 0, 0.1); tone(659, 0.12, 'triangle', 0.22, 0, 0.2); tone(988, 0.3, 'triangle', 0.22, 0, 0.3); },
+    tick() { if (gate('tick', 45)) tone(1500 + Math.random() * 500, 0.05, 'triangle', 0.09, 1.15); },
+    fever() { for (let i = 0; i < 5; i++) tone(392 * Math.pow(1.19, i), 0.13, 'sawtooth', 0.11, 1.02, i * 0.055); noise(0.5, 0.16, 900, 'bandpass', 1, 0, 6); },
+    bounty() { tone(784, 0.09, 'triangle', 0.2); tone(1047, 0.09, 'triangle', 0.2, 0, 0.08); tone(1568, 0.22, 'triangle', 0.2, 0, 0.16); },
+    gold() { for (let i = 0; i < 4; i++) tone([1319, 1661, 1976, 2637][i], 0.16, 'sine', 0.13, 0, i * 0.07); },
+    jackpot() { for (let i = 0; i < 8; i++) tone(880 * Math.pow(1.122, i), 0.11, 'triangle', 0.16, 0, i * 0.05); },
+    stand() { for (let i = 0; i < 6; i++) { tone(58, 0.16, 'sine', 0.5, 0.7, i * 0.62); tone(52, 0.14, 'sine', 0.4, 0.7, i * 0.62 + 0.17); } tone(180, 0.6, 'sawtooth', 0.12, 0.4); },
     record() { for (let i = 0; i < 4; i++) tone([523, 659, 784, 1047][i], 0.16, 'triangle', 0.2, 0, i * 0.11); },
   };
 
   /* --------------------------------------------------------------- music */
-  // A minor pentatonic over a four-bar bass line; `mood` shifts the pattern per theme
-  const SCALE = [0, 3, 5, 7, 10, 12, 15, 17];
-  const BASS = [[0, 0, 7, 0, 5, 5, 3, 3], [0, 0, 3, 3, 5, 5, 7, 5], [0, 7, 5, 3, 0, 7, 10, 7]];
-  const hz = semi => 110 * Math.pow(2, semi / 12);
-  let melody = [];
-  function newMelody() {
-    melody = [];
-    let n = randi(2, 5);
-    for (let i = 0; i < 16; i++) {
-      if (Math.random() < 0.38) { melody.push(-1); continue; }
-      n = clamp(n + randi(-2, 2), 0, SCALE.length - 1);
-      melody.push(n);
-    }
+  // One looping track, streamed and routed through the music bus so the mute, the
+  // settings toggle and a pause all reach it. It plays quieter behind the menus,
+  // and a touch faster as the stages climb.
+  function loadTrack() {
+    if (track || !ac) return;
+    track = new Audio('assets/music.mp3');
+    track.loop = true; track.preload = 'auto';
+    try { ac.createMediaElementSource(track).connect(musicBus); } catch (e) { track.volume = 0.35; }
   }
-  function schedule() {
-    if (!ac || !musicPlaying) return;
-    const spb = 60 / tempo / 2;      // eighth notes
-    while (nextAt < ac.currentTime + 0.25) {
-      const d = Math.max(0, nextAt - ac.currentTime);
-      const bar = Math.floor(mstep / 8) % 8, s = mstep % 8;
-      const root = BASS[mood % BASS.length][bar];
-      if (s % 2 === 0) tone(hz(root - 12), spb * 1.7, 'triangle', 0.2, 0, d, musicBus);
-      if (s === 3 || s === 6) tone(hz(root), spb * 0.8, 'triangle', 0.07, 0, d, musicBus);
-      const m = melody[(mstep % 16)];
-      if (m >= 0 && bar % 4 !== 3) tone(hz(root + SCALE[m] + 12), spb * 1.4, 'sine', 0.09, 0, d, musicBus);
-      if (s % 2 === 1) noise(0.03, 0.035, 7000, 'highpass', 1, d, 0, musicBus);
-      if (s === 0 || s === 5) tone(64, 0.12, 'sine', 0.22, 0.5, d, musicBus);
-      if (s === 4) noise(0.07, 0.07, 1800, 'bandpass', 1, d, 0, musicBus);
-      mstep++;
-      if (mstep % 64 === 0) newMelody();
-      nextAt += spb;
-    }
-  }
-  function startMusic() {
-    musicPlaying = true;
-    if (!ac || musicTimer) return;
-    newMelody(); mstep = 0; nextAt = ac.currentTime + 0.1;
-    musicTimer = setInterval(schedule, 60);
-  }
-  function stopMusic() { musicPlaying = false; clearInterval(musicTimer); musicTimer = null; }
-  // stage 1 ambles, later stages push
-  function setStage(n) { tempo = Math.min(148, 100 + n * 4); mood = Math.floor((n - 1) / 2); }
+  function playTrack() { if (track && !paused) { const p = track.play(); if (p && p.catch) p.catch(() => {}); } }
+  function startMusic() { musicPlaying = true; ducked = false; if (!ac) return; loadTrack(); applyGains(); playTrack(); }
+  function stopMusic() { ducked = true; applyGains(); }
+  function setStage(n) { rate = Math.min(1.1, 1 + 0.012 * (n - 1)); if (track) track.playbackRate = rate * (hype ? 1.06 : 1); }
+  function setHype(v) { hype = v; if (track) track.playbackRate = rate * (hype ? 1.06 : 1); }
 
   function suspend(on) {
     paused = on;
     if (!ac) return;
-    if (on) ac.suspend().catch(() => {}); else ac.resume().catch(() => {});
+    if (on) { ac.suspend().catch(() => {}); if (track) track.pause(); } else { ac.resume().catch(() => {}); if (musicPlaying) playTrack(); }
   }
 
   return Object.assign(S, {
-    ensure, suspend, startMusic, stopMusic, setStage,
+    ensure, suspend, startMusic, stopMusic, setStage, setHype,
     setSfx(v) { sfxOn = v; applyGains(); }, setMusic(v) { musicOn = v; applyGains(); },
     setPlatformMute(v) { platMuted = v; applyGains(); },
   });

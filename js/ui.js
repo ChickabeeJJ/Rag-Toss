@@ -90,7 +90,8 @@ const UI = (() => {
     Game.start(opts);
     Sfx.ensure(); Sfx.startMusic();
     Platform.gameplayStart();
-    buildSlots(); cache.perks = null; cache.dots = null;
+    buildSlots(); cache.perks = null; cache.dots = null; cache.bounty = null; shownCoins = null; targetT = 0;
+    $('fever').classList.add('hidden'); $('stand').classList.add('hidden'); $('bounty').classList.add('hidden'); document.body.classList.remove('frenzy');
     $('bossBar').classList.add('hidden'); $('combo').classList.add('hidden');
     if (!opts.tutorial && !Save.data.seenSwap && Save.bagItems().length > 1) { coach('swap', 6); Save.data.seenSwap = true; Save.save(); }
   }
@@ -195,6 +196,7 @@ const UI = (() => {
     else if (d.coins >= it.price) action = `<button class="btn primary" id="btnBuy"><b>BUY</b><small>${fmt(it.price)} COINS</small></button>`;
     else action = `<button class="btn" disabled><b>${fmt(it.price)} COINS</b><small>${fmt(it.price - d.coins)} MORE TO GO</small></button>`;
     $('shopInfo').innerHTML = `<div class="pv-head"><b>${esc(it.name.toUpperCase())}</b><span class="tag">${esc(it.tag)}</span></div><p>${esc(it.desc)}</p>
+      ${own ? (m => `<div class="mastery"><div class="rk-top"><b>MASTERY <i>${'\u2605'.repeat(m.lvl)}${'\u2606'.repeat(MASTERY.length - m.lvl)}</i></b><span>${m.next ? m.kills + ' / ' + m.next + ' KOs' : 'MAXED'}${m.lvl ? ' · +' + m.lvl * 5 + '% DMG' : ''}</span></div><div class="rk-track"><i style="width:${(m.t * 100).toFixed(1)}%"></i></div></div>`)(Save.masteryInfo(it.id)) : ''}
       <div class="stats">${stat('DAMAGE', it.id === 'sack' ? 0.6 : (it.dmg * (it.multi || 1)) / 44)}${stat('SHOVE', it.id === 'plunger' ? 1 : it.kb / 3.2)}${stat('STAMINA', it.sta / 14)}</div>${action}`;
     const buy = $('btnBuy');
     if (buy) buy.onclick = () => {
@@ -370,6 +372,17 @@ const UI = (() => {
     const ups = UPGRADES.some(u => Save.lvl(u.id) < u.max && d.coins >= upgradeCost(u, Save.lvl(u.id)));
     const canItem = next && d.coins >= next.price;
     const rankUps = s.ranks.map(k => `<div class="rankup">${ic('trophy')}<b>RANK UP: ${esc(k.name.toUpperCase())}</b><span>+${fmt(k.pay)}</span></div>`).join('');
+    // what nearly happened, and what is nearly earned: the reasons to go again
+    let tease = '';
+    const gap = (s.prevBest || 0) - s.kos;
+    if (!s.newBest && s.prevBest >= 5 && gap >= 0 && gap <= 5) tease = `SO CLOSE. ${gap + 1} MORE WOULD HAVE BEATEN YOUR BEST`;
+    else if (s.bossHp > 0 && s.bossHp < 0.45) tease = `${esc(s.bossName)} HAD ${Math.max(1, Math.round(s.bossHp * 100))}% HEALTH LEFT`;
+    else if (s.toBoss > 0 && s.toBoss <= 3) tease = `${s.toBoss} KNOCKOUT${s.toBoss > 1 ? 'S' : ''} FROM THE BOSS`;
+    const stars = n => '\u2605'.repeat(n) + '\u2606'.repeat(MASTERY.length - n);
+    const mastUps = (s.mastered || []).map(id => `<div class="rankup">${ic('star')}<b>${esc(ITEM[id].name.toUpperCase())} MASTERY ${stars(Save.masteryLvl(id))}</b><span>+5% DMG</span></div>`).join('');
+    let mast = '';
+    const mi = Save.bagItems().map(id => ({ id, m: Save.masteryInfo(id) })).filter(o => o.m.next).sort((a, b) => (a.m.next - a.m.kills) - (b.m.next - b.m.kills))[0];
+    if (mi) mast = `<div class="rank-strip in-sheet mast"><div class="rk-top"><b>${esc(ITEM[mi.id].name.toUpperCase())} MASTERY <i>${stars(mi.m.lvl)}</i></b><span>${mi.m.next - mi.m.kills} KO${mi.m.next - mi.m.kills > 1 ? 's' : ''} TO THE NEXT STAR</span></div><div class="rk-track"><i style="width:${(mi.m.t * 100).toFixed(1)}%"></i></div></div>`;
     let goal = '';
     if (next) {
       const t = clamp(d.coins / next.price, 0, 1);
@@ -377,11 +390,11 @@ const UI = (() => {
         <div class="bar-track"><i style="width:${(t * 100).toFixed(0)}%"></i></div></div><span>${canItem ? 'GET IT' : fmt(next.price - d.coins) + ' TO GO'}</span></div>`;
     }
     openModal('results', `<h2 class="lose">KNOCKED OUT</h2><div class="sub">STAGE ${s.stage} · ${esc(THEMES[(s.stage - 1) % THEMES.length].name.toUpperCase())}</div>
-      <div class="res-score"><span>KNOCKOUTS${s.newBest ? ' <em class="new">NEW BEST</em>' : ''}</span><b>${s.kos}</b></div>
-      <div class="res-grid"><div><b>x${s.combo}</b><small>BEST STREAK</small></div><div><b>${s.heads}</b><small>HEADSHOTS</small></div><div><b>${s.rings}</b><small>RING-OUTS</small></div><div><b>${s.bosses}</b><small>BOSSES</small></div></div>
-      <div class="coins-gain">${ic('coin')}+${fmt(s.coins)}</div>${rankUps}
+      <div class="res-score"><span>KNOCKOUTS${s.newBest ? ' <em class="new">NEW BEST</em>' : ''}</span><b>${s.kos}</b></div>${tease ? `<div class="tease">${tease}</div>` : ''}
+      <div class="res-grid"><div><b>x${s.combo}</b><small>BEST STREAK</small></div><div><b>${s.heads}</b><small>HEADSHOTS</small></div><div><b>${s.bounties || 0}</b><small>BOUNTIES</small></div><div><b>${s.bosses}</b><small>BOSSES</small></div></div>
+      <div class="coins-gain">${ic('coin')}+${fmt(s.coins)}</div>${rankUps}${mastUps}
       <div class="rank-strip in-sheet"><div class="rk-top"><b>${esc(r.cur.name.toUpperCase())}</b><span>${r.next ? `${r.kos} / ${r.next.kos} KOs` : 'TOP RANK'}</span></div><div class="rk-track"><i style="width:${(r.t * 100).toFixed(1)}%"></i></div></div>
-      ${goal}
+      ${mast}${goal}
       <div class="actions"><button class="btn primary wide big" id="mRetry">${ic('restart')}<span class="bt"><b>AGAIN</b></span></button>
       <button class="btn" id="mUp">${ic('up')}<b>UPGRADES</b>${ups ? '<i class="dot"></i>' : ''}</button><button class="btn" id="mHome">${ic('home')}<b>HOME</b></button></div>`);
     if (next) { $('sheet').querySelector('.goal-ic').appendChild(ItemArt.iconEl(next.id, 44)); $('mGoal').onclick = () => { click(); shopSel = next.id; closeModal(true); show('shop'); }; }
@@ -445,6 +458,7 @@ const UI = (() => {
     setCoach(touchy() ? 'TAP A SLOT TO SWAP WHAT YOU THROW' : 'PRESS 1 2 3 TO SWAP WHAT YOU THROW', '', touchy() ? '' : '<kbd class="big">1</kbd><kbd class="big">2</kbd><kbd class="big">3</kbd>', '', false);
   }
 
+  let shownCoins = null, targetT = 0;
   function tick(dt) {
     if (bannerT > 0 && (bannerT -= dt) <= 0) $('banner').classList.add('hidden');
     if (screen !== null) return;
@@ -454,7 +468,33 @@ const UI = (() => {
       if (coachKind !== 'tut' && !Game.paused && (coachT -= dt) <= 0) { coachKind = null; $('coach').classList.add('hidden'); }
     }
     set('kos', r.kos, v => { $('hudKos').textContent = v; const m = $('hudMid'); m.classList.remove('bump'); void m.offsetWidth; m.classList.add('bump'); });
-    set('coins', Save.data.coins, v => { $('hudCoins').textContent = fmt(v); });
+    // the counter rolls up to the real total as the coins fly in
+    const tc = Save.data.coins;
+    if (shownCoins == null || tc < shownCoins || tc - shownCoins > 4000) shownCoins = tc;
+    else if (shownCoins < tc) shownCoins = Math.min(tc, shownCoins + Math.max(1, (tc - shownCoins) * dt * 5));
+    set('coins', Math.floor(shownCoins), v => { $('hudCoins').textContent = fmt(v); });
+    set('ping', Game.coinPing, () => { const el = $('coinPill'); el.classList.remove('ping'); void el.offsetWidth; el.classList.add('ping'); });
+    if ((targetT -= dt) <= 0) { targetT = 0.5; const q = $('coinPill').getBoundingClientRect(); Game.setCoinTarget(q.left + 20, q.top + q.height / 2); }
+    // your best, and how near you are to it
+    const best = Save.data.best.kos, gap = best - r.kos;
+    const bestTxt = best < 5 || Game.tutorial ? '' : gap < 0 ? 'NEW BEST' : gap <= 3 ? (gap + 1) + ' TO BEAT YOUR BEST' : 'BEST ' + best;
+    set('best', bestTxt, v => { const el = $('hudBest'); el.textContent = v; el.classList.toggle('hidden', !v); el.classList.toggle('near', gap >= 0 && gap <= 3); el.classList.toggle('beat', gap < 0); });
+    // frenzy and last stand
+    const fv = Game.fever, st = Game.stand;
+    set('fever', fv > 0, v => { $('fever').classList.toggle('hidden', !v); document.body.classList.toggle('frenzy', v); });
+    if (fv > 0) $('feverFill').style.transform = `scaleX(${fv.toFixed(3)})`;
+    set('stand', st > 0, v => { $('stand').classList.toggle('hidden', !v); });
+    if (st > 0) $('standFill').style.transform = `scaleX(${st.toFixed(3)})`;
+    // bounty
+    const bo = r.bounty, boKey = bo && !Game.tutorial ? bo.text + ':' + bo.prog + ':' + bo.done : '';
+    set('bounty', boKey, v => {
+      const el = $('bounty');
+      el.classList.toggle('hidden', !v);
+      if (!v) return;
+      el.classList.toggle('done', bo.done);
+      el.innerHTML = `<small>${bo.done ? 'BOUNTY PAID' : 'BOUNTY'}</small><b>${esc(bo.text)}</b><div class="bo-row"><div class="bo-track"><i style="width:${(bo.prog / bo.n * 100).toFixed(0)}%"></i></div><span>${bo.prog}/${bo.n}</span><em>+${fmt(bo.pay)}</em></div>`;
+      el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    });
     set('stage', r.stage, v => { $('chipNum').textContent = v; $('chipTitle').textContent = THEMES[(v - 1) % THEMES.length].name.toUpperCase(); });
     const dotsKey = r.stage + ':' + r.stageKills + ':' + (r.boss ? 1 : 0);
     set('dots', dotsKey, () => {
@@ -484,7 +524,7 @@ const UI = (() => {
     set('combo', r.combo, v => {
       const el = $('combo');
       el.classList.toggle('hidden', v < 2);
-      if (v >= 2) { $('comboNum').textContent = 'x' + v; $('comboBonus').textContent = '+' + Math.min(v, 10) * 10 + '% COINS'; const n = $('comboNum'); n.style.animation = 'none'; void n.offsetWidth; n.style.animation = ''; }
+      if (v >= 2) { const ev = Game.feverEvery, k = v % ev; $('comboPips').innerHTML = Array.from({ length: ev }, (_, i) => `<u class="${i < k || (k === 0 && Game.fever > 0) ? 'on' : ''}"></u>`).join(''); $('comboNum').textContent = 'x' + v; $('comboBonus').textContent = '+' + Math.min(v, 10) * 10 + '% COINS'; const n = $('comboNum'); n.style.animation = 'none'; void n.offsetWidth; n.style.animation = ''; }
     });
     // boss
     const boss = r.boss && r.boss.rag.alive ? r.boss : null;

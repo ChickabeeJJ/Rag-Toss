@@ -4,7 +4,7 @@ A ragdoll throwing duel on floating islands. You stand on your island, the other
 
 You don't throw arrows. You throw **stuff**: a rubber chicken, a bowling ball, a beehive, an anvil. There are **26 things to throw**, each with its own gimmick, and you carry three of them into a run. A run never ends on its own: foes keep coming, every 8 knockouts a **boss** walks in, and every boss you beat lets you pick a **perk** before the next stage. Coins from a run buy more stuff and permanent upgrades, so the next run goes further.
 
-It's pure HTML5 and vanilla JS, with no build step and no dependencies. It has the same structure as Element Rag and Slo-Mo: all art is drawn procedurally, every sound is synthesized, and the CrazyGames SDK v3 is wrapped in `js/platform.js`.
+It's pure HTML5 and vanilla JS, with no build step and no dependencies. It has the same structure as Element Rag and Slo-Mo: all art is drawn procedurally, every sound effect is synthesized (the music is one mp3), and the CrazyGames SDK v3 is wrapped in `js/platform.js`.
 
 To play, serve the folder (for example `python3 -m http.server`) and open `index.html`.
 
@@ -86,6 +86,12 @@ From stage 3 some foes wear a pot that soaks one headshot, and from stage 4 some
 - **The run itself escalates.** More foes at once (up to four), tougher and more accurate every stage, a new foe type each stage, a boss every 8 knockouts and a new sky after each one.
 - **Perks.** Fourteen of them with their own icons, in four kinds (offence, survival, utility, wealth), stackable, offered three at a time after every boss (click, or press 1, 2 or 3) and kept until you're knocked out: Heavy Hands, Second Helping (throws come out twice), Loud Exit (knocked-out foes explode), Hot Hands, Springy, Snack Break and so on.
 - **Runs are saved.** Quitting from the pause menu (or closing the tab) keeps your stage, knockouts, perks and health. The home screen then says CONTINUE, with a smaller button to start over. Dying ends the saved run.
+- **Frenzy.** Every fifth hit in a row lights you up for seven seconds: throws cost no stamina, come out faster and every knockout pays double. The streak chip shows five pips filling toward the next one.
+- **Bounties.** One small job at a time in the top-left corner (three headshots, a x5 streak, two knockouts with the chicken, a close call), paid on the spot. Each one is worth a little more than the last.
+- **Golden ragdolls.** Now and then a golden one drifts in. It never fights back, it leaves after nine seconds, and knocking it out is a jackpot.
+- **Last stand.** Once a run, the blow that would finish you leaves you standing in slow motion. Land a throw before the bar runs out and you are back at 35% health.
+- **Mastery.** Every throwable earns up to five stars from knockouts (8, 25, 60, 120, 220). Each star is +5% damage with it, for good.
+- **Small things.** Coins fly from a knockout to the counter, which rolls up. A random hit in eleven is a crit. A throw that just misses you is a close call and gives stamina back. The counter shows your best and tells you when you are three away from beating it.
 - **Coins.** Earned per knockout, multiplied by your streak, plus boss bonuses. They're banked as you earn them, so quitting a run keeps them.
 - **Characters.** Eight to wear (Rookie, Cowboy, Viking, Chef, Wizard, Knight, Pirate, Royal), each with its own colour and hat, bought with coins on the Characters tab of the Stuff screen. They are looks only; nothing about throwing changes.
 - **Stuff and upgrades.** 26 items and eight permanent upgrades: Thick Skull (health), Big Lungs (stamina), Second Breath (refill), Strong Arm (damage), Quick Hands (time between throws), Good Eye (longer aim line), Padding (damage taken), and Deep Pockets (coins).
@@ -120,7 +126,7 @@ index.html
 css/style.css     UI: ink panels with cut corners, keycaps, HUD, touch controls
 js/util.js        math, seeded RNG, colour helpers, glow sprite cache, two-bone IK
 js/platform.js    CrazyGames SDK v3 wrapper: events, happytime, accounts, data (no ads)
-js/audio.js       synthesized SFX and a small generative music loop that speeds up with the stage
+js/audio.js       synthesized SFX, and the music track (assets/music.mp3) that speeds up with the stage
 js/data.js        items, enemy ammo, foes, bosses, upgrades, perks, themes, missions, ranks
 js/progress.js    save data, bag, upgrades, missions, ranks
 js/items.js       procedural art for every throwable; also the shop and HUD icons
@@ -136,5 +142,7 @@ crazygames/       listing trailers: 1920x1080 landscape and 1080x1680 portrait, 
 ```
 
 ## Credits
+
+Music: "Scurry and Slide" (`assets/music.mp3`), supplied by the game's author.
 
 Font: [Rubik](https://fonts.google.com/specimen/Rubik) by Hubert and Fischer, under the SIL Open Font License 1.1.

@@ -200,6 +200,7 @@ const RANKS = [
 ];
 
 /* style bonuses: label + extra coins */
+const MASTERY = [8, 25, 60, 120, 220];     // knockouts with one throwable for each star
 const STYLE = {
   head: ['HEADSHOT', 2], ring: ['RING OUT', 4], deflect: ['DEFLECT', 2], long: ['LONG SHOT', 3], air: ['AIRBORNE', 4],
   double: ['DOUBLE KO', 6], trick: ['TRICK SHOT', 4], shatter: ['SHATTER', 3], pop: ['POP!', 2], stop: ['INTERRUPT', 1],

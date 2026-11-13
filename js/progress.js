@@ -18,6 +18,7 @@ const Save = (() => {
     rank: 0,
     daily: { day: -1, list: [], bonus: false },
     chars: ['rookie'], char: 'rookie',
+    mastery: {},               // knockouts per throwable: every star is +5% damage with it
     run: null,                 // a run left half-way, so it can be picked up again
     tutDone: false, seenSwap: false,
   });
@@ -40,6 +41,7 @@ const Save = (() => {
         if (!Array.isArray(data.chars)) data.chars = ['rookie'];
         data.chars = data.chars.filter(id => CHAR[id]); if (!data.chars.includes('rookie')) data.chars.unshift('rookie');
         if (!CHAR[data.char] || !data.chars.includes(data.char)) data.char = 'rookie';
+        if (typeof data.mastery !== 'object' || !data.mastery) data.mastery = {};
         if (!data.run || typeof data.run !== 'object' || !(data.run.stage >= 1) || typeof data.run.perks !== 'object') data.run = null;
       }
     } catch (e) { data = fresh(); }
@@ -87,6 +89,22 @@ const Save = (() => {
     data.coins -= c.price; data.chars.push(id); data.char = id; save(); return true;
   }
   function equipChar(id) { if (!ownsChar(id)) return false; data.char = id; save(); return true; }
+
+  /* -------------------------------------------------------------- mastery */
+  const masteryInfo = id => {
+    const kills = data.mastery[id] || 0;
+    let lvl = 0; while (lvl < MASTERY.length && kills >= MASTERY[lvl]) lvl++;
+    const lo = lvl ? MASTERY[lvl - 1] : 0, hi = MASTERY[lvl] || null;
+    return { lvl, kills, next: hi, t: hi ? (kills - lo) / (hi - lo) : 1 };
+  };
+  const masteryLvl = id => masteryInfo(id).lvl;
+  // counts a knockout with a throwable; returns the new star count when it just went up
+  function masterKill(id) {
+    const before = masteryLvl(id);
+    data.mastery[id] = (data.mastery[id] || 0) + 1;
+    const after = masteryLvl(id);
+    return after > before ? after : 0;
+  }
 
   /* ------------------------------------------------------------- upgrades */
   const lvl = id => data.upgrades[id] || 0;
@@ -162,7 +180,7 @@ const Save = (() => {
   // returns { newBest, newStage }
   function recordRun(kos, stage, streak) {
     const b = data.best;
-    const res = { newBest: kos > b.kos, newStage: stage > b.stage };
+    const res = { newBest: kos > b.kos, newStage: stage > b.stage, prevBest: b.kos };
     b.kos = Math.max(b.kos, kos); b.stage = Math.max(b.stage, stage); b.streak = Math.max(b.streak, streak);
     save();
     if (res.newBest) Platform.submitScore(b.kos);
@@ -171,7 +189,7 @@ const Save = (() => {
 
   return {
     load, save, reset, setRun, clearRun, addCoins, ownsChar, buyChar, equipChar, owns, buyItem, equip, unequip, bagItems, nextItem, lvl, buyUpgrade, canAffordAny,
-    track, claimMission, claimBonus, allClaimed, missionsReady, rollDaily, rankInfo, claimRanks, recordRun,
+    masteryInfo, masteryLvl, masterKill, track, claimMission, claimBonus, allClaimed, missionsReady, rollDaily, rankInfo, claimRanks, recordRun,
     get data() { return data; },
   };
 })();
