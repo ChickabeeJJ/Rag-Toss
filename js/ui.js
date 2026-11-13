@@ -364,8 +364,8 @@ const UI = (() => {
         : `<div class="pk-stack new"><b>NEW${p.n > 1 ? ' · x' + p.n : ''}</b></div>`;
       return `<button class="perk rar-${rar.id}" data-perk="${p.id}" data-n="${p.n}" style="--c:${rar.color};--i:${i}">
         <span class="pk-key"><kbd>${i + 1}</kbd></span>
-        <span class="pk-kind">${rar.name}</span>
-        <span class="pk-badge"><span class="pk-glow"></span><span class="pk-ic">${Icons.perk(p.id)}</span></span>
+        <span class="pk-kind">${rar.name}${p.n > 1 ? `<i>${'\u25C6'.repeat(p.n)}</i>` : ''}</span>
+        <span class="pk-orn"><u></u><u></u><u></u><u></u></span><span class="pk-badge"><span class="pk-glow"></span><span class="pk-ic">${Icons.perk(p.id)}</span></span>
         <b class="pk-name">${esc(p.name.toUpperCase())}</b>
         <small class="pk-type" style="color:${kind.color}">${kind.name}</small>
         <p class="pk-text">${esc(p.text)}</p>${stack}</button>`;

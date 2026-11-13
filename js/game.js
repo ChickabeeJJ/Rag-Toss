@@ -530,8 +530,9 @@ const Game = (() => {
     const id = s.def.id;
     if (TICK[id]) TICK[id](s, dt);
     if (s.dead) return;
-    s.vy += G * s.grav * dt;
-    s.x += s.vx * dt; s.y += s.vy * dt;
+    // constant gravity integrated exactly: the path is the true parabola, whatever the step size
+    const gy = G * s.grav;
+    s.x += s.vx * dt; s.y += s.vy * dt + 0.5 * gy * dt * dt; s.vy += gy * dt;
     if (s.vr) s.rot += s.vr * dt; else if (id !== 'anvil' && id !== 'bee') s.rot = Math.atan2(s.vy, s.vx);
     if (s.owner === 'p' && run.fever > 0 && Math.random() < 0.5) Fx.burst(s.x, s.y, 1, { colors: ['#ffb347', '#ff7a3c', '#ffe08a'], speed: [10, 70], life: [0.2, 0.45], size: [3, 6], grav: -80, glow: true });
     // a faint trail on your own throws so fast ones stay readable
@@ -680,6 +681,14 @@ const Game = (() => {
   }
 
   /* --------------------------------------------------------- hits on foes */
+  /* A throw hits harder the faster it is going when it lands, and softer when it has lost its speed
+     (a lob at the top of its arc, a weak pull). Pegged to the speed of an ordinary half-strength throw
+     of that item, so a typical hit is unchanged and the swing is only a few percent either way. */
+  function impactMul(s) {
+    if (s.owner !== 'p') return 1;
+    const v = Math.hypot(s.vx, s.vy), ref = throwSpeed(s.def, 0.55) * (s.def.grav === 0 ? 1 : 0.9);
+    return clamp(1 + 0.2 * (v / ref - 1), 0.86, 1.2);
+  }
   function onFoeHit(s, f, hit) {
     s.hits.add(f);
     const rag = f.rag, def = s.def, id = def.id;
@@ -691,7 +700,7 @@ const Game = (() => {
       Fx.chunk('pot', rag.head.x, rag.head.y - 10, rand(80, 260), -rand(300, 460), 16 * rag.s, 1.5); Sfx.clang();
       if (id !== 'magnet' && !def.heavy) { mult = 0.3; head = false; Fx.text(rag.head.x, rag.head.y - 44, 'HELMET', '#c9d0dc', 17); }
     }
-    let dmg = s.dmg * mult;
+    let dmg = s.dmg * mult * impactMul(s);
     if (id === 'chicken') dmg *= 1 + 0.5 * s.tricks;
     if (id === 'knife' && head) dmg *= 2;
     if (rag.frozen > 0) {
@@ -1523,7 +1532,7 @@ const Game = (() => {
     let x = p0.x, y = p0.y, vx = Math.cos(ang) * v, vy = Math.sin(ang) * v;
     const r = Math.max(8, def.r);
     for (let t = 0; t < 3; t += 0.012) {
-      vy += g * 0.012; x += vx * 0.012; y += vy * 0.012;
+      x += vx * 0.012; y += vy * 0.012 + 0.5 * g * 0.012 * 0.012; vy += g * 0.012;
       if (y > WORLD_H + 80 || x > WORLD_W + 200) return null;
       if (t > 0.1) {
         for (const f of foes) { if (live(f) && f.rag.hitTest(x, y, r)) return { x, y, foe: true }; }

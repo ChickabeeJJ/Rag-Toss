@@ -457,13 +457,53 @@ body.touch .slots { bottom: calc(10px + var(--safe-b)); }
 .pk-ic svg { width: 44px; height: 44px; }
 .perk:hover .pk-ic { background: color-mix(in srgb, var(--c) 16%, transparent); box-shadow: inset 0 0 0 2px var(--c); transform: scale(1.05); }
 .pk-type { font-weight: 800; font-size: 9.5px; letter-spacing: 0.2em; margin-top: -4px; }
+/* ---- rarity: the rarer the card, the more is going on in it ---- */
+.perk { overflow: hidden; }
+.pk-kind i { font-style: normal; margin-left: 6px; letter-spacing: 0.08em; font-size: 8px; opacity: 0.9; }
 .perk.rar-common .pk-kind { color: var(--muted); }
-.perk.rar-rare { background: #161d2b; }
-.perk.rar-epic { background: #1c1930; box-shadow: inset 0 0 0 1px rgba(185, 140, 255, 0.35); }
-.perk.rar-legendary { background: #262011; box-shadow: inset 0 0 0 1.5px rgba(255, 201, 51, 0.6), 0 0 26px rgba(255, 201, 51, 0.18); }
-.perk.rar-legendary .pk-ic { animation: legPulse 1.6s ease-in-out infinite; }
-.perk.rar-epic::before, .perk.rar-legendary::before { height: 3px; opacity: 1; }
-@keyframes legPulse { 0%, 100% { box-shadow: inset 0 0 0 1.5px var(--c), 0 0 0 0 rgba(255, 201, 51, 0.35); } 50% { box-shadow: inset 0 0 0 1.5px var(--c), 0 0 0 10px rgba(255, 201, 51, 0); } }
+.pk-orn { position: absolute; inset: 0; pointer-events: none; display: none; }
+.pk-orn u { position: absolute; width: 14px; height: 14px; border: 0 solid var(--c); opacity: 0.8; }
+.pk-orn u:nth-child(1) { left: 8px; bottom: 8px; border-width: 0 0 2px 2px; border-bottom-left-radius: 5px; }
+.pk-orn u:nth-child(2) { right: 8px; bottom: 8px; border-width: 0 2px 2px 0; border-bottom-right-radius: 5px; }
+.pk-orn u:nth-child(3), .pk-orn u:nth-child(4) { display: none; }
+.perk.rar-rare, .perk.rar-epic, .perk.rar-legendary { overflow: hidden; }
+.perk.rar-rare .pk-orn, .perk.rar-epic .pk-orn, .perk.rar-legendary .pk-orn { display: block; }
+.perk .pk-glow { position: absolute; inset: -22px; border-radius: 50%; display: none; pointer-events: none; }
+.perk::after { content: ''; position: absolute; top: 0; bottom: 0; left: -60%; width: 40%; pointer-events: none; display: none; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.13), transparent); transform: skewX(-18deg); }
+
+/* rare: cool blue, a soft halo behind the icon */
+.perk.rar-rare { background: linear-gradient(180deg, #1a2740 0%, #131b2d 60%, #111826 100%); box-shadow: inset 0 0 0 1px rgba(79, 168, 255, 0.4); }
+.perk.rar-rare::before { height: 3px; background: linear-gradient(90deg, transparent, var(--c), transparent); left: 0; right: 0; opacity: 1; }
+.perk.rar-rare .pk-glow { display: block; background: radial-gradient(circle, rgba(79, 168, 255, 0.3), transparent 62%); }
+.perk.rar-rare .pk-ic { background: radial-gradient(circle at 50% 30%, rgba(79, 168, 255, 0.22), rgba(79, 168, 255, 0.04)); box-shadow: inset 0 0 0 1.5px rgba(79, 168, 255, 0.8); }
+.perk.rar-rare .pk-kind { background: rgba(79, 168, 255, 0.16); padding: 3px 8px; border-radius: 4px; top: 12px; left: 12px; }
+
+/* epic: violet, a slow ring that turns around the icon, a sheen that sweeps the card */
+.perk.rar-epic { background: radial-gradient(120% 80% at 50% 0%, #34245c 0%, #1d1736 55%, #16122b 100%); box-shadow: inset 0 0 0 1px rgba(185, 140, 255, 0.55), 0 0 22px rgba(150, 100, 255, 0.16); }
+.perk.rar-epic::before { height: 3px; background: linear-gradient(90deg, #6a3fe0, var(--c), #ff7ad9); left: 0; right: 0; opacity: 1; }
+.perk.rar-epic::after { display: block; animation: sheen 3.6s ease-in-out infinite; }
+.perk.rar-epic .pk-glow { display: block; inset: -8px; background: conic-gradient(from 0deg, rgba(185, 140, 255, 0), rgba(185, 140, 255, 0.95), rgba(255, 122, 217, 0.5), rgba(185, 140, 255, 0)); -webkit-mask: radial-gradient(circle, transparent 54%, #000 56%, #000 61%, transparent 63%); mask: radial-gradient(circle, transparent 54%, #000 56%, #000 61%, transparent 63%); animation: spin 4s linear infinite; }
+.perk.rar-epic .pk-ic { background: radial-gradient(circle at 50% 30%, rgba(185, 140, 255, 0.3), rgba(185, 140, 255, 0.06)); box-shadow: inset 0 0 0 1px rgba(185, 140, 255, 0.5), 0 0 24px rgba(160, 110, 255, 0.35); }
+.perk.rar-epic .pk-kind { background: rgba(185, 140, 255, 0.2); padding: 3px 8px; border-radius: 4px; top: 12px; left: 12px; }
+.perk.rar-epic .pk-name { text-shadow: 0 0 14px rgba(185, 140, 255, 0.55); }
+
+/* legendary: gold, rays turning behind the icon, drifting sparks, a bright sheen */
+.perk.rar-legendary { background: radial-gradient(120% 85% at 50% 0%, #5a4210 0%, #2b210c 52%, #1d170a 100%); box-shadow: inset 0 0 0 1.5px rgba(255, 214, 90, 0.85), 0 0 34px rgba(255, 201, 51, 0.28), 0 0 70px rgba(255, 170, 40, 0.12); }
+.perk.rar-legendary::before { height: 4px; background: linear-gradient(90deg, #ff9a3c, #ffe14d, #fff6c2, #ffe14d, #ff9a3c); left: 0; right: 0; opacity: 1; }
+.perk.rar-legendary::after { display: block; animation: sheen 2.6s ease-in-out infinite; background: linear-gradient(100deg, transparent, rgba(255, 244, 190, 0.22), transparent); }
+.perk.rar-legendary .pk-glow { display: block; inset: -34px; background: repeating-conic-gradient(from 0deg, rgba(255, 214, 90, 0.5) 0deg 7deg, transparent 7deg 24deg); -webkit-mask: radial-gradient(circle, #000 28%, transparent 68%); mask: radial-gradient(circle, #000 28%, transparent 68%); animation: spin 14s linear infinite; }
+.perk.rar-legendary .pk-ic { background: radial-gradient(circle at 50% 30%, rgba(255, 214, 90, 0.4), rgba(255, 170, 40, 0.1)); box-shadow: inset 0 0 0 2px #ffd65a, 0 0 28px rgba(255, 201, 51, 0.55); animation: legPulse 1.8s ease-in-out infinite; }
+.perk.rar-legendary .pk-name { color: #fff3c4; text-shadow: 0 0 16px rgba(255, 201, 51, 0.7); }
+.perk.rar-legendary .pk-kind { background: linear-gradient(90deg, rgba(255, 154, 60, 0.35), rgba(255, 225, 77, 0.3)); color: #ffe9a0; padding: 3px 8px; border-radius: 4px; top: 12px; left: 12px; }
+.perk.rar-legendary .pk-text { color: #e6d6a6; }
+.perk.rar-legendary .pk-orn u { opacity: 1; filter: drop-shadow(0 0 4px var(--c)); }
+.perk.rar-legendary .pk-orn u:nth-child(3), .perk.rar-legendary .pk-orn u:nth-child(4) { display: block; left: auto; bottom: auto; }
+.perk.rar-legendary .pk-orn u:nth-child(3) { left: 8px; top: 38px; border-width: 2px 0 0 2px; border-top-left-radius: 5px; }
+.perk.rar-legendary .pk-orn u:nth-child(4) { right: 8px; top: 38px; border-width: 2px 2px 0 0; border-top-right-radius: 5px; }
+.perk.rar-rare:hover, .perk.rar-epic:hover, .perk.rar-legendary:hover { box-shadow: inset 0 0 0 2px var(--c), 0 16px 34px rgba(0, 0, 0, 0.45), 0 0 34px color-mix(in srgb, var(--c) 35%, transparent); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes sheen { 0%, 55% { left: -60%; } 100% { left: 130%; } }
+@keyframes legPulse { 0%, 100% { box-shadow: inset 0 0 0 2px #ffd65a, 0 0 22px rgba(255, 201, 51, 0.45); } 50% { box-shadow: inset 0 0 0 2px #fff0a0, 0 0 40px rgba(255, 201, 51, 0.8); } }
 .pk-name { font-weight: 800; font-size: 18px; letter-spacing: 0.06em; line-height: 1.1; }
 .pk-text { font-weight: 600; font-size: 13.5px; line-height: 1.45; color: #aeb6c9; min-height: 3.8em; max-width: 210px; }
 .pk-stack { margin-top: auto; display: inline-flex; align-items: center; gap: 8px; padding: 0; font-weight: 800; font-size: 11px; letter-spacing: 0.14em; }
