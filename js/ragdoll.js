@@ -468,8 +468,7 @@ class Rag {
       return;
     }
     if (this.helmet) {
-      ctx.fillStyle = '#8f98a8'; ctx.beginPath(); ctx.arc(0, -hr * 0.25, hr * 1.12, Math.PI, 0); ctx.lineTo(hr * 1.12, -hr * 0.05); ctx.lineTo(-hr * 1.12, -hr * 0.05); ctx.closePath(); ctx.fill();
-      ctx.fillStyle = '#b6bdca'; ctx.beginPath(); ctx.arc(-f * hr * 0.3, -hr * 0.55, hr * 0.45, Math.PI * 1.1, Math.PI * 1.7); ctx.lineTo(-f * hr * 0.3, -hr * 0.55); ctx.fill();
+      ctx.fillStyle = '#7d8799'; ctx.beginPath(); ctx.arc(0, -hr * 0.25, hr * 1.12, Math.PI, 0); ctx.lineTo(hr * 1.12, -hr * 0.05); ctx.lineTo(-hr * 1.12, -hr * 0.05); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = '#6d7586'; ctx.lineWidth = 3 * s; ctx.beginPath(); ctx.moveTo(-f * hr * 1.1, -hr * 0.1); ctx.lineTo(-f * hr * 1.8, -hr * 0.2); ctx.stroke();
     } else switch (this.hat) {
       case 'cap':

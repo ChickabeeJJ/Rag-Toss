@@ -128,7 +128,7 @@ const Game = (() => {
     if (!run || run.demo || run.tut || state !== 'play' || !player || player.dead || run.overT > 0) return;
     Save.setRun({
       stage: run.stage, kos: run.kos, coins: run.coins, bestCombo: run.bestCombo, stood: run.stood, bountyN: run.bountyN, closeCalls: run.closeCalls, fevers: run.fevers, heads: run.heads, rings: run.rings, bosses: run.bosses, crates: run.crates,
-      stageKills: run.boss || run.bossT > 0 ? STAGE_KILLS : run.stageKills, perks: run.perks, hp: Math.round(player.hp),
+      stageKills: run.boss || run.bossT > 0 ? stageKills(run.stage) : run.stageKills, perks: run.perks, hp: Math.round(player.hp),
     });
   }
 
@@ -935,7 +935,7 @@ const Game = (() => {
     const ranks = Save.claimRanks();
     Save.save();
     if (on.over) on.over({ kos: run.kos, stage: run.stage, coins: run.coins, combo: run.bestCombo, heads: run.heads, rings: run.rings, bosses: run.bosses, newBest: res.newBest && run.kos > 0, ranks,
-      prevBest: res.prevBest, bounties: run.bountyN, fevers: run.fevers, mastered: run.mastered, toBoss: run.boss ? 0 : STAGE_KILLS - run.stageKills, bossHp: run.boss && run.boss.rag.alive ? run.boss.hp / run.boss.maxHp : 0, bossName: run.boss ? run.boss.name : '' });
+      prevBest: res.prevBest, bounties: run.bountyN, fevers: run.fevers, mastered: run.mastered, toBoss: run.boss ? 0 : stageKills(run.stage) - run.stageKills, bossHp: run.boss && run.boss.rag.alive ? run.boss.hp / run.boss.maxHp : 0, bossName: run.boss ? run.boss.name : '' });
   }
 
   /* ----------------------------------------------------------------- foes */
@@ -1288,9 +1288,9 @@ const Game = (() => {
     if (run.boss) return;
     if (run.bossT > 0) { if ((run.bossT -= dt) <= 0) spawnBoss(); return; }
     if (run.perkT > 0 || hold) return;
-    if (run.stageKills >= STAGE_KILLS) { if (!alive.length) run.bossT = 0.9; return; }
+    if (run.stageKills >= stageKills(run.stage)) { if (!alive.length) run.bossT = 0.9; return; }
     const cap = Math.min(5, 1 + Math.ceil(run.stage / 2));
-    if (alive.length < cap && run.stageKills + alive.length < STAGE_KILLS) {
+    if (alive.length < cap && run.stageKills + alive.filter(f => !f.minion).length < stageKills(run.stage)) {
       if (!alive.length) run.spawnT = Math.min(run.spawnT, 0.25);
       run.spawnT -= dt;
       if (run.spawnT <= 0) { spawnWave(); run.spawnT = rand(1.4, 2.4) * Math.max(0.55, 1 - 0.04 * run.stage); }

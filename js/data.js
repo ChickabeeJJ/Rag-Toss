@@ -123,7 +123,8 @@ const BOSSES = [
   { base: 'brute', name: 'THE WALL', hp: 300, scale: 1.75, body: '#6b7080', shade: '#4d515f', hat: 'horns',
     ammo: 'e_barrel', burst: 1, wind: 1.8, rest: [4.2, 5.2], flight: [1.5, 1.8], dmg: 0.7, resist: 0.55 },
 ];
-const STAGE_KILLS = 8;        // knockouts before the stage boss walks in
+// knockouts before the stage boss walks in: 15 on stage 1, two more each stage after
+const stageKills = stage => 15 + 2 * (Math.max(1, stage) - 1);
 
 /* ------------------------------------------------------- permanent upgrades */
 const UPGRADES = [

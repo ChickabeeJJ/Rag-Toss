@@ -83,7 +83,7 @@ From stage 3 some foes wear a pot that soaks one headshot, and from stage 4 some
 
 ## Why you play another run
 
-- **The run itself escalates.** More foes at once (up to four), tougher and more accurate every stage, a new foe type each stage, a boss every 8 knockouts and a new sky after each one.
+- **The run itself escalates.** More foes at once (up to four), tougher and more accurate every stage, a new foe type each stage, a boss after 15 knockouts (two more each stage after that) and a new sky after each one.
 - **Perks.** Fourteen of them with their own icons, in four kinds (offence, survival, utility, wealth), stackable, offered three at a time after every boss (click, or press 1, 2 or 3) and kept until you're knocked out: Heavy Hands, Second Helping (throws come out twice), Loud Exit (knocked-out foes explode), Hot Hands, Springy, Snack Break and so on.
 - **Runs are saved.** Quitting from the pause menu (or closing the tab) keeps your stage, knockouts, perks and health. The home screen then says CONTINUE, with a smaller button to start over. Dying ends the saved run.
 - **Frenzy.** Every fifth hit in a row lights you up for seven seconds: throws cost no stamina, come out faster and every knockout pays double. The streak chip shows five pips filling toward the next one.

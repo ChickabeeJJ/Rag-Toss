@@ -90,7 +90,7 @@ const UI = (() => {
     Game.start(opts);
     Sfx.ensure(); Sfx.startMusic();
     Platform.gameplayStart();
-    buildSlots(); cache.perks = null; cache.dots = null; cache.bounty = null; shownCoins = null; targetT = 0;
+    buildSlots(); cache.perks = null; cache.bounty = null; shownCoins = null; targetT = 0;
     $('fever').classList.add('hidden'); $('stand').classList.add('hidden'); $('bounty').classList.add('hidden'); document.body.classList.remove('frenzy');
     $('bossBar').classList.add('hidden'); $('combo').classList.add('hidden');
     if (!opts.tutorial && !Save.data.seenSwap && Save.bagItems().length > 1) { coach('swap', 6); Save.data.seenSwap = true; Save.save(); }
@@ -496,11 +496,6 @@ const UI = (() => {
       el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
     });
     set('stage', r.stage, v => { $('chipNum').textContent = v; $('chipTitle').textContent = THEMES[(v - 1) % THEMES.length].name.toUpperCase(); });
-    const dotsKey = r.stage + ':' + r.stageKills + ':' + (r.boss ? 1 : 0);
-    set('dots', dotsKey, () => {
-      $('stageDots').innerHTML = Array.from({ length: STAGE_KILLS }, (_, i) => `<i class="${i < r.stageKills ? 'done' : i === r.stageKills ? 'cur' : ''}"></i>`).join('');
-      $('bossIc').classList.toggle('on', r.stageKills >= STAGE_KILLS);
-    });
     set('dark', Game.themeDark, v => document.body.classList.toggle('dark-sky', v));
     // vitals
     set('hp', Math.ceil(p.hp), v => { $('hpNum').textContent = Math.max(0, v); });
