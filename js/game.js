@@ -109,7 +109,7 @@ const Game = (() => {
     aimCancel(); duckHeld = false; duckTired = false; duckOn = false; pending = null;
     const saved = opts.resume && Save.data.run;
     if (saved) {
-      // pick a half-finished run back up: same stage, knockouts, perks and (most of) the health; foes start fresh
+      // pick a half-finished run back up: same stage, knockouts, perks, health and stamina; foes start fresh
       for (const k of ['kos', 'stage', 'stageKills', 'bestCombo', 'heads', 'rings', 'bosses', 'crates', 'stood', 'bountyN', 'closeCalls', 'fevers']) run[k] = saved[k] || run[k];
       run.beatBest = run.kos > Save.data.best.kos;
       run.coins = saved.coins || 0; run.perks = Object.assign({}, saved.perks);
@@ -117,7 +117,7 @@ const Game = (() => {
       run.bag = sb && sb.some(Boolean) ? sb : Save.data.bag.slice();
       themeFrom = themeTo = (run.stage - 1) % THEMES.length; themeT = 1;
       refreshStats(true);
-      player.hp = clamp(saved.hp || player.maxHp, player.maxHp * 0.5, player.maxHp);
+      player.hp = clamp(saved.hp || player.maxHp, 1, player.maxHp);
       if (saved.sta != null) player.sta = clamp(saved.sta, 0, player.maxSta);
       Sfx.setStage(run.stage);
       if (on.banner) on.banner('STAGE ' + run.stage, 'WELCOME BACK');
