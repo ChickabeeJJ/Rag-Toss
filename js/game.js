@@ -118,6 +118,7 @@ const Game = (() => {
       themeFrom = themeTo = (run.stage - 1) % THEMES.length; themeT = 1;
       refreshStats(true);
       player.hp = clamp(saved.hp || player.maxHp, player.maxHp * 0.5, player.maxHp);
+      if (saved.sta != null) player.sta = clamp(saved.sta, 0, player.maxSta);
       Sfx.setStage(run.stage);
       if (on.banner) on.banner('STAGE ' + run.stage, 'WELCOME BACK');
       return;
@@ -133,7 +134,7 @@ const Game = (() => {
     if (!run || run.demo || run.tut || state !== 'play' || !player || player.dead || run.overT > 0) return;
     Save.setRun({
       stage: run.stage, kos: run.kos, coins: run.coins, bag: run.bag, bestCombo: run.bestCombo, stood: run.stood, bountyN: run.bountyN, closeCalls: run.closeCalls, fevers: run.fevers, heads: run.heads, rings: run.rings, bosses: run.bosses, crates: run.crates,
-      stageKills: run.boss || run.bossT > 0 ? stageKills(run.stage) : run.stageKills, perks: run.perks, hp: Math.round(player.hp),
+      stageKills: run.boss || run.bossT > 0 ? stageKills(run.stage) : run.stageKills, perks: run.perks, hp: Math.round(player.hp), sta: Math.round(player.sta),
     });
   }
 
