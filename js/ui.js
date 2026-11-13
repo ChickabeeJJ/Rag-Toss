@@ -349,28 +349,29 @@ const UI = (() => {
     Platform.gameplayStop();
     const r = Game.run;
     const cards = picks.map((p, i) => {
-      const kind = PERK_KIND[p.kind] || PERK_KIND.offense, have = r.perks[p.id] || 0;
+      const kind = PERK_KIND[p.kind] || PERK_KIND.offense, rar = p.rarity, have = p.have;
       const stack = have
-        ? `<div class="pk-stack"><span>OWNED x${have}</span><i>›</i><b>x${have + 1}</b></div>`
-        : '<div class="pk-stack new"><b>NEW</b></div>';
-      return `<button class="perk" data-perk="${p.id}" style="--c:${kind.color};--i:${i}">
+        ? `<div class="pk-stack"><span>OWNED x${have}</span><i>›</i><b>x${have + p.n}</b></div>`
+        : `<div class="pk-stack new"><b>NEW${p.n > 1 ? ' · x' + p.n : ''}</b></div>`;
+      return `<button class="perk rar-${rar.id}" data-perk="${p.id}" data-n="${p.n}" style="--c:${rar.color};--i:${i}">
         <span class="pk-key"><kbd>${i + 1}</kbd></span>
-        <span class="pk-kind">${kind.name}</span>
+        <span class="pk-kind">${rar.name}</span>
         <span class="pk-badge"><span class="pk-glow"></span><span class="pk-ic">${Icons.perk(p.id)}</span></span>
         <b class="pk-name">${esc(p.name.toUpperCase())}</b>
+        <small class="pk-type" style="color:${kind.color}">${kind.name}</small>
         <p class="pk-text">${esc(p.text)}</p>${stack}</button>`;
     }).join('');
     const owned = Object.entries(r.perks).map(([id, n]) => `<span class="pk-own" title="${esc(PERK[id].name)}">${Icons.perk(id)}${n > 1 ? `<b>${n}</b>` : ''}</span>`).join('');
-    openModal('perks', `<div class="pk-head"><small>STAGE ${stage - 1} CLEARED</small><h2 class="win">BOSS DOWN</h2><div class="sub">CHOOSE A PERK. IT LASTS UNTIL YOU ARE KNOCKED OUT.</div></div>
+    openModal('perks', `<div class="pk-head"><small>STAGE ${stage - 1} CLEARED</small><h2 class="win">BOSS DOWN</h2><div class="sub">CHOOSE A PERK. THE RARER THE CARD, THE STRONGER IT IS.</div></div>
       <div class="perk-row">${cards}</div>
       <div class="pk-foot"><span>NEXT: STAGE ${stage}</span>${owned ? `<div class="pk-owned"><em>YOUR PERKS</em>${owned}</div>` : ''}</div>`);
     let armed = false, chosen = false;
     setTimeout(() => { armed = true; }, 450);   // so a throw still held down can't pick one by accident
     const choose = el => {
       if (!armed || chosen) return;
-      chosen = true; Sfx.perk();
+      chosen = true; Sfx.perk(); if (+el.dataset.n >= 5) Sfx.jackpot();
       $('sheet').classList.add('picked'); el.classList.add('chosen');
-      setTimeout(() => { closeModal(true); Game.pickPerk(el.dataset.perk); Platform.gameplayStart(); cache.perks = null; window.removeEventListener('keydown', keys); }, 380);
+      setTimeout(() => { closeModal(true); Game.pickPerk(el.dataset.perk, +el.dataset.n || 1); Platform.gameplayStart(); cache.perks = null; window.removeEventListener('keydown', keys); }, 380);
     };
     const keys = e => { const k = { Digit1: 0, Digit2: 1, Digit3: 2, Numpad1: 0, Numpad2: 1, Numpad3: 2 }[e.code]; if (k != null) { const el = $('sheet').querySelectorAll('[data-perk]')[k]; if (el) { e.stopPropagation(); choose(el); } } };
     window.addEventListener('keydown', keys, true);

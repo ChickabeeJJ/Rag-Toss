@@ -865,7 +865,7 @@ const Game = (() => {
     }
     if (!f.boss && !f.minion) run.stageKills++;
     if (pk('leech')) heal(6 * pk('leech'));
-    if (pk('pop') && !o.sweep) zones.push({ kind: 'delay', t: 0.1, fn: () => blast(c.x, c.y, 115, 18 * dmgMul(), 1.6, lh.s || null, false) });
+    if (pk('pop') && !o.sweep) zones.push({ kind: 'delay', t: 0.1, fn: () => blast(c.x, c.y, 115 + 12 * (pk('pop') - 1), 18 * pk('pop') * dmgMul(), 1.6, lh.s || null, false) });
     shake = Math.max(shake, f.boss ? 1 : 0.3);
     slowT = Math.max(slowT, f.boss ? 1.3 : 0.2); slowK = f.boss ? 0.34 : 0.5;
     if (f.boss) bossDown(f);
@@ -1040,16 +1040,30 @@ const Game = (() => {
     run.perkT = 1.8;
     Save.save();
   }
-  function offerPerks() {
-    const pool = PERKS.filter(p => !(p.id === 'cheap' && pk('cheap') >= 3) && !(p.id === 'twin' && pk('twin') >= 3));
-    const picks = [];
-    while (picks.length < 3 && pool.length) picks.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-    hold = true; aimCancel();
-    if (on.perk) on.perk(picks, run.stage); else pickPerk(picks[0].id);
+  function rollRarity() {
+    const st = Math.min(run.stage - 1, 10);
+    let r = Math.random();
+    for (let i = RARITIES.length - 1; i > 0; i--) { const q = RARITIES[i], p = q.w + q.up * st; if (r < p) return q; r -= p; }
+    return RARITIES[0];
   }
-  function pickPerk(id) {
-    run.perks[id] = (run.perks[id] || 0) + 1;
-    if (id === 'skin') { refreshStats(false); heal(35); }
+  // three different perks, each with its own rarity: a rarer card is worth more stacks of the same perk
+  function offerPerks() {
+    const room = p => (p.max || 99) - pk(p.id);
+    const pool = PERKS.filter(p => room(p) > 0);
+    const picks = [];
+    while (picks.length < 3 && pool.length) {
+      const p = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+      let rar = rollRarity();
+      while (rar.n > room(p)) rar = RARITIES[RARITIES.indexOf(rar) - 1];     // never more stacks than the perk can still take
+      picks.push({ id: p.id, kind: p.kind, name: p.name, n: rar.n, rarity: rar, text: p.text(rar.n), have: pk(p.id) });
+    }
+    hold = true; aimCancel();
+    if (on.perk) on.perk(picks, run.stage); else pickPerk(picks[0].id, picks[0].n);
+  }
+  function pickPerk(id, n = 1) {
+    n = Math.max(1, Math.min(n | 0, (PERK[id].max || 99) - pk(id)));
+    run.perks[id] = pk(id) + n;
+    if (id === 'skin') { refreshStats(false); heal(35 * n); }
     hold = false; Sfx.perk(); saveRun();
     if (on.banner) on.banner('STAGE ' + run.stage, THEMES[themeTo].name.toUpperCase());
     Sfx.stage();
@@ -1107,7 +1121,7 @@ const Game = (() => {
       if (f.burnT > 0 && Math.random() < 0.3) { const c = rag.chest; Fx.burst(c.x + rand(-12, 12), c.y + rand(-30, 20), 1, { colors: ['#ffb347', '#ff7a3a', '#fff0b8'], speed: [20, 70], life: [0.25, 0.5], size: [3, 6], grav: -260, drag: 1, glow: true }); Sfx.burn(); }
       if ((f.dotT -= dt) <= 0) {
         f.dotT = 0.5;
-        const d = (f.bleed > 0 ? f.bleedDps : 0) * 0.5 + (f.burnT > 0 ? 5 * dmgMul() * 0.5 : 0);
+        const d = (f.bleed > 0 ? f.bleedDps : 0) * 0.5 + (f.burnT > 0 ? 5 * dmgMul() * 0.5 * Math.max(1, pk('hot')) : 0);
         if (d > 0) hurtFoe(f, d, { x: rag.chest.x, y: rag.chest.y - 30, dot: true, dirx: 0, diry: -1 });
         if (!rag.alive) return;
       }

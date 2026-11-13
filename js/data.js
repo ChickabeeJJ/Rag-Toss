@@ -36,7 +36,7 @@ const ITEMS = [
     tag: 'YANKS', desc: 'Sticks on and yanks the foe towards you, usually straight off their island.' },
   { id: 'firework', name: 'Firework', price: 2700, sta: 10, dmg: 22, r: 11, kb: 1.6, spd: 0.6, grav: 0, spin: 0, blast: 125,
     tag: 'STRAIGHT', desc: 'Ignores gravity and keeps speeding up. Bursts into a shower that sets foes on fire.' },
-  { id: 'magnet', name: 'Magnet', price: 3200, sta: 8, dmg: 14, r: 13, kb: 0.9, spd: 0.95, grav: 0.8, spin: 8,
+  { id: 'magnet', name: 'Magnet', price: 3200, sta: 12, dmg: 14, r: 13, kb: 0.9, spd: 0.95, grav: 0.8, spin: 8,
     tag: 'HOMING', desc: 'Curves towards the nearest foe. Rips off helmets and lids and makes them fumble their throw.' },
   { id: 'anvil', name: 'Anvil', price: 3800, sta: 13, dmg: 42, r: 17, kb: 1.2, spd: 0.9, grav: 0.85, spin: 0, heavy: true,
     tag: 'DROPS', desc: 'Throw it over their heads. The moment it is above a foe it stops dead and drops straight down.' },
@@ -142,21 +142,30 @@ const upgradeCost = (u, lvl) => Math.round(u.base * Math.pow(u.grow, lvl) / 10) 
 
 /* -------------------------------------------------------------- run perks
    Offered three at a time after every boss; they last until the run ends. */
+// `text(n)` describes a card worth n stacks: a rarer card is the same perk, several times over
 const PERKS = [
-  { id: 'heavy', kind: 'offense', name: 'Heavy Hands', icon: 'fist', text: '+25% damage' },
-  { id: 'twin', kind: 'offense', name: 'Second Helping', icon: 'hand', text: 'One throw in four comes out twice' },
-  { id: 'skin', kind: 'sustain', name: 'Extra Padding', icon: 'heart', text: '+35 max health, and heal it now' },
-  { id: 'lungs', kind: 'utility', name: 'Deep Breath', icon: 'bolt', text: '+40% stamina refill' },
-  { id: 'leech', kind: 'sustain', name: 'Snack Break', icon: 'heart', text: 'Heal 6 with every knockout' },
-  { id: 'eye', kind: 'offense', name: 'Sharp Eye', icon: 'eye', text: 'Headshots hit 50% harder' },
-  { id: 'pop', kind: 'offense', name: 'Loud Exit', icon: 'boom', text: 'Knocked-out foes explode' },
-  { id: 'big', kind: 'offense', name: 'Family Size', icon: 'bag', text: 'Everything you throw is 30% bigger' },
-  { id: 'crate', kind: 'utility', name: 'Special Delivery', icon: 'gift', text: 'Mystery crates float by twice as often' },
-  { id: 'rich', kind: 'wealth', name: 'Loose Change', icon: 'coin', text: '+30% coins' },
-  { id: 'shove', kind: 'offense', name: 'Big Shove', icon: 'wing', text: '+40% knockback' },
-  { id: 'hot', kind: 'offense', name: 'Hot Hands', icon: 'flame', text: 'Every hit sets the foe on fire' },
-  { id: 'spring', kind: 'utility', name: 'Springy', icon: 'up', text: 'Everything bounces one more time' },
-  { id: 'cheap', kind: 'utility', name: 'Light Load', icon: 'bolt', text: 'Throws cost 20% less stamina' },
+  { id: 'heavy', kind: 'offense', name: 'Heavy Hands', text: n => `+${25 * n}% damage` },
+  { id: 'twin', kind: 'offense', name: 'Second Helping', max: 4, text: n => (n === 1 ? 'One throw in four comes out twice' : n >= 4 ? 'Every throw comes out twice' : `${25 * n}% of throws come out twice`) },
+  { id: 'skin', kind: 'sustain', name: 'Extra Padding', text: n => `+${35 * n} max health, and heal it now` },
+  { id: 'lungs', kind: 'utility', name: 'Deep Breath', text: n => `+${40 * n}% stamina refill` },
+  { id: 'leech', kind: 'sustain', name: 'Snack Break', text: n => `Heal ${6 * n} with every knockout` },
+  { id: 'eye', kind: 'offense', name: 'Sharp Eye', text: n => `Headshots hit ${50 * n}% harder` },
+  { id: 'pop', kind: 'offense', name: 'Loud Exit', text: n => (n === 1 ? 'Knocked-out foes explode' : `Knocked-out foes explode, ${n} times as hard`) },
+  { id: 'big', kind: 'offense', name: 'Family Size', text: n => `Everything you throw is ${30 * n}% bigger` },
+  { id: 'crate', kind: 'utility', name: 'Special Delivery', text: n => `Mystery crates float by ${n + 1} times as often` },
+  { id: 'rich', kind: 'wealth', name: 'Loose Change', text: n => `+${30 * n}% coins` },
+  { id: 'shove', kind: 'offense', name: 'Big Shove', text: n => `+${40 * n}% knockback` },
+  { id: 'hot', kind: 'offense', name: 'Hot Hands', text: n => (n === 1 ? 'Every hit sets the foe on fire' : `Every hit sets the foe on fire, burning ${n} times as hard`) },
+  { id: 'spring', kind: 'utility', name: 'Springy', text: n => `Everything bounces ${n === 1 ? 'one more time' : n + ' more times'}` },
+  { id: 'cheap', kind: 'utility', name: 'Light Load', max: 3, text: n => `Throws cost ${20 * n}% less stamina` },
+];
+/* How rare a card is decides how many stacks of its perk it is worth. `w` is the base chance,
+   `up` what each cleared stage adds to it (common takes whatever is left). */
+const RARITIES = [
+  { id: 'common', name: 'COMMON', n: 1, color: '#aeb6c9' },
+  { id: 'rare', name: 'RARE', n: 2, color: '#4fa8ff', w: 0.26, up: 0.01 },
+  { id: 'epic', name: 'EPIC', n: 3, color: '#b98cff', w: 0.10, up: 0.01 },
+  { id: 'legendary', name: 'LEGENDARY', n: 5, color: '#ffc933', w: 0.03, up: 0.005 },
 ];
 const PERK = Object.fromEntries(PERKS.map(p => [p.id, p]));
 const PERK_KIND = { offense: { name: 'OFFENCE', color: '#ff7a3a' }, sustain: { name: 'SURVIVAL', color: '#45e08a' }, utility: { name: 'UTILITY', color: '#4fa8ff' }, wealth: { name: 'WEALTH', color: '#ffc933' } };
