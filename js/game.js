@@ -866,7 +866,7 @@ const Game = (() => {
       anchor: boss ? 99 : def.anchor, lastHit: null, tele: 0, minionT: boss ? rand(9, 13) : 5, gone: false, laser: boss ? !!boss.laser : !!def.laser, slow: 0, blind: 0,
     };
     rag.shield = boss && boss.shield ? boss.shield : def.shield || 0;
-    rag.helmet = type === 'guard' || (!boss && run.stage >= 3 && Math.random() < Math.min(0.45, (run.stage - 2) * 0.08));
+    rag.helmet = !boss && type === 'guard' || (!boss && run.stage >= 3 && Math.random() < Math.min(0.45, (run.stage - 2) * 0.08));
     rag.crown = !!boss;
     rag.hold = def.ammo; rag.holdR = AMMO[def.ammo].r * sc * 0.9;
     const nb = boss && boss.balloons ? boss.balloons : def.balloons || 0;

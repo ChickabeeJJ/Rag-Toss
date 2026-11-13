@@ -357,7 +357,11 @@ class Rag {
   hitTest(x, y, r) {
     const s = this.s, pts = this.pts;
     const hd = pts[P.HEAD];
-    if (Math.hypot(x - hd.x, y - hd.y) < r + HEAD_R * s) return { seg: 0, part: 'head', x: hd.x, y: hd.y, u: 1 };
+    // the head is the block plus its hat or crown: a capsule running up the neck axis, a touch fatter than the drawn block
+    const nk = pts[P.NECK], hl = Math.hypot(hd.x - nk.x, hd.y - nk.y) || 1, ux = (hd.x - nk.x) / hl, uy = (hd.y - nk.y) / hl;
+    const hr = HEAD_R * s * 1.12, up = hr * (this.hat || this.crown || this.helmet ? 1.15 : 0.35);
+    const q = segPointDist(hd.x - ux * hr * 0.25, hd.y - uy * hr * 0.25, hd.x + ux * up, hd.y + uy * up, x, y);
+    if (q.d < r + hr) return { seg: 0, part: 'head', x: hd.x, y: hd.y, u: 1 };
     let best = null, bd = 1e9;
     for (let b = 1; b < SEGS.length; b++) {
       const A = pts[SEGS[b][0]], B = pts[SEGS[b][1]];
