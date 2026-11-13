@@ -294,8 +294,8 @@ const UI = (() => {
       <button class="btn" id="mRestart">${ic('restart')}<b>RESTART</b></button><button class="btn" id="mHome">${ic('home')}<b>SAVE &amp; QUIT</b></button></div>`);
     wireToggles();
     $('mResume').onclick = () => { click(); resume(); };
-    $('mRestart').onclick = () => { click(); Save.clearRun(); play({ tutorial: !Save.data.tutDone }); };
-    $('mHome').onclick = () => { click(); Game.saveRun(); closeModal(true); show('home'); toast('RUN SAVED. CONTINUE ANY TIME.', 'check'); };
+    $('mRestart').onclick = () => { click(); Game.saveRun(); Save.clearRun(); play({ tutorial: !Save.data.tutDone }); };
+    $('mHome').onclick = () => { click(); const ended = Game.saveRun() === 'ended'; closeModal(true); show('home'); toast(ended ? 'KNOCKED OUT. THAT RUN IS OVER.' : 'RUN SAVED. CONTINUE ANY TIME.', 'check'); };
   }
   function resume() {
     if (modalKind !== 'pause') return;

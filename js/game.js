@@ -131,6 +131,8 @@ const Game = (() => {
   }
   // what a quit has to remember. Foes are not saved: a boss that was up comes back as the stage's boss.
   function saveRun() {
+    // knocked out but the results have not come up yet: leaving now ends the run for good, with its stats recorded
+    if (run && !run.demo && !run.tut && state === 'play' && player && player.dead) { finishRun(true); return 'ended'; }
     if (!run || run.demo || run.tut || state !== 'play' || !player || player.dead || run.overT > 0) return;
     Save.setRun({
       stage: run.stage, kos: run.kos, coins: run.coins, bag: run.bag, bestCombo: run.bestCombo, stood: run.stood, bountyN: run.bountyN, closeCalls: run.closeCalls, fevers: run.fevers, heads: run.heads, rings: run.rings, bosses: run.bosses, crates: run.crates,
@@ -926,6 +928,7 @@ const Game = (() => {
     Fx.hit(o.x, o.y, Math.atan2(o.diry, o.dirx), '#ff9aa0', 8);
     if (player.hp > 0) return;
     player.hp = 0; player.dead = true;
+    if (!run.demo) Save.clearRun();        // a knocked-out run can never be continued, however the page is left
     rag.die(o.dirx * 380 - 160, -460, P.NECK);
     aimCancel(); Sfx.death();
     slowT = 1.3; slowK = 0.34; run.overT = 1.9; shake = 1;
@@ -934,13 +937,15 @@ const Game = (() => {
     if (player.dead || player.hp >= player.maxHp) return;
     player.hp = Math.min(player.maxHp, player.hp + n); healFlash = 1;
   }
-  function finishRun() {
+  function finishRun(quiet) {
+    if (state === 'over') return;
+    run.overT = -1;
     state = 'over'; Save.clearRun();
     track('runs');
     const res = Save.recordRun(run.kos, run.stage, run.bestCombo);
     const ranks = Save.claimRanks();
     Save.save();
-    if (on.over) on.over({ kos: run.kos, stage: run.stage, coins: run.coins, combo: run.bestCombo, heads: run.heads, rings: run.rings, bosses: run.bosses, newBest: res.newBest && run.kos > 0, ranks,
+    if (on.over && !quiet) on.over({ kos: run.kos, stage: run.stage, coins: run.coins, combo: run.bestCombo, heads: run.heads, rings: run.rings, bosses: run.bosses, newBest: res.newBest && run.kos > 0, ranks,
       prevBest: res.prevBest, bounties: run.bountyN, fevers: run.fevers, mastered: run.mastered, toBoss: run.boss ? 0 : stageKills(run.stage) - run.stageKills, bossHp: run.boss && run.boss.rag.alive ? run.boss.hp / run.boss.maxHp : 0, bossName: run.boss ? run.boss.name : '' });
   }
 
@@ -1297,7 +1302,7 @@ const Game = (() => {
     }
     if (state === 'play' && !player.dead && !run.tut && !run.demo && !hold && (!run.bounty || run.bounty.done) && (run.bountyT -= dt) <= 0) newBounty();
     if (run.overT > 0 && (run.overT -= dt) <= 0) finishRun();
-    if (state === 'play' && !run.demo && !run.tut && Math.floor(run.t / 8) !== run.lastSave) { run.lastSave = Math.floor(run.t / 8); saveRun(); }
+    if (state === 'play' && !player.dead && !run.demo && !run.tut && Math.floor(run.t / 8) !== run.lastSave) { run.lastSave = Math.floor(run.t / 8); saveRun(); }
     if (run.perkT > 0 && !player.dead && (run.perkT -= dt) <= 0) offerPerks();
     Fx.update(dt);
   }
