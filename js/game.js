@@ -24,7 +24,7 @@ const Game = (() => {
   const on = { over: null, perk: null, toast: null, banner: null, tut: null };
 
   const HOME_X = 262, HOME_Y = 620;
-  const FEVER_T = 7, FEVER_EVERY = 5, STAND_T = 3.4;
+  const FEVER_T = 7, FEVER_EVERY = 10, STAND_T = 3.4;
   const coinFx = []; let coinTarget = { x: 0, y: 0 }, coinPing = 0, feverGlow = 0;
   const ARC_T = 0.8;           // the throw rejoins the previewed arc about this far into its flight
   const RELEASE_AT = 0.07;     // seconds into the whip when the item leaves the hand
@@ -191,7 +191,7 @@ const Game = (() => {
     if (run.stand > 0) standWin();
     if (run.combo % FEVER_EVERY === 0 && !run.tut) startFever();
   }
-  /* ---- frenzy: every fifth hit in a row lights you up. Throws are free and fast, coins are doubled. */
+  /* ---- frenzy: every tenth hit in a row lights you up. Throws are free and fast, coins are doubled. */
   function startFever() {
     run.fever = FEVER_T; run.fevers++;
     const h = player.rag.head;
