@@ -491,7 +491,13 @@ body.touch .slots { bottom: calc(10px + var(--safe-b)); }
 .perk.rar-legendary { background: radial-gradient(120% 85% at 50% 0%, #5a4210 0%, #2b210c 52%, #1d170a 100%); box-shadow: inset 0 0 0 1.5px rgba(255, 214, 90, 0.85), 0 0 34px rgba(255, 201, 51, 0.28), 0 0 70px rgba(255, 170, 40, 0.12); }
 .perk.rar-legendary::before { height: 4px; background: linear-gradient(90deg, #ff9a3c, #ffe14d, #fff6c2, #ffe14d, #ff9a3c); left: 0; right: 0; opacity: 1; }
 .perk.rar-legendary::after { display: block; animation: sheen 2.6s ease-in-out infinite; background: linear-gradient(100deg, transparent, rgba(255, 244, 190, 0.22), transparent); }
-.perk.rar-legendary .pk-glow { display: block; inset: -34px; background: repeating-conic-gradient(from 0deg, rgba(255, 214, 90, 0.5) 0deg 7deg, transparent 7deg 24deg); -webkit-mask: radial-gradient(circle, #000 28%, transparent 68%); mask: radial-gradient(circle, #000 28%, transparent 68%); animation: spin 14s linear infinite; }
+/* the rays live on the card itself, behind everything, and reach every corner */
+.perk { isolation: isolate; }
+.perk.rar-legendary .pk-glow { display: none; }
+.perk.rar-legendary .pk-orn::before { content: ''; position: absolute; left: 50%; top: 88px; width: 620px; height: 620px; margin: -310px 0 0 -310px; z-index: -1; pointer-events: none;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 214, 90, 0.2) 0deg 7deg, transparent 7deg 24deg);
+  -webkit-mask: radial-gradient(circle, #000 12%, rgba(0, 0, 0, 0.7) 42%, rgba(0, 0, 0, 0.35) 62%, transparent 80%); mask: radial-gradient(circle, #000 12%, rgba(0, 0, 0, 0.7) 42%, rgba(0, 0, 0, 0.35) 62%, transparent 80%);
+  animation: spin 16s linear infinite; }
 .perk.rar-legendary .pk-ic { background: radial-gradient(circle at 50% 30%, rgba(255, 214, 90, 0.4), rgba(255, 170, 40, 0.1)); box-shadow: inset 0 0 0 2px #ffd65a, 0 0 28px rgba(255, 201, 51, 0.55); animation: legPulse 1.8s ease-in-out infinite; }
 .perk.rar-legendary .pk-name { color: #fff3c4; text-shadow: 0 0 16px rgba(255, 201, 51, 0.7); }
 .perk.rar-legendary .pk-kind { background: linear-gradient(90deg, rgba(255, 154, 60, 0.35), rgba(255, 225, 77, 0.3)); color: #ffe9a0; padding: 3px 8px; border-radius: 4px; top: 12px; left: 12px; }
