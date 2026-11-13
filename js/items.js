@@ -64,8 +64,6 @@ const ItemArt = (() => {
     g.lineJoin = 'round'; g.lineCap = 'round';
     g.beginPath(); g.moveTo(-14, 9); g.lineTo(0, -9); g.lineTo(14, 9);
     g.strokeStyle = lin(g, -14, 0, 14, 0, '#b9763a', '#e0a35a', '#b9763a'); g.lineWidth = 9; g.stroke();
-    for (const [x, y, a] of [[-9.5, 5.4, 0.9], [9.5, 5.4, -0.9]]) { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = '#e2434b'; g.fillRect(-4.2, -3, 8.4, 2.6); g.fillStyle = '#fff'; g.fillRect(-4.2, 0.2, 8.4, 2); g.restore(); }
-    circ(g, 0, -4, 1.6); g.fillStyle = '#e2434b'; g.fill();
   };
 
   P.cactus = g => {

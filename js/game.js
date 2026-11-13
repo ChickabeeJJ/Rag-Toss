@@ -74,7 +74,9 @@ const Game = (() => {
     player.maxSta = 200 + 20 * Save.lvl('stamina');
     if (full) player.sta = player.maxSta;
   }
-  function selectFirstSlot() { const b = Save.data.bag; if (!b[player.slot]) player.slot = Math.max(0, b.findIndex(Boolean)); }
+  // a run throws from the bag it started with: changing the loadout in the shop only reaches the next new run
+  const bag = () => (run && run.bag) || Save.data.bag;
+  function selectFirstSlot() { const b = bag(); if (!b[player.slot]) player.slot = Math.max(0, b.findIndex(Boolean)); }
   const dmgMul = () => (1 + 0.08 * Save.lvl('power')) * (1 + 0.25 * pk('heavy'));
   const coinMul = () => (1 + 0.1 * Save.lvl('greed')) * (1 + 0.3 * pk('rich'));
   // Stamina: a big pool, small costs. A throw takes a few points, holding a wind-up
@@ -87,7 +89,7 @@ const Game = (() => {
   const foeHpMul = () => 1.12 * (1 + 0.19 * (run.stage - 1) + 0.03 * Math.pow(Math.max(0, run.stage - 4), 2));
   const foeDmgMul = () => 1 + 0.1 * (run.stage - 1) + 0.01 * Math.pow(Math.max(0, run.stage - 6), 2);
   const usingBonus = () => !!(player.bonus && player.bonus.on);
-  const currentItemId = () => (usingBonus() ? player.bonus.id : Save.data.bag[player.slot] || 'rock');
+  const currentItemId = () => (usingBonus() ? player.bonus.id : bag()[player.slot] || 'rock');
 
   function toMenu() {
     state = 'menu'; paused = false; hold = false; slowT = 0; hitStop = 0;
@@ -111,6 +113,8 @@ const Game = (() => {
       for (const k of ['kos', 'stage', 'stageKills', 'bestCombo', 'heads', 'rings', 'bosses', 'crates', 'stood', 'bountyN', 'closeCalls', 'fevers']) run[k] = saved[k] || run[k];
       run.beatBest = run.kos > Save.data.best.kos;
       run.coins = saved.coins || 0; run.perks = Object.assign({}, saved.perks);
+      const sb = Array.isArray(saved.bag) && saved.bag.length === 3 ? saved.bag.map(id => (id && ITEM[id] && Save.owns(id) ? id : null)) : null;
+      run.bag = sb && sb.some(Boolean) ? sb : Save.data.bag.slice();
       themeFrom = themeTo = (run.stage - 1) % THEMES.length; themeT = 1;
       refreshStats(true);
       player.hp = clamp(saved.hp || player.maxHp, player.maxHp * 0.5, player.maxHp);
@@ -118,6 +122,7 @@ const Game = (() => {
       if (on.banner) on.banner('STAGE ' + run.stage, 'WELCOME BACK');
       return;
     }
+    run.bag = Save.data.bag.slice();
     Save.clearRun();
     Sfx.setStage(1);
     if (opts.tutorial) startTut();
@@ -127,7 +132,7 @@ const Game = (() => {
   function saveRun() {
     if (!run || run.demo || run.tut || state !== 'play' || !player || player.dead || run.overT > 0) return;
     Save.setRun({
-      stage: run.stage, kos: run.kos, coins: run.coins, bestCombo: run.bestCombo, stood: run.stood, bountyN: run.bountyN, closeCalls: run.closeCalls, fevers: run.fevers, heads: run.heads, rings: run.rings, bosses: run.bosses, crates: run.crates,
+      stage: run.stage, kos: run.kos, coins: run.coins, bag: run.bag, bestCombo: run.bestCombo, stood: run.stood, bountyN: run.bountyN, closeCalls: run.closeCalls, fevers: run.fevers, heads: run.heads, rings: run.rings, bosses: run.bosses, crates: run.crates,
       stageKills: run.boss || run.bossT > 0 ? stageKills(run.stage) : run.stageKills, perks: run.perks, hp: Math.round(player.hp),
     });
   }
@@ -221,7 +226,7 @@ const Game = (() => {
   function newBounty() {
     const pool = BOUNTIES.filter(b => b.k !== run.bountyLast && !(b.k === 'streak' && run.combo >= 3));
     const b = pick(pool), n = randi(b.n[0], b.n[1]);
-    const item = b.k === 'item' ? pick(Save.bagItems()) : null;
+    const item = b.k === 'item' ? pick(bag().filter(Boolean)) : null;
     const pay = Math.round(b.pay * (0.7 + 0.3 * n) * (1 + 0.15 * Math.min(run.bountyN, 12)) * (1 + 0.08 * (run.stage - 1)));
     run.bounty = { k: b.k, n, prog: 0, pay, item, abs: !!b.abs, done: false, text: b.text.replace('{n}', n).replace('{s}', n > 1 ? 'S' : '').replace('{item}', item ? ITEM[item].name.toUpperCase() : '') };
     run.bountyLast = b.k;
@@ -301,11 +306,11 @@ const Game = (() => {
   function selectSlot(i) {
     if (state !== 'play') return;
     if (i === 3) { if (player.bonus && !player.bonus.on) { player.bonus.on = true; Sfx.equip(); } return; }
-    if (!Save.data.bag[i]) return;
+    if (!bag()[i]) return;
     if (player.slot !== i || usingBonus()) { player.slot = i; if (player.bonus) player.bonus.on = false; Sfx.equip(); }
   }
   function cycleSlot(d) {
-    const b = Save.data.bag;
+    const b = bag();
     for (let k = 1; k <= 3; k++) { const i = (player.slot + d * k + 9) % 3; if (b[i]) { selectSlot(i); return; } }
   }
 
@@ -1178,8 +1183,8 @@ const Game = (() => {
       gain(n); Sfx.coin(4);
       Fx.text(c.x, c.y - 40, 'COINS +' + n, '#ffc933', 24);
     } else {
-      const bag = Save.data.bag;
-      const pool = ITEMS.filter(i => !bag.includes(i.id) && i.id !== 'rock' && i.id !== 'sack');
+      const have = bag();
+      const pool = ITEMS.filter(i => !have.includes(i.id) && i.id !== 'rock' && i.id !== 'sack');
       const it = pick(pool.length ? pool : ITEMS);
       player.bonus = { id: it.id, n: it.multi ? 3 : 4, on: true };
       Fx.text(c.x, c.y - 40, it.name.toUpperCase() + ' x' + player.bonus.n, '#ffffff', 24);
@@ -1744,6 +1749,7 @@ const Game = (() => {
     get hold() { return hold; }, get run() { return run; }, get player() { return player; }, get aiming() { return aim.on; },
     get itemId() { return currentItemId(); }, get usingBonus() { return usingBonus(); }, get staFlash() { return staFlash; }, get tutorial() { return !!(run && run.tut); }, get themeDark() { return theme().dark; },
     get foes() { return foes; }, get shots() { return shots; }, get crates() { return crates; }, get time() { return time; },
+    get bag() { return bag(); },
     get fever() { return run ? clamp(run.fever / FEVER_T, 0, 1) : 0; }, get stand() { return run && !player.dead ? clamp(run.stand / STAND_T, 0, 1) : 0; }, get feverEvery() { return FEVER_EVERY; },
     get coinPing() { return coinPing; }, setCoinTarget(x, y) { coinTarget = { x, y }; },
     _spawn: spawnFoe, _crate: spawnCrate, _gold: spawnGold, _bump: bump, __plats: () => plats,

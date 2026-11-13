@@ -224,7 +224,7 @@ const UI = (() => {
       else Sfx.deny();
       renderShop();
     }, d.bag.indexOf(it.id));
-    $('bagHint').textContent = !own ? 'BUY IT TO ADD IT TO YOUR BAG' : inBag ? (only ? 'THIS IS WHAT YOU THROW' : 'TAP ITS SLOT TO TAKE IT OUT') : full ? 'BAG FULL: TAP A SLOT TO SWAP ' + it.name.toUpperCase() + ' IN' : 'TAP ADD TO BAG, OR PICK A SLOT';
+    $('bagHint').textContent = (Save.data.run ? 'FOR YOUR NEXT NEW RUN. ' : '') + !own ? 'BUY IT TO ADD IT TO YOUR BAG' : inBag ? (only ? 'THIS IS WHAT YOU THROW' : 'TAP ITS SLOT TO TAKE IT OUT') : full ? 'BAG FULL: TAP A SLOT TO SWAP ' + it.name.toUpperCase() + ' IN' : 'TAP ADD TO BAG, OR PICK A SLOT';
     Icons.hydrate($('shop'));
     Game.refreshBag();
   }
@@ -396,7 +396,7 @@ const UI = (() => {
     const stars = n => '\u2605'.repeat(n) + '\u2606'.repeat(MASTERY.length - n);
     const mastUps = (s.mastered || []).map(id => `<div class="rankup">${ic('star')}<b>${esc(ITEM[id].name.toUpperCase())} MASTERY ${stars(Save.masteryLvl(id))}</b><span>+5% DMG</span></div>`).join('');
     let mast = '';
-    const mi = Save.bagItems().map(id => ({ id, m: Save.masteryInfo(id) })).filter(o => o.m.next).sort((a, b) => (a.m.next - a.m.kills) - (b.m.next - b.m.kills))[0];
+    const mi = Game.bag.filter(Boolean).map(id => ({ id, m: Save.masteryInfo(id) })).filter(o => o.m.next).sort((a, b) => (a.m.next - a.m.kills) - (b.m.next - b.m.kills))[0];
     if (mi) mast = `<div class="rank-strip in-sheet mast"><div class="rk-top"><b>${esc(ITEM[mi.id].name.toUpperCase())} MASTERY <i>${stars(mi.m.lvl)}</i></b><span>${mi.m.next - mi.m.kills} KO${mi.m.next - mi.m.kills > 1 ? 's' : ''} TO THE NEXT STAR</span></div><div class="rk-track"><i style="width:${(mi.m.t * 100).toFixed(1)}%"></i></div></div>`;
     let goal = '';
     if (next) {
@@ -424,7 +424,7 @@ const UI = (() => {
   function buildSlots() {
     const el = $('slots');
     el.innerHTML = '';
-    Save.data.bag.forEach((id, i) => {
+    Game.bag.forEach((id, i) => {
       if (!id) return;
       const b = document.createElement('button');
       b.className = 'hslot'; b.dataset.i = i;
