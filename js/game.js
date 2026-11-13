@@ -685,7 +685,7 @@ const Game = (() => {
     const rag = f.rag, def = s.def, id = def.id;
     let head = hit.part === 'head' || (id === 'anvil' && s.st === 1);
     let mult = head ? 2 * (1 + 0.5 * pk('eye')) : hit.part === 'body' ? 1 : 0.75;
-    if (!head && !f.dummy && !run.tut && Math.random() < 0.09) { mult *= 1.8; hitStop = Math.max(hitStop, 0.05); Fx.text(hit.x, hit.y - 56, 'CRIT!', '#ff9a3c', 21, -90); Fx.ring(hit.x, hit.y, 6, 54, 0.22, '#ff9a3c', 4); }
+    if (!head && !f.dummy && !run.tut && Math.random() < 0.09 + 0.03 * Save.lvl('crit')) { mult *= 1.8; hitStop = Math.max(hitStop, 0.05); Fx.text(hit.x, hit.y - 56, 'CRIT!', '#c8ff2e', 21, -90); Fx.ring(hit.x, hit.y, 6, 54, 0.22, '#c8ff2e', 4); }
     if (head && rag.helmet) {
       rag.helmet = false;
       Fx.chunk('pot', rag.head.x, rag.head.y - 10, rand(80, 260), -rand(300, 460), 16 * rag.s, 1.5); Sfx.clang();
@@ -909,7 +909,7 @@ const Game = (() => {
     player.hp -= dmg;
     if (run.tut) player.hp = Math.max(player.hp, player.maxHp * 0.5);   // nobody loses the tutorial
     if (run.bounty && run.bounty.k === 'clean' && !run.bounty.done) run.bounty.prog = 0;
-    const stand = player.hp <= 0 && !run.stood && !run.tut && !run.demo && dmg < 1e8;
+    const stand = player.hp <= 0 && !run.stood && Save.lvl('stand') > 0 && !run.tut && !run.demo && dmg < 1e8;
     if (stand) {
       run.stood = true; run.stand = STAND_T; player.hp = 1; player.inv = 99; player.cd = 0;
       player.sta = Math.max(player.sta, player.maxSta * 0.6);
@@ -1604,7 +1604,7 @@ const Game = (() => {
     const def = ITEM[currentItemId()];
     const can = usingBonus() || player.sta >= staCost(def);
     const full = p >= 0.985;
-    const col = !can ? '#9aa1b3' : full ? '#ff5d73' : mixHex('#ffffff', '#ff9a3c', p);
+    const col = !can ? '#9aa1b3' : full ? '#ff5d73' : mixHex('#ffffff', '#c8ff2e', p);
     aim.col = col; aim.ux = ux; aim.uy = uy; aim.kx = kx; aim.ky = ky;
     const appear = Math.min(1, aim.t / 0.12);
     // press ripple

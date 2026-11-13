@@ -75,6 +75,8 @@ const Icons = (() => {
     guide: '<circle cx="24" cy="24" r="14"/><circle cx="24" cy="24" r="5"/><path d="M24 4v6M24 38v6M4 24h6M38 24h6"/>',
     armor: '<path d="M24 6l15 5v11c0 9-6 16-15 20-9-4-15-11-15-20V11z"/>',
     greed: '<circle cx="24" cy="24" r="15"/><circle cx="24" cy="24" r="8"/>',
+    crit: '<circle cx="24" cy="24" r="15"/><circle cx="24" cy="24" r="2.5"/><path d="M24 5v8M24 35v8M5 24h8M35 24h8"/>',
+    stand: HEART + '<path d="M26 17l-5 8h6l-4 8"/>',
   };
   const line = id => `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LINE[id] || ''}</svg>`;
   const perk = line;

@@ -89,12 +89,12 @@ From stage 3 some foes wear a pot that soaks one headshot, and from stage 4 some
 - **Frenzy.** Every tenth hit in a row lights you up for seven seconds: throws cost no stamina, come out faster and every knockout pays double. The streak chip shows ten pips filling toward the next one.
 - **Bounties.** One small job at a time in the top-left corner (three headshots, a x5 streak, two knockouts with the chicken, a close call), paid on the spot. Each one is worth a little more than the last.
 - **Golden ragdolls.** Now and then a golden one drifts in. It never fights back, it leaves after nine seconds, and knocking it out is a jackpot.
-- **Last stand.** Once a run, the blow that would finish you leaves you standing in slow motion. Land a throw before the bar runs out and you are back at 35% health.
+- **Last stand.** A one-time 600-coin unlock on the Upgrades screen. With it, once a run, the blow that would finish you leaves you standing in slow motion. Land a throw before the bar runs out and you are back at 35% health.
 - **Mastery.** Every throwable earns up to five stars from knockouts (8, 25, 60, 120, 220). Each star is +5% damage with it, for good.
-- **Small things.** Coins fly from a knockout to the counter, which rolls up. A random hit in eleven is a crit. A throw that just misses you is a close call and gives stamina back. The counter shows your best and tells you when you are three away from beating it.
+- **Small things.** Coins fly from a knockout to the counter, which rolls up. About one hit in eleven is a crit (the Sweet Spot upgrade adds 3% per level). A throw that just misses you is a close call and gives stamina back. The counter shows your best and tells you when you are three away from beating it.
 - **Coins.** Earned per knockout, multiplied by your streak, plus boss bonuses. They're banked as you earn them, so quitting a run keeps them.
 - **Characters.** Eight to wear (Rookie, Cowboy, Viking, Chef, Wizard, Knight, Pirate, Royal), each with its own colour and hat, bought with coins on the Characters tab of the Stuff screen. They are looks only; nothing about throwing changes.
-- **Stuff and upgrades.** 26 items and eight permanent upgrades: Thick Skull (health), Big Lungs (stamina), Second Breath (refill), Strong Arm (damage), Quick Hands (time between throws), Good Eye (longer aim line), Padding (damage taken), and Deep Pockets (coins).
+- **Stuff and upgrades.** 26 items and ten permanent upgrades: Thick Skull (health), Big Lungs (stamina), Second Breath (refill), Strong Arm (damage), Quick Hands (time between throws), Good Eye (longer aim line), Padding (damage taken), and Deep Pockets (coins).
 - **The results screen always points at the next thing.** It shows the next item you don't own with a bar for how close you are, flags affordable upgrades, and shows your rank bar.
 - **Ranks.** Lifetime knockouts move you through eleven ranks, from Butterfingers to The Last Throw. Each rank-up pays coins.
 - **Missions.** Three at a time from a pool of ten, refreshed at 00:00 UTC, with a 250-coin chest for finishing all three. There is no login reward.

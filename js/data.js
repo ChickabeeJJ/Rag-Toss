@@ -136,6 +136,8 @@ const UPGRADES = [
   { id: 'guide', name: 'Good Eye', icon: 'eye', max: 6, base: 90, grow: 1.7, text: l => `+${l * 2} AIM DOTS`, step: 'longer aim line' },
   { id: 'armor', name: 'Padding', icon: 'shield', max: 8, base: 120, grow: 1.65, text: l => `-${l * 5}% DAMAGE TAKEN`, step: '-5% damage taken' },
   { id: 'greed', name: 'Deep Pockets', icon: 'coin', max: 8, base: 150, grow: 1.7, text: l => `+${l * 10}% COINS`, step: '+10% coins' },
+  { id: 'crit', name: 'Sweet Spot', icon: 'eye', max: 6, base: 110, grow: 1.65, text: l => `+${l * 3}% CRIT CHANCE`, step: '+3% crit chance' },
+  { id: 'stand', name: 'Last Stand', icon: 'shield', max: 1, base: 600, grow: 1, once: true, text: () => 'ONE SECOND CHANCE EVERY RUN', step: 'survive one knockout per run' },
 ];
 const UPGRADE = Object.fromEntries(UPGRADES.map(u => [u.id, u]));
 const upgradeCost = (u, lvl) => Math.round(u.base * Math.pow(u.grow, lvl) / 10) * 10;
@@ -219,7 +221,7 @@ const STYLE = {
 /* -------------------------------------------------------------- characters
    Who you throw as. Pure looks: a colour and a hat, bought with coins. */
 const CHARACTERS = [
-  { id: 'rookie', name: 'Rookie', price: 0, body: '#f7f2e7', shade: '#d3c8b3', accent: '#ff9a3c', hat: null },
+  { id: 'rookie', name: 'Rookie', price: 0, body: '#f7f2e7', shade: '#d3c8b3', accent: '#c8ff2e', hat: null },
   { id: 'cowboy', name: 'Cowboy', price: 300, body: '#efd9b4', shade: '#cdb088', accent: '#c4642a', hat: 'cowboy' },
   { id: 'viking', name: 'Viking', price: 600, body: '#e9dcc7', shade: '#c9b99f', accent: '#5a86b8', hat: 'viking' },
   { id: 'chef', name: 'Chef', price: 900, body: '#ffffff', shade: '#dcdfe8', accent: '#e2434b', hat: 'chef' },

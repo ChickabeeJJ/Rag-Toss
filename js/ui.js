@@ -239,8 +239,8 @@ const UI = (() => {
       const row = document.createElement('div');
       row.className = 'up card' + (maxed ? ' maxed' : '');
       const pips = Array.from({ length: u.max }, (_, i) => `<i class="${i < l ? 'on' : ''}"></i>`).join('');
-      row.innerHTML = `<span class="up-ic"><span class="ic">${Icons.line(u.id)}</span></span><div class="up-body"><b>${esc(u.name.toUpperCase())}</b><span>${l ? esc(u.text(l)) : esc(u.step.toUpperCase()) + ' PER LEVEL'}</span><div class="up-pips">${pips}</div></div>` +
-        (maxed ? '<div class="up-max">MAX</div>' : `<button class="btn ${can ? 'primary' : ''}" ${can ? '' : 'disabled'}><b>${ic('coin')}${fmt(cost)}</b><small>${esc(u.step.toUpperCase())}</small></button>`);
+      row.innerHTML = `<span class="up-ic"><span class="ic">${Icons.line(u.id)}</span></span><div class="up-body"><b>${esc(u.name.toUpperCase())}</b><span>${l ? esc(u.text(l)) : esc(u.step.toUpperCase()) + (u.once ? '' : ' PER LEVEL')}</span><div class="up-pips">${pips}</div></div>` +
+        (maxed ? `<div class="up-max">${u.once ? 'OWNED' : 'MAX'}</div>` : `<button class="btn ${can ? 'primary' : ''}" ${can ? '' : 'disabled'}><b>${ic('coin')}${fmt(cost)}</b><small>${u.once ? 'ONE-TIME UNLOCK' : esc(u.step.toUpperCase())}</small></button>`);
       const btn = row.querySelector('button');
       if (btn) btn.onclick = () => { if (Save.buyUpgrade(u.id)) { Sfx.buy(); renderUpgrades(); coins(); } else Sfx.deny(); };
       list.appendChild(row);
