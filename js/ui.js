@@ -71,8 +71,8 @@ const UI = (() => {
     if (id !== null && Game.state !== 'menu') { Game.toMenu(); Platform.gameplayStop(); }
     if (id !== null) Game.refreshBag();
     if (id === 'home') renderHome();
-    if (id === 'shop') renderShop();
-    if (id === 'upgrades') renderUpgrades();
+    if (id === 'shop') { renderShop(); $('shopGrid').classList.add('intro'); }
+    if (id === 'upgrades') { renderUpgrades(); $('upList').classList.add('intro'); }
     if (id !== null && from === null) Sfx.stopMusic();
     coins();
     requestAnimationFrame(syncInset);
@@ -171,6 +171,13 @@ const UI = (() => {
     Icons.hydrate($('shop'));
   }
 
+  // put an owned item in the first free slot, or take it out if it is already in the bag
+  function toggleBag(id) {
+    const d = Save.data, slot = d.bag.indexOf(id), free = d.bag.indexOf(null);
+    if (slot >= 0) { if (Save.unequip(slot)) Sfx.equip(); else Sfx.deny(); }
+    else if (free >= 0 && Save.equip(id, free)) Sfx.equip();
+    else Sfx.deny();
+  }
   function renderShop() {
     const d = Save.data;
     document.querySelectorAll('#shopTabs [data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === shopTab));
@@ -182,22 +189,29 @@ const UI = (() => {
     for (const it of ITEMS) {
       const own = Save.owns(it.id), slot = d.bag.indexOf(it.id);
       const b = document.createElement('button');
-      b.className = 'item' + (it.id === shopSel ? ' sel' : '') + (own ? '' : ' locked');
+      b.className = 'item' + (it.id === shopSel ? ' sel' : '') + (own ? '' : ' locked') + (slot >= 0 ? ' inbag' : '');
       b.appendChild(ItemArt.iconEl(it.id, 60));
-      b.insertAdjacentHTML('beforeend', `<b>${esc(it.name)}</b>` + (slot >= 0 ? `<small class="eq">IN SLOT ${slot + 1}</small>` : own ? '<small class="own">OWNED</small>' : `<small class="${d.coins >= it.price ? '' : 'poor'}">${ic('coin')}${fmt(it.price)}</small>`));
-      b.onclick = () => { click(); shopSel = it.id; renderShop(); };
+      b.insertAdjacentHTML('beforeend', `<b>${esc(it.name)}</b>` + (slot >= 0 ? `<i class="bagtag">${slot + 1}</i><small class="eq">IN BAG</small>` : own ? '<small class="own">OWNED</small>' : `<small class="${d.coins >= it.price ? '' : 'poor'}">${ic('coin')}${fmt(it.price)}</small>`));
+      // tap to look at it; tap it again to put it in the bag or take it out
+      b.onclick = () => { if (it.id === shopSel && own) toggleBag(it.id); else { click(); shopSel = it.id; } renderShop(); };
       grid.appendChild(b);
     }
+    grid.classList.remove('intro');
     const it = ITEM[shopSel], own = Save.owns(it.id);
+    const inBag = d.bag.includes(it.id), full = !d.bag.includes(null), only = d.bag.filter(Boolean).length <= 1;
     const pv = $('shopPreview'); pv.innerHTML = ''; pv.appendChild(ItemArt.iconEl(it.id, 150));
     const stat = (label, v) => `<span>${label}</span><i style="--v:${Math.round(clamp(v, 0.04, 1) * 100)}%"></i>`;
     let action;
-    if (own) action = d.bag.includes(it.id) ? '<div class="note">IN YOUR BAG. TAP ANOTHER SLOT TO MOVE IT.</div>' : '<div class="note hi">TAP A BAG SLOT TO TAKE IT WITH YOU</div>';
+    if (own && inBag) action = only ? '<div class="note">IN YOUR BAG. YOU NEED AT LEAST ONE THING TO THROW.</div>' : '<button class="btn" id="btnEq"><b>TAKE OUT OF BAG</b></button>';
+    else if (own) action = full ? '<div class="note hi">BAG FULL. TAP A SLOT ABOVE TO SWAP IT IN.</div>' : '<button class="btn primary" id="btnEq"><b>ADD TO BAG</b></button>';
     else if (d.coins >= it.price) action = `<button class="btn primary" id="btnBuy"><b>BUY</b><small>${fmt(it.price)} COINS</small></button>`;
     else action = `<button class="btn" disabled><b>${fmt(it.price)} COINS</b><small>${fmt(it.price - d.coins)} MORE TO GO</small></button>`;
     $('shopInfo').innerHTML = `<div class="pv-head"><b>${esc(it.name.toUpperCase())}</b><span class="tag">${esc(it.tag)}</span></div><p>${esc(it.desc)}</p>
       ${own ? (m => `<div class="mastery"><div class="rk-top"><b>MASTERY <i>${'\u2605'.repeat(m.lvl)}${'\u2606'.repeat(MASTERY.length - m.lvl)}</i></b><span>${m.next ? m.kills + ' / ' + m.next + ' KOs' : 'MAXED'}${m.lvl ? ' · +' + m.lvl * 5 + '% DMG' : ''}</span></div><div class="rk-track"><i style="width:${(m.t * 100).toFixed(1)}%"></i></div></div>`)(Save.masteryInfo(it.id)) : ''}
       <div class="stats">${stat('DAMAGE', it.id === 'sack' ? 0.6 : (it.dmg * (it.multi || 1)) / 44)}${stat('SHOVE', it.id === 'plunger' ? 1 : it.kb / 3.2)}${stat('STAMINA', it.sta / 14)}</div>${action}`;
+    const eq = $('btnEq');
+    if (eq) eq.onclick = () => { toggleBag(it.id); renderShop(); };
+    $('shopBag').classList.toggle('swap', own && !inBag && full);
     const buy = $('btnBuy');
     if (buy) buy.onclick = () => {
       if (Save.buyItem(it.id)) { Sfx.buy(); toast(it.name.toUpperCase() + ' UNLOCKED', 'bag'); renderShop(); coins(); }
@@ -210,13 +224,14 @@ const UI = (() => {
       else Sfx.deny();
       renderShop();
     }, d.bag.indexOf(it.id));
-    $('bagHint').textContent = own ? 'TAP A SLOT TO PUT ' + it.name.toUpperCase() + ' THERE' : 'BUY IT FIRST, THEN TAP A SLOT';
+    $('bagHint').textContent = !own ? 'BUY IT TO ADD IT TO YOUR BAG' : inBag ? (only ? 'THIS IS WHAT YOU THROW' : 'TAP ITS SLOT TO TAKE IT OUT') : full ? 'BAG FULL: TAP A SLOT TO SWAP ' + it.name.toUpperCase() + ' IN' : 'TAP ADD TO BAG, OR PICK A SLOT';
     Icons.hydrate($('shop'));
     Game.refreshBag();
   }
 
   /* ------------------------------------------------------------- upgrades */
   function renderUpgrades() {
+    $('upList').classList.remove('intro');
     const list = $('upList');
     list.innerHTML = '';
     for (const u of UPGRADES) {

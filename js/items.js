@@ -24,7 +24,6 @@ const ItemArt = (() => {
     poly(g, [-13, 3, -9, -10, 1, -14, 12, -8, 14, 4, 7, 13, -6, 12]); fillStroke(g, lin(g, -12, -12, 12, 12, '#b8becb', '#8a91a2', '#6b7283'));
     g.fillStyle = 'rgba(255,255,255,0.35)'; poly(g, [-9, -10, 1, -14, 12, -8, 4, -5, -5, -3]); g.fill();
     g.fillStyle = 'rgba(20,24,40,0.28)'; poly(g, [-13, 3, -5, -3, -2, 6, -6, 12]); g.fill();
-    g.strokeStyle = 'rgba(30,34,50,0.45)'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(-5, -3); g.lineTo(4, -5); g.lineTo(7, 13); g.moveTo(4, -5); g.lineTo(14, 4); g.stroke();
     poly(g, [-13, 3, -9, -10, 1, -14, 12, -8, 14, 4, 7, 13, -6, 12]); stroke(g);
   };
   P.e_rock = g => {
@@ -65,20 +64,16 @@ const ItemArt = (() => {
     g.lineJoin = 'round'; g.lineCap = 'round';
     g.beginPath(); g.moveTo(-14, 9); g.lineTo(0, -9); g.lineTo(14, 9);
     g.strokeStyle = lin(g, -14, 0, 14, 0, '#b9763a', '#e0a35a', '#b9763a'); g.lineWidth = 9; g.stroke();
-    g.strokeStyle = 'rgba(255,235,190,0.6)'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(-11, 6); g.lineTo(0, -7.5); g.lineTo(11, 6); g.stroke();
     for (const [x, y, a] of [[-9.5, 5.4, 0.9], [9.5, 5.4, -0.9]]) { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = '#e2434b'; g.fillRect(-4.2, -3, 8.4, 2.6); g.fillStyle = '#fff'; g.fillRect(-4.2, 0.2, 8.4, 2); g.restore(); }
     circ(g, 0, -4, 1.6); g.fillStyle = '#e2434b'; g.fill();
   };
 
   P.cactus = g => {
-    // pot
-    poly(g, [-8, 7, 8, 7, 6, 15, -6, 15]); fillStroke(g, lin(g, -8, 0, 8, 0, '#d9703a', '#f09050', '#b9562a'));
-    g.fillStyle = '#f09050'; g.fillRect(-9.5, 5, 19, 3.4);
     // arms and trunk
     g.lineCap = 'round'; g.lineJoin = 'round';
     for (const [w, c] of [[11, null]]) {
       g.strokeStyle = c || lin(g, -6, 0, 6, 0, '#2f8f4e', '#5cc477', '#2f8f4e'); g.lineWidth = w;
-      g.beginPath(); g.moveTo(0, 6); g.lineTo(0, -8); g.stroke();
+      g.beginPath(); g.moveTo(0, 9); g.lineTo(0, -8); g.stroke();
     }
     for (const [w, c] of [[7, '#43aa62']]) {
       g.strokeStyle = c; g.lineWidth = w; g.beginPath(); g.moveTo(-1, 0); g.lineTo(-10, 0); g.lineTo(-10, -7); g.stroke();
@@ -86,7 +81,10 @@ const ItemArt = (() => {
     }
     g.strokeStyle = 'rgba(255,255,255,0)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(-1.6, 3); g.lineTo(-1.6, -9); g.stroke();
     g.strokeStyle = '#fffbe6'; g.lineWidth = 1.2;
-    for (const [x, y, a] of [[4.5, -6, -0.5], [4.5, 2, 0.4], [-4.5, -3, 3.5], [-12, -2, 3.2], [-8, -8, 4.2], [12, -4, -0.3], [8, -10, 4.9], [0, -13, 4.71]]) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 4, y + Math.sin(a) * 4); g.stroke(); }
+    for (const [x, y, a] of [[4.5, -6, -0.5], [4.5, 1, 0.4], [-4.5, -3, 3.5], [-12, -2, 3.2], [-8, -8, 4.2], [12, -4, -0.3], [8, -10, 4.9], [0, -13, 4.71]]) { g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 4, y + Math.sin(a) * 4); g.stroke(); }
+    // the pot goes on last, so the trunk sits down inside it
+    poly(g, [-8, 7, 8, 7, 6, 15, -6, 15]); fillStroke(g, lin(g, -8, 0, 8, 0, '#d9703a', '#f09050', '#b9562a'));
+    g.fillStyle = '#f09050'; g.fillRect(-9.5, 5, 19, 3.4);
     circ(g, 0.5, -13, 3.2); fillStroke(g, '#ff7fae', 1.4); circ(g, 0.5, -13, 1.1); g.fillStyle = '#ffd24a'; g.fill();
   };
 
