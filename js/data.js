@@ -36,7 +36,7 @@ const ITEMS = [
     tag: 'YANKS', desc: 'Sticks on and yanks the foe towards you, usually straight off their island.' },
   { id: 'firework', name: 'Firework', price: 2700, sta: 10, dmg: 22, r: 11, kb: 1.6, spd: 0.6, grav: 0, spin: 0, blast: 125,
     tag: 'STRAIGHT', desc: 'Ignores gravity and keeps speeding up. Bursts into a shower that sets foes on fire.' },
-  { id: 'magnet', name: 'Magnet', price: 3200, sta: 12, dmg: 14, r: 13, kb: 0.9, spd: 0.95, grav: 0.8, spin: 8,
+  { id: 'magnet', name: 'Magnet', price: 3200, sta: 12, dmg: 9, r: 13, kb: 0.9, spd: 0.95, grav: 0.8, spin: 8,
     tag: 'HOMING', desc: 'Curves towards the nearest foe. Rips off helmets and lids and makes them fumble their throw.' },
   { id: 'anvil', name: 'Anvil', price: 3800, sta: 13, dmg: 42, r: 17, kb: 1.2, spd: 0.9, grav: 0.85, spin: 0, heavy: true,
     tag: 'DROPS', desc: 'Throw it over their heads. The moment it is above a foe it stops dead and drops straight down.' },

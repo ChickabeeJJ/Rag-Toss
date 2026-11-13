@@ -82,7 +82,7 @@ const Game = (() => {
   // Stamina: a big pool, small costs. A throw takes a few points, holding a wind-up
   // sips at it, a duck is a flat fee, and it refills by itself the whole time.
   const DUCK_COST = 5, HOLD_DRAIN = 2.5, DUCK_MAX = 1.5;
-  const staRegen = () => 11 * (1 + 0.1 * Save.lvl('regen')) * (1 + 0.4 * pk('lungs'));
+  const staRegen = () => 7.7 * (1 + 0.1 * Save.lvl('regen')) * (1 + 0.4 * pk('lungs'));
   const throwCd = () => 0.42 * (1 - 0.08 * Save.lvl('quick'));
   const staCost = def => def.sta * (1 - Math.min(0.6, 0.2 * pk('cheap')));
   const armor = () => 1 - 0.05 * Save.lvl('armor');
@@ -977,7 +977,7 @@ const Game = (() => {
     pl.y = pl.baseY + 520;
     plats.push(pl);
     const rag = new Rag({ x: pos.x, y: pl.y, scale: sc, facing: -1, body: (boss && boss.body) || def.body, shade: (boss && boss.shade) || def.shade, accent: shade((boss && boss.body) || def.body, -0.45), hat: boss ? boss.hat : def.hat, plat: pl, weight: boss ? 4.5 : def.anchor / 1.7, steady: !!boss });
-    const hp = boss ? boss.hp * (1 + 0.09 * (run.stage - 1)) : def.hp * foeHpMul();
+    const hp = boss ? boss.hp * 1.2 * (1 + 0.09 * (run.stage - 1)) : def.hp * foeHpMul();
     const f = {
       type, def, rag, plat: pl, hp, maxHp: hp, state: 'enter', t: rand(0.9, 1.8), burst: boss ? boss.burst : def.burst || 1, left: 0, sol: null,
       boss: boss || null, minion: false, dummy: false, bleed: 0, bleedDps: 0, burnT: 0, dotT: 0.5, coins: boss ? 40 + run.stage * 6 : def.coins,
