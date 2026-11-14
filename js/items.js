@@ -125,7 +125,7 @@ const ItemArt = (() => {
   P.beehive = g => {
     const rows = [[-11, 7, 5], [-5, 10.5, 6], [1, 12, 6.2], [7, 10, 5.4], [12.5, 6, 4]];
     for (let i = rows.length - 1; i >= 0; i--) { ell(g, 0, rows[i][0], rows[i][1], rows[i][2]); fillStroke(g, lin(g, -10, 0, 10, 0, i % 2 ? '#c98a12' : '#e9a91e', i % 2 ? '#f0b830' : '#ffd24a', i % 2 ? '#c98a12' : '#e9a91e'), 1.6); }
-    ell(g, 0, 4.5, 3.8, 4.4); g.fillStyle = '#2d1f0a'; g.fill(); stroke(g, 1.2);
+    ell(g, 0, 0.8, 3.8, 4.4); g.fillStyle = '#2d1f0a'; g.fill(); stroke(g, 1.2);
     shine(g, -5, -4, 3, 1.4, -0.5, 0.55);
     g.strokeStyle = '#7a5a2a'; g.lineWidth = 2.4; g.beginPath(); g.moveTo(0, -16); g.lineTo(0, -19); g.stroke();
   };

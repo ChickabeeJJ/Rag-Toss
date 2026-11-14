@@ -193,7 +193,7 @@ const Game = (() => {
       const sh = launch(def, { owner: q.owner, x: q.x, y: q.y, vx: q.vx, vy: q.vy, dmg: q.dmg, life: 6 });
       sh.age = q.age || 0; sh.bounces = q.bounces != null ? q.bounces : sh.bounces; if (q.art) sh.art = q.art;
     }
-    for (const h of sv.holes || []) zones.push({ kind: 'hole', x: h.x, y: h.y, t: h.t, dur: h.dur, seq: 0, dmg: h.dmg, kb: h.kb, s: h.own ? { owner: 'p' } : null });
+    for (const h of sv.holes || []) zones.push({ kind: 'hole', x: h.x, y: h.y, t: h.t, dur: h.dur, seq: 0, dmg: h.dmg, kb: h.kb, s: h.own ? { owner: 'p', def: ITEM.hole, mast: 'hole', art: 'hole', vx: 0, vy: 0, x: h.x, y: h.y } : null });
     Sfx.setStage(run.stage);
     if (on.banner) on.banner('STAGE ' + run.stage, 'WELCOME BACK');
     // a perk offer that was still on screen comes straight back
@@ -846,7 +846,7 @@ const Game = (() => {
   let lastStop = -9;
   const SUBS = new Set(['candy', 'seed', 'bee']);
   function stopFor(base, s) {
-    if (s && SUBS.has(s.def.id)) return;
+    if (s && s.def && SUBS.has(s.def.id)) return;
     if (time - lastStop < 0.2) return;
     lastStop = time;
     hitStop = Math.max(hitStop, base * Math.max(0.25, 1 - 0.06 * (run.stage - 1)));
@@ -967,7 +967,7 @@ const Game = (() => {
     if (f.tut && run.tut && !o.dot) run.tut.hits++;
     rag.flash = 1;
     const big = dmg >= 24;
-    if ((!o.dot || dmg >= 1) && !(o.s && SUBS.has(o.s.def.id) && (f.lastText || 0) > time - 0.18)) { if (o.s && SUBS.has(o.s.def.id)) f.lastText = time; Fx.text(o.x + rand(-8, 8), o.y - 24, String(Math.max(1, Math.round(dmg))), o.head ? '#ffe14d' : o.dot ? '#ffb070' : '#ffffff', o.dot ? 15 : clamp(17 + dmg * 0.3, 17, 34)) }
+    if ((!o.dot || dmg >= 1) && !(o.s && o.s.def && SUBS.has(o.s.def.id) && (f.lastText || 0) > time - 0.18)) { if (o.s && o.s.def && SUBS.has(o.s.def.id)) f.lastText = time; Fx.text(o.x + rand(-8, 8), o.y - 24, String(Math.max(1, Math.round(dmg))), o.head ? '#ffe14d' : o.dot ? '#ffb070' : '#ffffff', o.dot ? 15 : clamp(17 + dmg * 0.3, 17, 34)) }
     if (!o.dot) {
       if (o.head) Sfx.head(); else Sfx.thud(big);
       if (o.head || big) stopFor(0.045, o.s);
@@ -978,7 +978,7 @@ const Game = (() => {
     }
     if (f.hp <= 0) { killFoe(f, o); return; }
     if (o.dot) return;
-    if (f.state === 'wind' && !f.boss && dmg >= 4) { f.state = 'idle'; f.t = rand(0.9, 1.5); rag.pull = 0; style('stop', rag.head.x, rag.head.y - 60); }
+    if (f.state === 'wind' && !f.boss && dmg >= 4 && Math.random() < 0.35) { f.state = 'idle'; f.t = rand(0.9, 1.5); rag.pull = 0; style('stop', rag.head.x, rag.head.y - 60); }
     shove(f, o.dirx, o.diry, o.kb, o);
   }
   /* What a blow does to a body. The throw pushes the bone it landed on and

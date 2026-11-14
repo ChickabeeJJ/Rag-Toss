@@ -19,7 +19,7 @@ const UI = (() => {
     applyUiScale();
     Sfx.setSfx(Save.data.settings.sfx); Sfx.setMusic(Save.data.settings.music); Theme.set(Save.data.settings.accent); Sfx.setSfxVol(Save.data.settings.sfxVol); Sfx.setMusicVol(Save.data.settings.musicVol);
     $('btnPlay').onclick = () => { click(); play(Save.data.run ? { resume: true } : {}); };
-    $('btnNew').onclick = () => { click(); Save.clearRun(); play(); };
+    $('btnNew').onclick = () => { click(); confirmNewRun(); };
     $('btnShop').onclick = () => { click(); show('shop'); };
     document.querySelectorAll('#shopTabs [data-tab]').forEach(b => { b.onclick = () => { click(); shopTab = b.dataset.tab; renderShop(); }; });
     $('btnBag').onclick = () => { click(); openLoadout(); };
@@ -32,7 +32,7 @@ const UI = (() => {
     $('pvAgain').onclick = () => { click(); Game.replayPreview(); };
     $('btnRotateOk').onclick = () => { rotateDismissed = true; checkRotate(); };
     document.querySelectorAll('[data-back]').forEach(b => { b.onclick = () => { click(); show('home'); }; });
-    $('modal').addEventListener('pointerdown', e => { if (e.target === $('modal') && ['missions', 'rank', 'settings'].includes(modalKind)) closeModal(); });
+    $('modal').addEventListener('pointerdown', e => { if (e.target === $('modal') && ['missions', 'rank', 'settings', 'confirm'].includes(modalKind)) closeModal(); });
     const duck = $('btnDuck');
     const duckOn = e => { e.preventDefault(); Game.setDuck(true); duck.classList.add('on'); };
     const duckOff = () => { Game.setDuck(false); duck.classList.remove('on'); };
@@ -426,6 +426,16 @@ const UI = (() => {
   }
 
   /* --------------------------------------------------------------- modals */
+  // starting over throws the saved run away, so it asks first
+  function confirmNewRun() {
+    const r = Save.data.run;
+    if (!r) { play(); return; }
+    openModal('confirm', `<h2>START A NEW RUN?</h2><div class="sub">YOUR SAVED RUN WILL BE LOST</div>
+      <div class="note">STAGE ${r.stage} · ${r.kos} KNOCKOUTS${r.coins ? ' · ' + fmt(r.coins) + ' COINS EARNED' : ''}</div>
+      <div class="actions"><button class="btn primary wide" id="cfKeep"><b>KEEP IT</b></button><button class="btn wide danger" id="cfNew"><b>START A NEW RUN</b></button></div>`);
+    $('cfKeep').onclick = () => { click(); closeModal(true); };
+    $('cfNew').onclick = () => { click(); closeModal(true); Save.clearRun(); play(); };
+  }
   function openModal(kind, html) {
     modalOpen = true; modalKind = kind;
     $('sheet').className = 'sheet ' + kind;
