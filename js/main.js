@@ -52,7 +52,9 @@
     // in play the keys belong to the game: a button that kept focus would swallow Space or Enter and draw a focus ring
     if (inPlay() && document.activeElement && document.activeElement !== document.body && document.activeElement.blur) document.activeElement.blur();
     if (DUCK.has(e.code)) { if (inPlay()) { e.preventDefault(); Game.setDuck(true); } return; }
-    if (!inPlay() || e.repeat) return;
+    // the hotbar keys work whenever a run is on screen: also behind the pause sheet, and right after coming back from another tab
+    const hotOk = UI.screen === null && Game.state === 'play' && (!UI.modalOpen() || UI.modalKind === 'pause');
+    if (e.repeat || !(hotOk || inPlay())) return;
     switch (e.code) {
       case 'Digit1': case 'Numpad1': Game.selectNth(0); break;
       case 'Digit2': case 'Numpad2': Game.selectNth(1); break;
@@ -66,6 +68,9 @@
   window.addEventListener('keyup', e => { if (DUCK.has(e.code)) Game.setDuck(false); });
   window.addEventListener('pagehide', () => { Game.saveRun(); Save.save(); });
   window.addEventListener('blur', () => { Game.setDuck(false); Game.aimCancel(); });
+  // coming back to the page (or clicking it) always hands the keyboard back to the game
+  const grab = () => { try { window.focus(); if (document.activeElement && document.activeElement !== document.body && document.activeElement.blur) document.activeElement.blur(); } catch (e) { /* ignore */ } };
+  window.addEventListener('focus', grab); window.addEventListener('pointerdown', grab, true);
 
   window.addEventListener('resize', () => { Game.resize(); UI.checkRotate(); UI.applyUiScale(); UI.syncInset(); });
   document.addEventListener('visibilitychange', () => {
@@ -74,7 +79,7 @@
       Game.saveRun();
       Save.save();
       Sfx.suspend(true);
-    } else Sfx.suspend(false);
+    } else { Sfx.suspend(false); grab(); }
   });
 
   /* ------------------------------------------------------------- loop */

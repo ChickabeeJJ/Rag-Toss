@@ -343,7 +343,9 @@ const Game = (() => {
     if (state !== 'play' || paused || hold || player.dead || aim.on) return;
     aim.on = true; aim.id = id; aim.sx = aim.cx = x; aim.sy = aim.cy = y; aim.power = 0; aim.t = 0; aim.maxed = false; aim.snap = null; aim.ux = null;
     aim.max = clamp(Math.min(cw, ch) * 0.3, 110, 230);
+    aim.afford = player.sta >= throwCost();      // only a throw you could pay for when you started holding will fire itself
   }
+  const throwCost = () => (usingBonus() || run.fever > 0 ? 0 : staCost(ITEM[currentItemId()] || ITEM.rock));
   function aimMove(x, y, id) {
     if (!aim.on || aim.id !== id) return;
     aim.cx = x; aim.cy = y;
@@ -380,10 +382,12 @@ const Game = (() => {
   }
   const throwSpeed = (def, power) => lerp(THROW_MIN, THROW_MAX, power) * def.spd;
 
-  function tryThrow(ang, power) {
+  function tryThrow(ang, power, auto) {
     const id = currentItemId(), def = ITEM[id];
     if (player.rag.mode !== 'active') return false;       // knocked flat: no throwing until you are back on your feet
-    const free = usingBonus(), hot = run.fever > 0, cost = free || hot ? 0 : staCost(def);
+    const free = usingBonus(), hot = run.fever > 0;
+    let cost = free || hot ? 0 : staCost(def);
+    if (auto) cost = Math.min(cost, player.sta);       // an automatic release spends whatever is left
     if (player.sta < cost) { Sfx.empty(); staFlash = 0.5; return false; }
     player.sta -= cost; player.staWait = 0.25; player.cd = throwCd() * (hot ? 0.6 : 1);
     if (free && --player.bonus.n <= 0) player.bonus = null;
@@ -475,13 +479,17 @@ const Game = (() => {
       if (s.age > 2.6) detonate(s);
     },
     magnet(s, dt) {
+      // homing lasts a short while after the throw, and starts over after every bounce (so it can hop on to the next foe)
+      const since = s.age - (s.homeAt || 0);
+      if (since < 0.12 || since > 1.5) return;
       let best = null, bd = 430;
+      const others = foes.some(f => live(f) && f !== s.lastFoe);
       for (const f of foes) {
-        if (!live(f)) continue;
+        if (!live(f) || (others && f === s.lastFoe)) continue;
         const c = f.rag.chest, d = dist(s.x, s.y, c.x, c.y);
-        if (d < bd && c.x > s.x - 60) { bd = d; best = c; }
+        if (d < bd && (s.homeAt || c.x > s.x - 60)) { bd = d; best = c; }
       }
-      if (!best || s.age < 0.12 || s.age > 1.5) return;      // a short pull, not a leash
+      if (!best) return;
       const sp = Math.hypot(s.vx, s.vy), cur = Math.atan2(s.vy, s.vx), want = Math.atan2(best.y - 20 - s.y, best.x - s.x);
       const a = turnTo(cur, want, 2.5 * dt);
       s.vx = Math.cos(a) * sp; s.vy = Math.sin(a) * sp - G * s.grav * dt * 0.6;
@@ -812,7 +820,7 @@ const Game = (() => {
   function impactMul(s) {
     if (s.owner !== 'p') return 1;
     const v = Math.hypot(s.vx, s.vy), ref = (s.def.spd ? throwSpeed(s.def, 0.55) : 900) * (s.def.grav === 0 ? 1 : 0.9);
-    const m = clamp(1 + 0.2 * (v / ref - 1), 0.86, 1.2);
+    const m = clamp(1 + 0.4 * (v / ref - 1), 0.72, 1.4);
     return Number.isFinite(m) ? m : 1;
   }
   // how hard a hit rocks the body follows how fast the thing was going: a slow lob only nudges, a hard throw floors them
@@ -823,7 +831,7 @@ const Game = (() => {
     return Number.isFinite(f) ? f : 1;
   }
   function onFoeHit(s, f, hit) {
-    s.hits.add(f);
+    s.hits.add(f); s.lastFoe = f;
     const rag = f.rag, def = s.def, id = def.id;
     let head = hit.part === 'head' || (id === 'anvil' && s.st === 1);
     let mult = head ? 2 * (1 + 0.5 * pk('eye')) : hit.part === 'body' ? 1 : 0.75;
@@ -910,7 +918,7 @@ const Game = (() => {
     const def = s.def;
     if (def.pierce) { if (def.id === 'bowling') { s.vx *= 0.86; s.vy *= 0.86; } return; }
     if (s.bounces > 0) {
-      s.bounces--; s.tricks++; s.rehit = 0.3;
+      s.bounces--; s.tricks++; s.rehit = 0.3; s.homeAt = s.age;
       if (hit) { const dx = s.x - hit.x, dy = s.y - hit.y, d = Math.hypot(dx, dy) || 1; bounceOff(s, { nx: dx / d, ny: dy / d, pen: 2 }, 0.8); s.vy -= 160; } else s.vy = -Math.abs(s.vy) * 0.7;
       if (def.id === 'chicken') Sfx.squeak(); else Sfx.boing();
       return;
@@ -1420,6 +1428,8 @@ const Game = (() => {
       if (state === 'play') {
         rag.aimW = approach(rag.aimW, aiming ? 1 : 0, dt * (aiming ? 9 : 5));
         if (aiming) { rag.aim = aim.ang; rag.pull = aim.power; player.sta = Math.max(0, player.sta - HOLD_DRAIN * dt); player.staWait = Math.max(player.staWait, 0.1); }
+        // holding the pull ran the stamina below what the throw costs: let it go now, rather than leave it stuck in the hand
+        if (aiming && aim.afford && aim.power > 0.12 && !run.tut && player.sta < throwCost() && player.cd <= 0.2 && rag.mode === 'active') { aimEnd(aim.id); if (pending) pending.auto = true; }
         else if (rag.throwT < 0) rag.pull = approach(rag.pull, 0, dt * 6);
       }
       const id = currentItemId();
@@ -1428,7 +1438,7 @@ const Game = (() => {
       if (pending) {
         pending.t -= dt;
         if (ducking || pending.t <= 0) pending = null;
-        else if (player.cd <= 0) { tryThrow(pending.ang, pending.power); pending = null; }
+        else if (player.cd <= 0) { tryThrow(pending.ang, pending.power, pending.auto); pending = null; }
       }
     }
     if (state === 'menu') stepDemo(dt);
@@ -1919,7 +1929,6 @@ const Game = (() => {
       const sw = Math.sin(c.t * 1.3 + c.ph) * 0.12;
       ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(c.x, c.y - 18); ctx.lineTo(c.x, c.y - 44); ctx.stroke();
       ctx.fillStyle = c.col || '#ff9a3c'; ctx.beginPath(); ctx.ellipse(c.x, c.y - 66, 20, 24, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.ellipse(c.x - 6, c.y - 74, 4, 7, -0.5, 0, TAU); ctx.fill();
       ctx.__tint = c.col || null; ItemArt.draw(ctx, 'crate', c.x, c.y, sw, 22, time); ctx.__tint = null;
     }
     for (const f of foes) f.rag.draw(ctx, time);

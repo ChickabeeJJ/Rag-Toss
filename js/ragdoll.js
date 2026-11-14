@@ -289,6 +289,17 @@ class Rag {
         solveDist(pts[ia], pts[ib], INV_MASS[ia], INV_MASS[ib], L, L, 1);
       }
       for (const [ia, ib, lo, hi] of JOINT_LIMITS) solveDist(pts[ia], pts[ib], INV_MASS[ia], INV_MASS[ib], lo * s, hi * s, 0.6);
+      // the neck only bends so far: a heavy body whipping into a throw must not fold its head back over its shoulders
+      if (!limp) {
+        const N = pts[P.NECK], Pv = pts[P.PELVIS], H = pts[P.HEAD];
+        const sa = Math.atan2(N.y - Pv.y, N.x - Pv.x), ha = Math.atan2(H.y - N.y, H.x - N.x);
+        let da = ha - sa; while (da > Math.PI) da -= TAU; while (da < -Math.PI) da += TAU;
+        const lim = this.daze > 0 ? 0.95 : 0.6;
+        if (Math.abs(da) > lim) {
+          const na = sa + Math.sign(da) * lim, Ln = Math.hypot(H.x - N.x, H.y - N.y), nx2 = N.x + Math.cos(na) * Ln, ny2 = N.y + Math.sin(na) * Ln;
+          H.px += nx2 - H.x; H.py += ny2 - H.y; H.x = nx2; H.y = ny2;
+        }
+      }
       // hinges: push a knee or elbow that has folded the wrong way back across the limb's line
       if (limp || this.daze > 0) for (const [ia, ij, ib, side] of HINGES) {
         const A = pts[ia], J = pts[ij], B = pts[ib];
