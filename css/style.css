@@ -581,8 +581,8 @@ body.result-open #toasts { top: calc(8px + var(--safe-t)); bottom: auto; }
 .home-legal { position: absolute; left: calc(14px + var(--safe-l)); bottom: calc(10px + var(--safe-b)); padding: 4px 6px; }
 
 /* ============================================================== sliders */
-.sl { --p: 0.5; --c: var(--acc); position: relative; height: 46px; margin: 0 0 2px; cursor: pointer; touch-action: pan-y; user-select: none; -webkit-user-select: none; outline: none; -webkit-tap-highlight-color: transparent; }
-.sl-track { position: absolute; left: 16px; right: 16px; top: 0; bottom: 0; }
+.sl { --p: 0.5; --c: var(--acc); position: relative; height: 30px; margin: 0 0 2px; cursor: pointer; touch-action: pan-y; user-select: none; -webkit-user-select: none; outline: none; -webkit-tap-highlight-color: transparent; }
+.sl-track { position: absolute; left: 11px; right: 11px; top: 0; bottom: 0; }
 .sl-rail { position: absolute; left: -2px; right: -2px; top: 50%; height: 14px; transform: translateY(-50%); border-radius: 8px; background: linear-gradient(180deg, rgba(0, 0, 0, 0.5), rgba(255, 255, 255, 0.05)); box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.65), 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 0 1px rgba(255, 255, 255, 0.04); overflow: hidden; }
 .sl-fill { position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--p) * (100% - 4px) + 4px); border-radius: 8px; background: linear-gradient(180deg, color-mix(in srgb, var(--c) 82%, #fff) 0%, var(--c) 45%, color-mix(in srgb, var(--c) 62%, #000) 100%); box-shadow: 0 0 16px color-mix(in srgb, var(--c) 60%, transparent); }
 .sl-fill::after { content: ''; position: absolute; left: 6px; right: 6px; top: 2px; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, 0.35); }
@@ -591,19 +591,20 @@ body.result-open #toasts { top: calc(8px + var(--safe-t)); bottom: auto; }
 .sl-ticks i { position: absolute; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: rgba(255, 255, 255, 0.2); transition: background 0.15s, transform 0.15s; }
 .sl-ticks i.lit { background: var(--c); transform: scale(1.25); }
 .sl-thumb { position: absolute; left: calc(var(--p) * 100%); top: 50%; width: 0; height: 0; }
-.sl-knob { position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle at 36% 28%, #ffffff 0%, #f0f3fa 52%, #c6cddd 100%);
-  box-shadow: 0 0 0 4px var(--c), 0 0 0 7px rgba(255, 255, 255, 0.06), 0 6px 12px rgba(0, 0, 0, 0.55), 0 0 18px color-mix(in srgb, var(--c) 55%, transparent);
+.sl-knob { position: absolute; left: -10px; top: -10px; width: 20px; height: 20px; border-radius: 50%; background: radial-gradient(circle at 36% 28%, #ffffff 0%, #f0f3fa 52%, #c6cddd 100%);
+  box-shadow: 0 0 0 3px var(--c), 0 0 0 5px rgba(255, 255, 255, 0.06), 0 4px 9px rgba(0, 0, 0, 0.55), 0 0 14px color-mix(in srgb, var(--c) 55%, transparent);
   transition: transform 0.16s cubic-bezier(0.3, 1.7, 0.5, 1), box-shadow 0.16s; }
-.sl-knob::after { content: ''; position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--c); opacity: 0.85; }
+.sl-knob::after { content: ''; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--c); opacity: 0.85; }
 .sl:hover .sl-knob { transform: scale(1.1); }
 .sl.held .sl-knob { transform: scale(1.22); box-shadow: 0 0 0 4px var(--c), 0 0 0 12px color-mix(in srgb, var(--c) 26%, transparent), 0 8px 16px rgba(0, 0, 0, 0.6), 0 0 28px color-mix(in srgb, var(--c) 80%, transparent); }
 .sl:focus-visible .sl-knob { box-shadow: 0 0 0 4px var(--c), 0 0 0 10px rgba(255, 255, 255, 0.3), 0 6px 12px rgba(0, 0, 0, 0.55); }
 .sl.pop .sl-knob::after { animation: slPop 0.22s ease; }
 @keyframes slPop { 0% { transform: scale(1.9); opacity: 1; } 100% { transform: scale(1); opacity: 0.85; } }
-.sl-val { position: absolute; left: 0; top: -52px; transform: translate(-50%, 6px) scale(0.85); min-width: 40px; padding: 4px 9px; border-radius: 9px; background: var(--c); color: #10131c; font-weight: 900; font-size: 11px; letter-spacing: 0.04em; text-align: center; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.15s, transform 0.15s cubic-bezier(0.3, 1.6, 0.5, 1); box-shadow: 0 5px 12px rgba(0, 0, 0, 0.45); }
+.sl-val { position: absolute; left: 0; top: -40px; transform: translate(-50%, 6px) scale(0.85); min-width: 40px; padding: 4px 9px; border-radius: 9px; background: var(--c); color: #10131c; font-weight: 900; font-size: 11px; letter-spacing: 0.04em; text-align: center; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.15s, transform 0.15s cubic-bezier(0.3, 1.6, 0.5, 1); box-shadow: 0 5px 12px rgba(0, 0, 0, 0.45); }
 .sl-val::after { content: ''; position: absolute; left: 50%; bottom: -4px; width: 9px; height: 9px; background: inherit; transform: translateX(-50%) rotate(45deg); border-radius: 2px; }
 .sl:hover .sl-val, .sl.held .sl-val, .sl:focus-visible .sl-val { opacity: 1; transform: translate(-50%, 0) scale(1); }
-.set-label + .sl { margin-top: 2px; }
+.set-label + .sl { margin-top: -2px; }
+.sl-ticks { display: none; }
 .sw.sm { width: 30px; height: 30px; }
 .sw.rainbow { --s: #fff; background: conic-gradient(#ff3b3b, #ffb13b, #f4ff3b, #3bff6a, #3bffe6, #3b7bff, #a63bff, #ff3bd8, #ff3b3b); }
 .band { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
@@ -684,7 +685,12 @@ body.touch .lo-x { opacity: 1; }
 #preview .pv-btns { display: flex; gap: 8px; flex: none; }
 @media (max-width: 700px) { #preview .pvbar { flex-direction: column; align-items: stretch; } #preview .pv-btns .btn { flex: 1; } }
 
-body.cg .legal { display: none !important; }
 
 .lo-slot small .lo-cost { display: inline-flex; align-items: center; gap: 3px; }
 .lo-slot small .lo-cost .ic { margin: 0; }
+
+.sheet.privacy { width: min(560px, 100%); }
+.policy { max-height: min(52vh, 420px); overflow-y: auto; padding-right: 6px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.policy p { font-weight: 600; font-size: 13px; line-height: 1.55; color: #c3c9db; }
+.policy h3 { margin-top: 6px; font-weight: 900; font-size: 11px; letter-spacing: 0.14em; color: var(--acc); }
+.policy b { color: #fff; }

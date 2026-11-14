@@ -20,6 +20,7 @@ const UI = (() => {
     Sfx.setSfx(Save.data.settings.sfx); Sfx.setMusic(Save.data.settings.music); Theme.set(Save.data.settings.accent); Sfx.setSfxVol(Save.data.settings.sfxVol); Sfx.setMusicVol(Save.data.settings.musicVol);
     $('btnPlay').onclick = () => { click(); play(Save.data.run ? { resume: true } : {}); };
     $('btnNew').onclick = () => { click(); confirmNewRun(); };
+    $('btnPrivacy').onclick = () => { click(); openPrivacy(false); };
     $('btnShop').onclick = () => { click(); show('shop'); };
     document.querySelectorAll('#shopTabs [data-tab]').forEach(b => { b.onclick = () => { click(); shopTab = b.dataset.tab; renderShop(); }; });
     $('btnBag').onclick = () => { click(); openLoadout(); };
@@ -32,7 +33,7 @@ const UI = (() => {
     $('pvAgain').onclick = () => { click(); Game.replayPreview(); };
     $('btnRotateOk').onclick = () => { rotateDismissed = true; checkRotate(); };
     document.querySelectorAll('[data-back]').forEach(b => { b.onclick = () => { click(); show('home'); }; });
-    $('modal').addEventListener('pointerdown', e => { if (e.target === $('modal') && ['missions', 'rank', 'settings', 'confirm'].includes(modalKind)) closeModal(); });
+    $('modal').addEventListener('pointerdown', e => { if (e.target === $('modal') && ['missions', 'rank', 'settings', 'confirm', 'privacy'].includes(modalKind)) closeModal(); });
     const duck = $('btnDuck');
     const duckOn = e => { e.preventDefault(); Game.setDuck(true); duck.classList.add('on'); };
     const duckOff = () => { Game.setDuck(false); duck.classList.remove('on'); };
@@ -140,15 +141,14 @@ const UI = (() => {
      and full keyboard and touch control. Every slider in the game is one of these. */
   function slider(id, o) {
     const p = (o.value - o.min) / (o.max - o.min), n = o.ticks != null ? o.ticks : 4;
-    const ticks = Array.from({ length: n + 1 }, (_, k) => `<i style="left:${(k / n * 100).toFixed(2)}%"></i>`).join('');
     return `<div class="sl" id="${id}" data-slider="${id}" role="slider" tabindex="0" aria-label="${esc(o.label || id)}" aria-valuemin="${o.min}" aria-valuemax="${o.max}" aria-valuenow="${o.value}" style="--p:${p.toFixed(4)}">
-      <div class="sl-track"><div class="sl-rail"><div class="sl-fill"></div></div><div class="sl-ticks">${ticks}</div>
+      <div class="sl-track"><div class="sl-rail"><div class="sl-fill"></div></div>
       <div class="sl-thumb"><span class="sl-knob"></span><b class="sl-val">${esc(o.text ? o.text(o.value) : o.value)}</b></div></div></div>`;
   }
   function wireSlider(root, id, o, onInput, onChange) {
     const el = root.querySelector(`[data-slider="${id}"]`), track = el.querySelector('.sl-track'), val = el.querySelector('.sl-val');
     const step = o.step || 1, span = o.max - o.min, n = o.ticks != null ? o.ticks : 4;
-    const tickEls = el.querySelectorAll('.sl-ticks i');
+    const tickEls = [];
     let value = +el.getAttribute('aria-valuenow'), target = (value - o.min) / span, shown = target, raf = 0, dragging = false, lastTick = -1;
     const paint = () => {
       el.style.setProperty('--p', shown.toFixed(4));
@@ -426,6 +426,26 @@ const UI = (() => {
   }
 
   /* --------------------------------------------------------------- modals */
+  /* the privacy policy, read inside the game (no new tab) */
+  function openPrivacy(back) {
+    openModal('privacy', `<h2>PRIVACY</h2><div class="sub">LAST UPDATED 14 NOVEMBER 2026</div>
+      <div class="policy">
+        <p>Rag Toss is a free browser game. Short version: it doesn't ask who you are, it has no accounts, no ads and no tracking of its own, and your progress stays on your own device.</p>
+        <h3>WHAT THE GAME STORES</h3>
+        <p>To remember your progress it saves, on your device (browser storage, or the CrazyGames save system when you play there): your coins, unlocked throwables and characters, upgrades and bag; your best scores, ranks, mission progress and stats; a run you left half-way; and your settings. None of it contains your name, email, location or any personal detail, and the game never sends it to us. Clearing your browser data, or RESET PROGRESS in settings, deletes it.</p>
+        <h3>WHAT IT DOES NOT DO</h3>
+        <p>It does not collect personal information, has no accounts or chat, shows no ads, uses no advertising or analytics trackers of its own, sets no cookies of its own, and sells or shares nothing, because it holds nothing.</p>
+        <h3>THIRD PARTIES</h3>
+        <p><b>CrazyGames.</b> The game is built for CrazyGames and loads its SDK. When you play on crazygames.com, CrazyGames runs the page around the game and handles your account (if any), cloud saves and the data its site collects. That is covered by CrazyGames' own privacy policy.</p>
+        <p><b>Hosting.</b> When played from its own web address, the game is served by a host (Vercel) which, like any web host, may keep ordinary server logs such as your IP address and the pages requested. The game does not read them.</p>
+        <h3>CHILDREN</h3>
+        <p>The game is suitable for a general audience and does not knowingly collect personal information from anyone, including children.</p>
+        <h3>CHANGES AND CONTACT</h3>
+        <p>If the game ever starts doing something that changes the above (for example online leaderboards), this policy is updated first and the date changed. Questions: open an issue on the project's GitHub page, ChickabeeJJ / Rag-Toss.</p>
+      </div>
+      <div class="actions"><button class="btn primary wide" id="mDone"><b>CLOSE</b></button></div>`);
+    $('mDone').onclick = () => { click(); if (back) openSettings(); else closeModal(); };
+  }
   // starting over throws the saved run away, so it asks first
   function confirmNewRun() {
     const r = Save.data.run;
@@ -495,7 +515,7 @@ const UI = (() => {
     const S = Save.data.settings, pct = v => Math.round(v) + '%';
     const vol = `<div class="set-label">MUSIC VOLUME</div>${slider('musicVol', { min: 0, max: 100, value: Math.round(S.musicVol * 100), label: 'Music volume', text: pct })}<div class="set-label">SOUND VOLUME</div>${slider('sfxVol', { min: 0, max: 100, value: Math.round(S.sfxVol * 100), label: 'Sound volume', text: pct })}`;
     openModal('settings', `<h2>SETTINGS</h2>${toggleRow()}<div class="set-label">THEME COLOUR</div><div class="swatches">${sw}</div>${vol}
-      <div class="actions"><button class="btn primary wide" id="mDone"><b>DONE</b></button><button class="btn wide danger" id="mReset"><b>RESET PROGRESS</b></button></div><a class="legal" href="privacy.html" target="_blank" rel="noopener">PRIVACY POLICY</a>`);
+      <div class="actions"><button class="btn primary wide" id="mDone"><b>DONE</b></button><button class="btn wide danger" id="mReset"><b>RESET PROGRESS</b></button></div><button class="legal" data-legal>PRIVACY POLICY</button>`);
     wireToggles();
     $('sheet').querySelectorAll('[data-acc]').forEach(b => {
       b.onclick = () => {
@@ -505,6 +525,7 @@ const UI = (() => {
     });
     wireSlider($('sheet'), 'musicVol', { min: 0, max: 100, step: 1, text: pct }, v => { Save.data.settings.musicVol = v / 100; Sfx.setMusicVol(v / 100); Save.save(); });
     wireSlider($('sheet'), 'sfxVol', { min: 0, max: 100, step: 1, text: pct }, v => { Save.data.settings.sfxVol = v / 100; Sfx.setSfxVol(v / 100); Save.save(); }, () => { Sfx.ensure(); Sfx.coin(2); });
+    const lg = $('sheet').querySelector('[data-legal]'); if (lg) lg.onclick = () => { click(); openPrivacy(true); };
     $('mDone').onclick = () => { click(); closeModal(); };
     let armed = false;
     $('mReset').onclick = () => {

@@ -162,7 +162,7 @@ crazygames/       listing trailers: 1920x1080 landscape and 1080x1680 portrait, 
 
 ## Privacy
 
-The game collects nothing: progress lives in the player's own browser (or the CrazyGames save system), with no accounts, ads or trackers. The policy is `privacy.html`, linked from the settings screen and the home screen.
+The game collects nothing: progress lives in the player's own browser (or the CrazyGames save system), with no accounts, ads or trackers. The policy is read inside the game (PRIVACY on the home screen, or in settings) and also kept as `privacy.html`.
 
 ## Credits
 
