@@ -453,6 +453,24 @@ const Game = (() => {
     kill(s);
   }
 
+  /* Steering a throw towards the nearest foe: how far it can see, how fast it can turn, and how long after the throw (or
+     after a bounce) it keeps doing it. The magnet and the Auto Aimer perk share it, the perk with a weaker pull. */
+  function homeShot(s, dt, range, turn, window, gcomp) {
+    const since = s.age - (s.homeAt || 0);
+    if (since < 0.12 || since > window) return;
+    let best = null, bd = range;
+    const others = foes.some(f => live(f) && f !== s.lastFoe);
+    for (const f of foes) {
+      if (!live(f) || (others && f === s.lastFoe)) continue;
+      const c = f.rag.chest, d = dist(s.x, s.y, c.x, c.y);
+      if (d < bd && (s.homeAt || c.x > s.x - 60)) { bd = d; best = c; }
+    }
+    if (!best) return;
+    const sp = Math.hypot(s.vx, s.vy), cur = Math.atan2(s.vy, s.vx), want = Math.atan2(best.y - 20 - s.y, best.x - s.x);
+    const a = turnTo(cur, want, turn * dt);
+    s.vx = Math.cos(a) * sp; s.vy = Math.sin(a) * sp - G * s.grav * dt * gcomp;
+  }
+  const NO_AUTOAIM = new Set(['magnet', 'boomerang', 'firework', 'anvil', 'bee']);
   /* per-item behaviour while in the air */
   const TICK = {
     boomerang(s, dt) {
@@ -479,22 +497,7 @@ const Game = (() => {
       if (Math.random() < 0.3) Fx.burst(s.x, s.y - s.r, 1, { color: '#ffd27a', speed: [20, 80], life: [0.15, 0.3], size: [1.5, 3], grav: 300 });
       if (s.age > 2.6) detonate(s);
     },
-    magnet(s, dt) {
-      // homing lasts a short while after the throw, and starts over after every bounce (so it can hop on to the next foe)
-      const since = s.age - (s.homeAt || 0);
-      if (since < 0.12 || since > 1.5) return;
-      let best = null, bd = 430;
-      const others = foes.some(f => live(f) && f !== s.lastFoe);
-      for (const f of foes) {
-        if (!live(f) || (others && f === s.lastFoe)) continue;
-        const c = f.rag.chest, d = dist(s.x, s.y, c.x, c.y);
-        if (d < bd && (s.homeAt || c.x > s.x - 60)) { bd = d; best = c; }
-      }
-      if (!best) return;
-      const sp = Math.hypot(s.vx, s.vy), cur = Math.atan2(s.vy, s.vx), want = Math.atan2(best.y - 20 - s.y, best.x - s.x);
-      const a = turnTo(cur, want, 2.5 * dt);
-      s.vx = Math.cos(a) * sp; s.vy = Math.sin(a) * sp - G * s.grav * dt * 0.6;
-    },
+    magnet(s, dt) { homeShot(s, dt, 430, 2.5, 1.5, 0.6); },
     anvil(s) {
       if (s.st === 0 && s.age > 0.18) {
         for (const f of foes) {
@@ -657,6 +660,7 @@ const Game = (() => {
     if (s.rehit > 0) { s.rehit -= dt; if (s.rehit <= 0) s.hits.clear(); }
     const id = s.def.id;
     if (TICK[id]) TICK[id](s, dt);
+    if (s.owner === 'p' && !NO_AUTOAIM.has(id) && ITEM[id] && run.perks.aim) homeShot(s, dt, 400, 2.1, 1.4, 0.55);      // the Auto Aimer perk
     if (s.dead) return;
     // constant gravity integrated exactly: the path is the true parabola, whatever the step size
     const gy = G * s.grav;
@@ -1156,6 +1160,9 @@ const Game = (() => {
     }
     return best;
   }
+  // every return is tougher than the last, but the climb flattens out towards a ceiling so a boss can always be brought down
+  const BOSS_HP_SOFT = 1200, BOSS_HP_CAP = 3000;
+  const bossHp = raw => raw <= BOSS_HP_SOFT ? raw : BOSS_HP_SOFT + (BOSS_HP_CAP - BOSS_HP_SOFT) * (1 - Math.exp(-(raw - BOSS_HP_SOFT) / (BOSS_HP_CAP - BOSS_HP_SOFT)));
   function spawnFoe(type, boss, at) {
     if (!run.demo && !run.tut) run.spawned = (run.spawned || 0) + 1;
     const def = FOES[type];
@@ -1169,10 +1176,11 @@ const Game = (() => {
     pl.y = pl.baseY + 520;
     plats.push(pl);
     const rag = new Rag({ x: pos.x, y: pl.y, scale: sc, facing: -1, body: (boss && boss.body) || def.body, shade: (boss && boss.shade) || def.shade, accent: shade((boss && boss.body) || def.body, -0.45), hat: boss ? boss.hat : def.hat, plat: pl, weight: boss ? 4.5 : def.anchor / 1.7, steady: !!boss });
-    const hp = boss ? boss.hp * 1.2 * (1 + 0.09 * (run.stage - 1)) : def.hp * foeHpMul();
+    const cycle = boss ? Math.floor((run.stage - 1) / BOSSES.length) : 0;      // how many times this boss has come round before
+    const hp = boss ? bossHp(boss.hp * 1.2 * (1 + 0.09 * (run.stage - 1)) * (1 + 0.25 * cycle)) : def.hp * foeHpMul();
     const f = {
       type, def, rag, plat: pl, hp, maxHp: hp, state: 'enter', t: rand(0.9, 1.8), burst: boss ? boss.burst : def.burst || 1, left: 0, sol: null,
-      boss: boss || null, minion: false, dummy: false, bleed: 0, bleedDps: 0, burnT: 0, dotT: 0.5, coins: boss ? 40 + run.stage * 6 : def.coins,
+      boss: boss || null, cycle, minion: false, dummy: false, bleed: 0, bleedDps: 0, burnT: 0, dotT: 0.5, coins: boss ? 40 + run.stage * 6 : def.coins,
       anchor: boss ? 99 : def.anchor, lastHit: null, tele: 0, minionT: boss ? rand(9, 13) : 5, gone: false, laser: boss ? !!boss.laser : !!def.laser, slow: 0, blind: 0,
     };
     rag.shield = boss && boss.shield ? boss.shield : def.shield || 0;
@@ -1213,7 +1221,7 @@ const Game = (() => {
     f.name = b.name;
     run.boss = f; run.bossT = -1;
     Sfx.boss(); shake = 0.6; Sfx.setHype(true);
-    if (on.banner) on.banner(b.name, '', true);
+    if (on.banner) on.banner(b.name, f.cycle > 0 ? 'BACK, AND STRONGER THAN BEFORE' : '', true);
   }
   function bossDown(f) {
     run.boss = null; run.bosses++; Sfx.setHype(run.fever > 0);
@@ -1247,8 +1255,12 @@ const Game = (() => {
   // three different perks, each with its own rarity: a rarer card is worth more stacks of the same perk
   function offerPerks() {
     const room = p => (p.max || 99) - pk(p.id);
-    const pool = PERKS.filter(p => room(p) > 0);
+    const pool = PERKS.filter(p => room(p) > 0 && !p.legendOnly);
     const picks = [];
+    // the Auto Aimer only ever shows up as a legendary: a small chance each time, a bit better the further you get
+    const rare = PERKS.find(p => p.legendOnly && room(p) > 0 && !pk(p.id));
+    const rareFirst = rare && Math.random() < 0.07 + 0.01 * Math.min(run.stage, 10);
+    if (rareFirst) picks.push({ id: rare.id, kind: rare.kind, name: rare.name, n: 1, rarity: RARITIES[3], text: rare.text(1), have: 0 });
     while (picks.length < 3 && pool.length) {
       const p = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
       let rar = rollRarity();
@@ -1289,7 +1301,7 @@ const Game = (() => {
       if (!rag.alive || rag.mode !== 'active' || rag.frozen > 0 || rag.stun > 0) return;      // knocked off its throw
       const p0 = release(rag, sol.ang);
       const vx = (sol.ex - p0.x) / sol.T, vy = (sol.ey - p0.y) / sol.T - 0.5 * G * sol.T;     // still arrives where it was aimed
-      const n = B && B.fan ? B.fan : 1, dmg = f.tut ? 3 : ammo.dmg * foeDmgMul() * (B ? (B.dmg || 1) * 1.12 : 1);
+      const n = B && B.fan ? B.fan : 1, dmg = f.tut ? 3 : ammo.dmg * foeDmgMul() * (B ? (B.dmg || 1) * 1.12 * Math.min(2.2, 1 + 0.12 * (f.cycle || 0)) : 1);
       for (let i = 0; i < n; i++) {
         const a = (i - (n - 1) / 2) * (B && B.spread || 0), c = Math.cos(a), sn = Math.sin(a);
         launch(ammo, { owner: 'e', x: p0.x, y: p0.y, vx: vx * c - vy * sn, vy: vx * sn + vy * c, dmg, from: f, scale: B ? 1.25 : 1, life: 6 });

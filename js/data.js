@@ -190,6 +190,7 @@ const PERKS = [
   { id: 'shove', kind: 'offense', name: 'Big Shove', text: n => `+${40 * n}% knockback` },
   { id: 'hot', kind: 'offense', name: 'Hot Hands', text: n => (n === 1 ? 'Every hit sets the foe on fire' : `Every hit sets the foe on fire, burning ${n} times as hard`) },
   { id: 'spring', kind: 'utility', name: 'Springy', text: n => `Everything bounces ${n === 1 ? 'one more time' : n + ' more times'}` },
+  { id: 'aim', kind: 'utility', name: 'Auto Aimer', max: 1, legendOnly: true, text: () => 'Everything you throw curves towards the nearest foe, a little less than the magnet does' },
   { id: 'cheap', kind: 'utility', name: 'Light Load', max: 3, text: n => `Throws cost ${20 * n}% less stamina` },
 ];
 /* How rare a card is decides how many stacks of its perk it is worth. `w` is the base chance,
