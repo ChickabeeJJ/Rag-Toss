@@ -98,7 +98,9 @@ const Game = (() => {
   const armor = () => 1 - 0.05 * ulvl('armor');
   const foeHpMul = () => 1.12 * (1 + 0.19 * (run.stage - 1) + 0.03 * Math.pow(Math.max(0, run.stage - 4), 2));
   // enemies hit a little harder with every one that has been sent at you: +0.3% each, in a straight line
-  const foeDmgMul = () => (1 + 0.1 * (run.stage - 1) + 0.01 * Math.pow(Math.max(0, run.stage - 6), 2)) * (1 + 0.003 * (run.spawned || 0));
+  // how far the player's damage has run ahead of what the stage expects (0 to 3, in doublings)
+  const heat = () => (run && run.dps > 0 ? clamp(Math.log2(Math.max(1, run.dps / (20 + 9 * run.stage))), 0, 3) : 0);
+  const foeDmgMul = () => (1 + 0.1 * (run.stage - 1) + 0.01 * Math.pow(Math.max(0, run.stage - 6), 2)) * (1 + 0.003 * (run.spawned || 0)) * (1 + 0.12 * heat());
   const usingBonus = () => !!(player.bonus && player.bonus.on);
   const currentItemId = () => (previewId ? previewId : usingBonus() ? player.bonus.id : bag()[player.slot] || 'rock');
 
@@ -141,7 +143,7 @@ const Game = (() => {
     if (!run.resumed && !run.throws && !run.kos) return 'empty';
     const keep = {};
     for (const k of ['stage', 'kos', 'coins', 'bestCombo', 'stood', 'bountyN', 'closeCalls', 'fevers', 'heads', 'rings', 'bosses', 'crates', 'stageKills', 'combo', 'fever', 'stand', 'bountyT', 'bountyLast',
-      'goldT', 'crateT', 'spawnT', 'bossT', 'perkT', 't', 'lastKoAt', 'beatBest', 'spawned']) keep[k] = run[k];
+      'goldT', 'crateT', 'spawnT', 'bossT', 'perkT', 't', 'lastKoAt', 'beatBest', 'spawned', 'dps']) keep[k] = run[k];
     keep.bag = run.bag; keep.ups = run.ups; keep.perks = run.perks; keep.mastered = run.mastered;
     keep.bounty = run.bounty; keep.perkPick = run.perkPick || null;
     keep.hp = player.hp; keep.sta = player.sta; keep.slot = player.slot; keep.cd = player.cd; keep.inv = Math.min(player.inv, 3);
@@ -160,7 +162,7 @@ const Game = (() => {
   function restoreRun(sv) {
     run.resumed = true;
     for (const k of ['stage', 'kos', 'coins', 'bestCombo', 'stood', 'bountyN', 'closeCalls', 'fevers', 'heads', 'rings', 'bosses', 'crates', 'stageKills', 'combo', 'fever', 'stand', 'bountyT', 'bountyLast',
-      'goldT', 'crateT', 'spawnT', 'bossT', 'perkT', 't', 'lastKoAt', 'spawned']) if (sv[k] != null) run[k] = sv[k];
+      'goldT', 'crateT', 'spawnT', 'bossT', 'perkT', 't', 'lastKoAt', 'spawned', 'dps']) if (sv[k] != null) run[k] = sv[k];
     run.beatBest = sv.beatBest != null ? sv.beatBest : run.kos > Save.data.best.kos;
     run.perks = Object.assign({}, sv.perks); run.mastered = sv.mastered || []; run.bounty = sv.bounty || null;
     const sb = Array.isArray(sv.bag) && sv.bag.length === 3 ? sv.bag.map(id => (id && ITEM[id] && Save.owns(id) ? id : null)) : null;
@@ -967,7 +969,7 @@ const Game = (() => {
     if (!Number.isFinite(dmg)) dmg = 1;      // never let a stray NaN into a health bar
     if (f.marked > 0 && !o.dot) dmg *= 1.3;
     if (f.boss && f.boss.resist && !o.dot && !(o.s && (o.s.def.heavy || o.s.def.blast))) { dmg *= f.boss.resist; if (o.s) Fx.text(o.x, o.y - 50, 'RESISTED', '#c9d0dc', 14); }
-    if (!f.dummy) f.hp -= dmg;
+    if (!f.dummy) { if (!run.demo && !f.preview && !f.tut) run.dmgAcc = (run.dmgAcc || 0) + Math.max(0, Math.min(dmg, f.hp)); f.hp -= dmg; }
     if (f.tut && run.tut && !o.dot) run.tut.hits++;
     rag.flash = 1;
     const big = dmg >= 24;
@@ -1200,7 +1202,10 @@ const Game = (() => {
     const rag = new Rag({ x: pos.x, y: pl.y, scale: sc, facing: -1, body: (boss && boss.body) || def.body, shade: (boss && boss.shade) || def.shade, accent: shade((boss && boss.body) || def.body, -0.45), hat: boss ? boss.hat : def.hat, plat: pl, weight: boss ? 4.5 : def.anchor / 1.7, steady: !!boss });
     const cycle = boss ? Math.floor((run.stage - 1) / BOSSES.length) : 0;      // how many times this boss has come round before
     // each return adds 50% health, and no boss that has already been round once is softer than four fifths of the Wall
-    const hp = boss ? bossHp(Math.max(boss.hp * 1.2 * (1 + 0.09 * (run.stage - 1)) * (1 + 0.5 * cycle), cycle > 0 ? 300 * 1.2 * (1 + 0.09 * (run.stage - 1)) * 0.8 : 0)) : def.hp * foeHpMul();
+    let hp = boss ? bossHp(Math.max(boss.hp * 1.2 * (1 + 0.09 * (run.stage - 1)) * (1 + 0.5 * cycle), cycle > 0 ? 300 * 1.2 * (1 + 0.09 * (run.stage - 1)) * 0.8 : 0)) : def.hp * foeHpMul();
+    // the harder you hit, the more there is to hit: a foe's health rises to about 3.6 seconds of your sustained damage
+    // (a boss's, tuned so a real fight lasts ~25 seconds), never more than 10x (24x) what the stage alone would give, so it is always a fair fight
+    if (!run.demo && !run.tut && run.dps > 0) hp = boss ? Math.max(hp, Math.min(run.dps * 40, hp * 24, 120000)) : Math.max(hp, Math.min(run.dps * 3.6, hp * 10));
     const f = {
       type, def, rag, plat: pl, hp, maxHp: hp, state: 'enter', t: rand(0.9, 1.8), burst: boss ? boss.burst : def.burst || 1, left: 0, sol: null,
       boss: boss || null, cycle, minion: false, dummy: false, bleed: 0, bleedDps: 0, burnT: 0, dotT: 0.5, coins: boss ? 40 + run.stage * 6 : def.coins,
@@ -1405,7 +1410,7 @@ const Game = (() => {
       if (f.t <= 0) {
         foeThrow(f);
         if (--f.left > 0) { f.windMax = f.t = (f.boss && f.boss.gap) || 0.3; f.sol = aimAt(f); }
-        else { const rs = (f.boss && f.boss.rest) || def.rest; f.state = 'idle'; f.t = rand(rs[0], rs[1]) * Math.max(0.5, 1.1 - 0.06 * (run.stage - 1)) * (f.enraged ? 0.7 : 1) * (f.boss ? 0.9 * Math.max(0.65, 1 - 0.07 * (f.cycle || 0)) : 1); }
+        else { const rs = (f.boss && f.boss.rest) || def.rest; f.state = 'idle'; f.t = rand(rs[0], rs[1]) * Math.max(0.5, 1.1 - 0.06 * (run.stage - 1)) * Math.max(0.6, 1 - 0.08 * heat()) * (f.enraged ? 0.7 : 1) * (f.boss ? 0.9 * Math.max(0.65, 1 - 0.07 * (f.cycle || 0)) : 1); }
       }
     }
     // bosses whistle up help
@@ -1458,6 +1463,11 @@ const Game = (() => {
   /* ------------------------------------------------------------ the step */
   function step(dt) {
     if (state === 'play') run.t += dt;
+    // how hard is the player hitting? measured over the seconds when there is someone to hit, and smoothed
+    if (state === 'play' && !run.demo && !run.tut && foes.some(f => f.rag.alive && !f.dummy)) {
+      run.fightT = (run.fightT || 0) + dt;
+      if (run.fightT >= 1) { const sec = (run.dmgAcc || 0) / run.fightT; run.dps = run.dps ? lerp(run.dps, sec, 0.14) : sec; run.dmgAcc = 0; run.fightT = 0; }
+    }
     // player
     const rag = player.rag;
     if (!player.dead) {

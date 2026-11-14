@@ -98,6 +98,7 @@ From stage 3 some foes wear a pot that soaks one headshot, and from stage 4 some
 
 ## Why you play another run
 
+- **The game keeps up with you.** It measures how hard you've been hitting. New foes spawn with about 3.6 seconds of that damage as health (a boss, tuned for a ~25 second fight), within a cap, and when you run far ahead of what the stage expects they throw harder and more often. Play weakly and nothing changes; build something absurd and it pushes back.
 - **Enemies hit harder the more are sent.** On top of the stage scaling, enemy damage rises 0.3% for every enemy that has spawned in the run.
 - **The run itself escalates.** More foes at once (up to four), tougher and more accurate every stage, a new foe type each stage, a boss after 15 knockouts (two more each stage after that) and a new sky after each one.
 - **Perks.** Fourteen of them, offered three at a time after every boss (click, or press 1, 2 or 3), stackable and kept until you're knocked out. Each card rolls a rarity, and a rarer card is the same perk several times over: Common x1, Rare x2, Epic x3, Legendary x5 (about 58% / 27% / 11% / 3.5% early on, with the rare ones a little likelier each stage).
