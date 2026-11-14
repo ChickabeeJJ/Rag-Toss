@@ -307,7 +307,7 @@ const UI = (() => {
   function openSettings() {
     const sw = ACCENTS.map(a => `<button class="sw${a.id === Theme.id ? ' on' : ''}" data-acc="${a.id}" style="--s:${a.hex}" title="${a.name}" aria-label="${a.name}"></button>`).join('');
     openModal('settings', `<h2>SETTINGS</h2>${toggleRow()}<div class="set-label">THEME COLOUR</div><div class="swatches">${sw}</div>
-      <div class="actions"><button class="btn primary wide" id="mDone"><b>DONE</b></button><button class="btn wide danger" id="mReset"><b>RESET PROGRESS</b></button></div>`);
+      <div class="actions"><button class="btn primary wide" id="mDone"><b>DONE</b></button><button class="btn wide danger" id="mReset"><b>RESET PROGRESS</b></button></div><a class="legal" href="privacy.html" target="_blank" rel="noopener">PRIVACY POLICY</a>`);
     wireToggles();
     $('sheet').querySelectorAll('[data-acc]').forEach(b => {
       b.onclick = () => {

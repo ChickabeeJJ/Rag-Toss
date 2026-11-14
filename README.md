@@ -141,6 +141,10 @@ assets/fonts/     Rubik (SIL Open Font License)
 crazygames/       listing trailers: 1920x1080 landscape and 1080x1680 portrait, 19 s, 30 fps, H.264 + AAC
 ```
 
+## Privacy
+
+The game collects nothing: progress lives in the player's own browser (or the CrazyGames save system), with no accounts, ads or trackers. The policy is `privacy.html`, linked from the settings screen and the home screen.
+
 ## Credits
 
 Music: "Scurry and Slide" (`assets/music.mp3`), supplied by the game's author.

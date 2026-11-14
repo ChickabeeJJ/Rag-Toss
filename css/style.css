@@ -571,3 +571,7 @@ body.result-open #toasts { top: calc(8px + var(--safe-t)); bottom: auto; }
 #shop.chars .bag-edit { display: none; }
 .item.char { padding-top: 8px; }
 .item.char canvas { margin-bottom: 2px; }
+
+.legal { display: block; text-align: center; font-weight: 800; font-size: 10px; letter-spacing: 0.16em; color: var(--muted); text-decoration: none; padding: 8px 0 2px; }
+.legal:hover { color: var(--acc); }
+.home-legal { position: absolute; left: calc(14px + var(--safe-l)); bottom: calc(10px + var(--safe-b)); padding: 4px 6px; }

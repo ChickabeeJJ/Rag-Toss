@@ -603,7 +603,7 @@ const Game = (() => {
       if (hit) {
         if (s.def.blast) { detonate(s); return; }
         const d = Math.hypot(s.vx, s.vy) || 1;
-        hurtPlayer(s.dmg * (hit.part === 'head' ? 1.25 : 1), { x: hit.x, y: hit.y, dirx: s.vx / d, diry: s.vy / d, head: hit.part === 'head', hit });
+        hurtPlayer(s.dmg * (hit.part === 'head' ? 1.25 : 1), { x: hit.x, y: hit.y, dirx: s.vx / d, diry: s.vy / d, head: hit.part === 'head', hit, sf: speedF(s) });
         Fx.chunk(s.art, s.x, s.y, -s.vx * 0.2, -rand(180, 320), s.r, 0.8);
         kill(s); return;
       }
@@ -688,6 +688,12 @@ const Game = (() => {
     if (s.owner !== 'p') return 1;
     const v = Math.hypot(s.vx, s.vy), ref = throwSpeed(s.def, 0.55) * (s.def.grav === 0 ? 1 : 0.9);
     return clamp(1 + 0.2 * (v / ref - 1), 0.86, 1.2);
+  }
+  // how hard a hit rocks the body follows how fast the thing was going: a slow lob only nudges, a hard throw floors them
+  function speedF(s) {
+    if (!s || s.def.blast) return 1;
+    const v = Math.hypot(s.vx, s.vy), ref = s.owner === 'p' ? throwSpeed(s.def, 0.55) * 0.9 : 900;
+    return clamp(v / ref, 0.3, 1.25);
   }
   function onFoeHit(s, f, hit) {
     s.hits.add(f);
@@ -802,7 +808,8 @@ const Game = (() => {
     const hit = o.hit || { seg: 1, u: 0.5 };
     // Nothing is free: even a weightless hit (bees, a plunger's stick, a rock off a lid) rocks the body.
     const hurt = 1 + 0.9 * (1 - clamp(f.hp / f.maxHp, 0, 1));
-    const pw = Math.max(0.9, (kb || 0) * hurt * (1 + 0.4 * pk('shove')));
+    const sf = o.hit ? speedF(o.s) : 1;
+    const pw = Math.max(0.9, (kb || 0) * hurt * (1 + 0.4 * pk('shove'))) * sf;
     if (rag.mode === 'tumble') { rag.impulseAt(hit, dx * pw * 340, dy * pw * 290 - 100, 0.7); rag.tumbleT = Math.max(rag.tumbleT, 0.2); return; }
     if (rag.frozen > 0) { rag.jolt(dx * 15 * Math.min(pw, 2.5), dy * 8 * Math.min(pw, 2.5)); return; }   // ice rings instead of bending
     if (pw >= f.anchor && !f.dummy && !f.boss) {
@@ -819,9 +826,11 @@ const Game = (() => {
       rag.jolt(dx * 3 * Math.min(pw, 3), dy * 2 * Math.min(pw, 3));
       return;
     }
+    // a very slow hit does not floor anyone: the body just rocks
+    if (sf < 0.5) { rag.stagger(0.3 + 0.5 * sf); rag.impulseAt(hit, dx * 1100 * sf, dy * 700 * sf, 0.25); rag.jolt(dx * 4 * sf, dy * 2 * sf); f.t = Math.max(f.t, 0.25); return; }
     // everything else goes limp: the struck bone takes the blow, the body drops and slides, then gets up
-    const mag = 185 + 105 * Math.min(pw, 3.5);
-    rag.hitLimp(hit, dx * mag, dy * mag * 0.6 - 70, 0.28 + 0.1 * Math.min(pw, 3));
+    const mag = (185 + 105 * Math.min(pw, 3.5)) * Math.min(1, 0.45 + 0.55 * sf);
+    rag.hitLimp(hit, dx * mag, dy * mag * 0.6 - 70, (0.28 + 0.1 * Math.min(pw, 3)) * Math.min(1, 0.5 + 0.5 * sf));
     f.state = 'idle'; f.t = Math.max(f.t, 0.35 + 0.08 * Math.min(pw, 3));
   }
   function style(k, x, y) {
@@ -928,10 +937,11 @@ const Game = (() => {
     rag.flash = 1; hurtFlash = 1; shake = Math.max(shake, 0.45); Sfx.hurt();
     {
       // only a real blow floors you, and not twice in a row: lighter hits just rock the body
-      const hit = o.hit || { seg: 1, u: 0.5 }, mag = 190 + Math.min(dmg, 30) * 6;
+      const sf = o.sf || 1;
+      const hit = o.hit || { seg: 1, u: 0.5 }, mag = (190 + Math.min(dmg, 30) * 6) * Math.min(1, 0.45 + 0.55 * sf);
       if (rag.mode === 'tumble') rag.impulseAt(hit, o.dirx * mag * 1.2, o.diry * mag * 0.6, 0.7);
-      else if (dmg >= 14 && (player.noLimp || 0) <= 0 && !stand) { rag.hitLimp(hit, o.dirx * mag * 0.8, o.diry * mag * 0.5 - 40, 0.3); player.noLimp = 3.5; aimCancel(); }
-      else { rag.stagger(0.45); rag.impulseAt(hit, o.dirx * 1500, o.diry * 900, 0.25); rag.jolt(o.dirx * 5, o.diry * 3); }
+      else if (dmg >= 14 && sf >= 0.55 && (player.noLimp || 0) <= 0 && !stand) { rag.hitLimp(hit, o.dirx * mag * 0.8, o.diry * mag * 0.5 - 40, 0.3); player.noLimp = 3.5; aimCancel(); }
+      else { rag.stagger(0.45 * Math.min(1, 0.4 + 0.6 * sf)); rag.impulseAt(hit, o.dirx * 1500 * sf, o.diry * 900 * sf, 0.25); rag.jolt(o.dirx * 5 * sf, o.diry * 3 * sf); }
     }
     if (dmg < 1e8) Fx.text(o.x, o.y - 30, '-' + Math.max(1, Math.round(dmg)), '#ff6b78', o.head ? 26 : 21);
     Fx.hit(o.x, o.y, Math.atan2(o.diry, o.dirx), '#ff9aa0', 8);
