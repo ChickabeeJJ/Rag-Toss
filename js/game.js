@@ -497,7 +497,8 @@ const Game = (() => {
       if (Math.random() < 0.3) Fx.burst(s.x, s.y - s.r, 1, { color: '#ffd27a', speed: [20, 80], life: [0.15, 0.3], size: [1.5, 3], grav: 300 });
       if (s.age > 2.6) detonate(s);
     },
-    magnet(s, dt) { homeShot(s, dt, 430, 2.5, 1.5, 0.6); },
+    // with the Auto Aimer card the magnet pulls harder: longer reach, a sharper turn and a longer hold
+    magnet(s, dt) { if (run.perks.aim) homeShot(s, dt, 560, 3.6, 2.0, 0.65); else homeShot(s, dt, 430, 2.5, 1.5, 0.6); },
     anvil(s) {
       if (s.st === 0 && s.age > 0.18) {
         for (const f of foes) {
