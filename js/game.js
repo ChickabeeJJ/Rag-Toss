@@ -194,7 +194,7 @@ const Game = (() => {
     if (run.stand > 0) standWin();
     if (run.combo % FEVER_EVERY === 0 && !run.tut) startFever();
   }
-  /* ---- frenzy: every tenth hit in a row lights you up. Throws are free and fast, coins are doubled. */
+  /* ---- frenzy: every tenth hit in a row lights you up. Throws are free and fast, coins are doubled, and you get 50 stamina back. */
   function startFever() {
     run.fever = FEVER_T; run.fevers++;
     const h = player.rag.head;
@@ -202,7 +202,7 @@ const Game = (() => {
     Fx.ring(h.x, h.y + 40, 20, 260, 0.5, '#ffb347', 8);
     Fx.text(h.x, h.y - 84, 'FRENZY!', '#ffb347', 34, -46);
     Fx.burst(h.x, h.y + 40, 22, { colors: ['#ffb347', '#ff7a3c', '#ffe08a'], speed: [160, 520], life: [0.4, 0.9], size: [3, 7], grav: 300, glow: true });
-    player.sta = player.maxSta;
+    player.sta = Math.min(player.maxSta, player.sta + 50);
   }
   /* ---- last stand: once a run, the blow that would finish you leaves you on your feet for a few
      seconds. Land a throw in that window and you are back in it. */
@@ -1511,7 +1511,8 @@ const Game = (() => {
     if (!rag.alive || f.dummy) return;
     const hd = rag.head, s = rag.s;
     if (f.gold) {
-      const w = 54, k = clamp(f.goldT / f.goldMax, 0, 1), y = hd.y - 34 * s;
+      // sits just above the health bar once that has appeared, otherwise where the bar will go
+      const w = 54, k = clamp(f.goldT / f.goldMax, 0, 1), y = hd.y - 34 * s - (f.hp < f.maxHp ? 13 : 0);
       ctx.fillStyle = 'rgba(12,14,21,0.6)'; ctx.fillRect(hd.x - w / 2, y, w, 5);
       ctx.fillStyle = '#ffe14d'; ctx.fillRect(hd.x - w / 2, y, w * k, 5);
     }
