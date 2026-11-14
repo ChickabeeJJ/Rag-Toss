@@ -1700,7 +1700,7 @@ const Game = (() => {
     shake = Math.max(0, shake - dtReal * 2.4);
     if (aim.on) aim.t += dtReal;
     {
-      const settled = aim.on && aim.power > 0.12 && time - aim.moved > 0.08 && aim.t > 0.12;
+      const settled = aim.on && aim.power > 0.12 && time - aim.moved > 0.04 && aim.t > 0.04;
       aim.vis = approach(aim.vis, settled ? 1 : 0, dtReal * (settled ? 6 : 14));
     }
     if (aim.snap) aim.snap.t += dtReal;
