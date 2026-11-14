@@ -1398,7 +1398,7 @@ const Game = (() => {
       const n = Math.round(player.maxHp * 0.35); heal(n); Sfx.heal();
       Fx.text(c.x, c.y - 40, 'HEALTH +' + n, '#9ff0c0', 24); Fx.ring(c.x, c.y, 8, 70, 0.4, '#9ff0c0', 5);
     } else if (r < pHp + pSta) {
-      const n = Math.round(player.maxSta * 0.5); player.sta = Math.min(player.maxSta, player.sta + n); Sfx.heal();
+      const n = 75; player.sta = Math.min(player.maxSta, player.sta + n); Sfx.heal();
       Fx.text(c.x, c.y - 40, 'STAMINA +' + n, '#9fd0ff', 24); Fx.ring(c.x, c.y, 8, 70, 0.4, '#9fd0ff', 5);
     } else if (r > 0.88) {
       const n = Math.round(rand(20, 40) * coinMul());
