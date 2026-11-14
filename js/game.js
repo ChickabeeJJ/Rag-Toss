@@ -419,15 +419,15 @@ const Game = (() => {
       if (s.age > 2.6) detonate(s);
     },
     magnet(s, dt) {
-      let best = null, bd = 560;
+      let best = null, bd = 430;
       for (const f of foes) {
         if (!live(f)) continue;
         const c = f.rag.chest, d = dist(s.x, s.y, c.x, c.y);
         if (d < bd && c.x > s.x - 60) { bd = d; best = c; }
       }
-      if (!best || s.age < 0.12) return;
+      if (!best || s.age < 0.12 || s.age > 1.5) return;      // a short pull, not a leash
       const sp = Math.hypot(s.vx, s.vy), cur = Math.atan2(s.vy, s.vx), want = Math.atan2(best.y - 20 - s.y, best.x - s.x);
-      const a = turnTo(cur, want, 3.6 * dt);
+      const a = turnTo(cur, want, 2.5 * dt);
       s.vx = Math.cos(a) * sp; s.vy = Math.sin(a) * sp - G * s.grav * dt * 0.6;
     },
     anvil(s) {
@@ -1103,7 +1103,7 @@ const Game = (() => {
     const src = f.boss && f.boss.flight ? f.boss : f.def;
     const T = rand(src.flight[0], src.flight[1]) * far * 1;
     // bosses throw wide and don't sharpen up as the stages go on
-    const err = (f.boss ? f.def.err * 2.3 * Math.max(0.9, 1 - 0.015 * (run.stage - 1)) : f.def.err * Math.max(0.3, 1 - 0.07 * (run.stage - 1))) * (f.blind > 0 ? 3.5 : 1) * ((f.boss && f.boss.errMul) || 1);
+    const err = (f.boss ? f.def.err * 2.05 * Math.max(0.9, 1 - 0.015 * (run.stage - 1)) : f.def.err * Math.max(0.3, 1 - 0.07 * (run.stage - 1))) * (f.blind > 0 ? 3.5 : 1) * ((f.boss && f.boss.errMul) || 1);
     const vx = dx / T * (1 + gauss() * 0.27 * err), vy = (dy / T - 0.5 * G * T) * (1 + gauss() * 0.19 * err) + gauss() * 70 * err;
     return { vx, vy, ang: Math.atan2(vy, vx), T, ex: n.x + vx * T, ey: n.y + vy * T + 0.5 * G * T * T };
   }
@@ -1114,7 +1114,7 @@ const Game = (() => {
       if (!rag.alive || rag.mode !== 'active' || rag.frozen > 0 || rag.stun > 0) return;      // knocked off its throw
       const p0 = release(rag, sol.ang);
       const vx = (sol.ex - p0.x) / sol.T, vy = (sol.ey - p0.y) / sol.T - 0.5 * G * sol.T;     // still arrives where it was aimed
-      const n = B && B.fan ? B.fan : 1, dmg = f.tut ? 3 : ammo.dmg * foeDmgMul() * (B ? B.dmg || 1 : 1);
+      const n = B && B.fan ? B.fan : 1, dmg = f.tut ? 3 : ammo.dmg * foeDmgMul() * (B ? (B.dmg || 1) * 1.12 : 1);
       for (let i = 0; i < n; i++) {
         const a = (i - (n - 1) / 2) * (B && B.spread || 0), c = Math.cos(a), sn = Math.sin(a);
         launch(ammo, { owner: 'e', x: p0.x, y: p0.y, vx: vx * c - vy * sn, vy: vx * sn + vy * c, dmg, from: f, scale: B ? 1.25 : 1, life: 6 });
@@ -1188,7 +1188,7 @@ const Game = (() => {
       if (f.t <= 0) {
         foeThrow(f);
         if (--f.left > 0) { f.windMax = f.t = (f.boss && f.boss.gap) || 0.3; f.sol = aimAt(f); }
-        else { const rs = (f.boss && f.boss.rest) || def.rest; f.state = 'idle'; f.t = rand(rs[0], rs[1]) * Math.max(0.5, 1.1 - 0.06 * (run.stage - 1)) * (f.enraged ? 0.7 : 1); }
+        else { const rs = (f.boss && f.boss.rest) || def.rest; f.state = 'idle'; f.t = rand(rs[0], rs[1]) * Math.max(0.5, 1.1 - 0.06 * (run.stage - 1)) * (f.enraged ? 0.7 : 1) * (f.boss ? 0.9 : 1); }
       }
     }
     // bosses whistle up help
