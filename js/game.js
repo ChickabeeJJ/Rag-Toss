@@ -858,8 +858,10 @@ const Game = (() => {
     } else if (id === 'duck') { rag.gild = 1.4; Sfx.quack(); }
     else if (id === 'magnet') {
       if (rag.shield > 0) breakLid(f, true);
-      rag.stun = Math.max(rag.stun, f.boss ? 0.5 : 1); f.state = 'idle'; f.t = Math.max(f.t, 1.6);
-      Fx.text(rag.head.x, rag.head.y - 44, 'FUMBLE', '#ff9aa0', 17);
+      if (!f.boss) {       // a boss never loses its grip
+        rag.stun = Math.max(rag.stun, 1); f.state = 'idle'; f.t = Math.max(f.t, 1.6);
+        Fx.text(rag.head.x, rag.head.y - 44, 'FUMBLE', '#ff9aa0', 17);
+      }
     } else if (id === 'plunger') {
       kb = 0; Sfx.yank();
       zones.push({ kind: 'rope', t: 0.28, rag });
