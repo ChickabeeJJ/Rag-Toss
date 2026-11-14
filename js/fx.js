@@ -6,7 +6,7 @@
 
 const Fx = (() => {
   const parts = [], rings = [], texts = [], bolts = [], debris = [];
-  const MAX = 900;
+  const MAX = 520;
   let solids = () => [];        // the islands, so broken things can land on them
   function setSolids(fn) { solids = fn; }
 
@@ -32,6 +32,7 @@ const Fx = (() => {
   function text(x, y, str, color = '#ffffff', size = 22, vy = -70) {
     // nudge apart labels that would land on top of each other
     for (const t of texts) if (Math.abs(t.x - x) < 70 && Math.abs(t.y - y) < size) y -= size * 0.95;
+    if (texts.length > 26) texts.shift();
     texts.push({ x, y, str, color, size, life: 0.95, max: 0.95, vy });
   }
   function bolt(x1, y1, x2, y2, color = '#fff9a8', life = 0.22) {
@@ -101,11 +102,14 @@ const Fx = (() => {
         ctx.globalAlpha = Math.min(1, k * 3); ctx.fillStyle = p.color;
         ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillRect(-p.size / 2, -p.size * 0.3 * Math.abs(Math.cos(p.rot * 2)) - 0.5, p.size, p.size * 0.6 * Math.abs(Math.cos(p.rot * 2)) + 1); ctx.restore();
       } else {
-        if (p.glow) { ctx.globalCompositeOperation = 'lighter'; Glow.draw(ctx, p.color, p.x, p.y, p.size * 2.6, k * 0.6); ctx.globalCompositeOperation = 'source-over'; }
         ctx.globalAlpha = Math.min(1, k * 2.5); ctx.fillStyle = p.color;
         ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (0.4 + k * 0.6), 0, TAU); ctx.fill();
       }
     }
+    // glowing particles: one pass, one blend-mode switch
+    let anyGlow = false;
+    for (const p of parts) if (p.glow) { if (!anyGlow) { ctx.globalCompositeOperation = 'lighter'; anyGlow = true; } Glow.draw(ctx, p.color, p.x, p.y, p.size * 2.6, (p.life / p.max) * 0.6); }
+    if (anyGlow) ctx.globalCompositeOperation = 'source-over';
     for (const r of rings) {
       const k = 1 - r.life / r.max;
       ctx.globalAlpha = (1 - k) * 0.9; ctx.strokeStyle = r.color; ctx.lineWidth = r.width * (1 - k) + 0.5;
@@ -132,9 +136,9 @@ const Fx = (() => {
       const pop = k > 0.85 ? 1 + (k - 0.85) * 3 : 1;
       ctx.globalAlpha = Math.min(1, k * 3);
       ctx.font = `900 ${Math.round(t.size * pop)}px Rubik, sans-serif`;
-      ctx.shadowColor = 'rgba(8,10,20,0.55)'; ctx.shadowBlur = Math.max(5, t.size * 0.3); ctx.shadowOffsetY = 2;     // a soft shadow, not an outline
-      ctx.fillStyle = t.color; ctx.fillText(t.str, t.x, t.y);
-      ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+      // a soft drop shadow made of an offset darker copy (a real blur is far dearer when many numbers are up)
+      const a = ctx.globalAlpha; ctx.globalAlpha = a * 0.4; ctx.fillStyle = '#080a14'; ctx.fillText(t.str, t.x, t.y + 2.2);
+      ctx.globalAlpha = a; ctx.fillStyle = t.color; ctx.fillText(t.str, t.x, t.y);
     }
     ctx.globalAlpha = 1;
   }

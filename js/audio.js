@@ -41,8 +41,11 @@ const Sfx = (() => {
     g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + a);
     g.gain.exponentialRampToValueAtTime(0.0001, t + a + dcy);
   }
+  // never more than a handful of new voices per tenth of a second: a pinata's worth of hits must not choke the audio thread
+  let vCount = 0, vT = 0;
+  const busy = () => { const n = performance.now(); if (n - vT > 100) { vT = n; vCount = 0; } return ++vCount > 14; };
   function tone(freq, dur, type = 'sine', vol = 0.3, slide = 0, delay = 0, bus = null) {
-    if (!ac || (!bus && !sfxOn)) return;
+    if (!ac || (!bus && !sfxOn) || (!bus && busy())) return;
     const t = ac.currentTime + delay;
     const o = ac.createOscillator(), g = ac.createGain();
     o.type = type; o.frequency.setValueAtTime(freq, t);
@@ -52,7 +55,7 @@ const Sfx = (() => {
     o.start(t); o.stop(t + dur + 0.05);
   }
   function noise(dur, vol = 0.3, filt = 1200, type = 'lowpass', q = 1, delay = 0, sweep = 0, bus = null) {
-    if (!ac || (!bus && !sfxOn)) return;
+    if (!ac || (!bus && !sfxOn) || (!bus && busy())) return;
     const t = ac.currentTime + delay;
     const s = ac.createBufferSource(); s.buffer = noiseBuf;
     s.playbackRate.value = rand(0.85, 1.15);

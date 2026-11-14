@@ -496,8 +496,32 @@ const ItemArt = (() => {
 
   function has(id) { return !!P[id]; }
   // world drawing: centred on (x, y), radius r, rotated
+  /* Items that do not animate are painted once into a small canvas and stamped from then on: the vector painters build
+     gradients on every call, which adds up fast with a pinata's worth of candy in the air. */
+  const SPRITES = new Map();
+  let pxScale = 1;
+  const setScale = v => { pxScale = Math.max(0.2, v); };
+  const HALF = 28;
+  function sprite(id, fn, q) {
+    const key = id + ':' + q;
+    let c = SPRITES.get(key);
+    if (c) return c;
+    const u = q / 14, side = Math.ceil(2 * HALF * u);
+    c = document.createElement('canvas'); c.width = c.height = side;
+    const g = c.getContext('2d');
+    g.translate(side / 2, side / 2); g.scale(u, u);
+    fn(g, 0.3);
+    c = { cv: c, side, u };
+    SPRITES.set(key, c);
+    return c;
+  }
   function draw(ctx, id, x, y, rot, r, t = 0) {
     const fn = P[id] || P.rock;
+    if (fn.length < 2 && id !== 'crate' && ctx.__tint == null) {
+      const q = Math.max(6, Math.round(r * pxScale / 4) * 4), sp = sprite(id, fn, q), w = sp.side * (r / 14) / sp.u;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.drawImage(sp.cv, -w / 2, -w / 2, w, w); ctx.restore();
+      return;
+    }
     const k = r / 14;
     ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(k, k);
     fn(ctx, t);
@@ -532,5 +556,5 @@ const ItemArt = (() => {
     c.getContext('2d').drawImage(src, 0, 0);
     return c;
   }
-  return { draw, icon, iconEl, has };
+  return { draw, icon, iconEl, has, setScale };
 })();

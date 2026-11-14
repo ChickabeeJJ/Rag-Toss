@@ -412,7 +412,7 @@ const Game = (() => {
           // the body leans into the throw, so the hand is not where the preview started: leave from the
           // hand, but bend the velocity so the arc still passes through the previewed path
           const q = release(rag, aa);
-          launch(real, { owner: 'p', x: q.x, y: q.y, vx: Math.cos(aa) * v + (planned.x - q.x) / ARC_T, vy: Math.sin(aa) * v + (planned.y - q.y) / ARC_T, dmg: real.dmg * mul * (1 + 0.05 * Save.masteryLvl(real.id)), seq, power });
+          launch(real, { owner: 'p', x: q.x, y: q.y, vx: Math.cos(aa) * v + (planned.x - q.x) / ARC_T, vy: Math.sin(aa) * v + (planned.y - q.y) / ARC_T, dmg: real.dmg * mul * (1 + 0.05 * Save.masteryLvl(id)), seq, power, mast: id });
           if (i === 0) releaseFx(rag, aa, power, real);
         } });
       }
@@ -442,7 +442,7 @@ const Game = (() => {
       def, art: o.art || def.id, owner: o.owner, x: o.x, y: o.y, vx: o.vx, vy: o.vy,
       rot: rand(0, TAU), vr: (def.spin || 0) * (o.vx < 0 ? -1 : 1), r: def.r * big * (o.scale || 1),
       dmg: o.dmg != null ? o.dmg : def.dmg, kb: def.kb != null ? def.kb : 0.5, grav: def.grav != null ? def.grav : 1,
-      age: 0, life: o.life || def.life || 7, bounces: (def.bounce || 0) + (o.owner === 'p' ? pk('spring') : 0), hits: new Set(), rehit: 0,
+      mast: o.mast || def.id, age: 0, life: o.life || def.life || 7, bounces: (def.bounce || 0) + (o.owner === 'p' ? pk('spring') : 0), hits: new Set(), rehit: 0,
       seq: o.seq || 0, from: o.from || null, tricks: 0, st: 0, hp: def.hp || 1, target: o.target || null, dead: false,
       turnAt: 0.5 + 0.4 * (o.power || 0.5), trail: 0, sx: o.x,
     };
@@ -672,7 +672,7 @@ const Game = (() => {
     if (s.vr) s.rot += s.vr * dt; else if (id !== 'anvil' && id !== 'bee') s.rot = Math.atan2(s.vy, s.vx);
     if (s.owner === 'p' && run.fever > 0 && Math.random() < 0.5) Fx.burst(s.x, s.y, 1, { colors: ['#ffb347', '#ff7a3c', '#ffe08a'], speed: [10, 70], life: [0.2, 0.45], size: [3, 6], grav: -80, glow: true });
     // a faint trail on your own throws so fast ones stay readable
-    if (s.owner === 'p' && (s.trail -= dt) <= 0 && id !== 'bee') { s.trail = 0.02; Fx.burst(s.x, s.y, 1, { color: '#ffffff', speed: [0, 8], life: [0.16, 0.26], size: [s.r * 0.22, s.r * 0.34], grav: 0, drag: 0 }); }
+    if (s.owner === 'p' && (s.trail -= dt) <= 0 && id !== 'bee' && id !== 'candy' && id !== 'seed' && shots.length < 12) { s.trail = 0.02; Fx.burst(s.x, s.y, 1, { color: '#ffffff', speed: [0, 8], life: [0.16, 0.26], size: [s.r * 0.22, s.r * 0.34], grav: 0, drag: 0 }); }
     if (s.age > s.life || s.y > WORLD_H + 260 || s.x < -400 || s.x > WORLD_W + 600 || s.y < -2600) { kill(s); return; }
 
     if (s.owner === 'p') {
@@ -839,12 +839,21 @@ const Game = (() => {
     const f = clamp(v / ref, 0.3, 1.25);
     return Number.isFinite(f) ? f : 1;
   }
+  // the little freeze on a solid hit: shorter as the stages climb, never back to back, and never from candies, seeds or bees
+  let lastStop = -9;
+  const SUBS = new Set(['candy', 'seed', 'bee']);
+  function stopFor(base, s) {
+    if (s && SUBS.has(s.def.id)) return;
+    if (time - lastStop < 0.2) return;
+    lastStop = time;
+    hitStop = Math.max(hitStop, base * Math.max(0.25, 1 - 0.06 * (run.stage - 1)));
+  }
   function onFoeHit(s, f, hit) {
     s.hits.add(f); s.lastFoe = f;
     const rag = f.rag, def = s.def, id = def.id;
     let head = hit.part === 'head' || (id === 'anvil' && s.st === 1);
     let mult = head ? 2 * (1 + 0.5 * pk('eye')) : hit.part === 'body' ? 1 : 0.75;
-    if (!head && !f.dummy && !run.tut && Math.random() < (id === 'horseshoe' ? 0.42 : 0.09) + 0.03 * ulvl('crit')) { mult *= 1.8; hitStop = Math.max(hitStop, 0.05); Fx.text(hit.x, hit.y - 56, 'CRIT!', Theme.acc, 21, -90); Fx.ring(hit.x, hit.y, 6, 54, 0.22, Theme.acc, 4); }
+    if (!head && !f.dummy && !run.tut && Math.random() < (id === 'horseshoe' ? 0.42 : 0.09) + 0.03 * ulvl('crit')) { mult *= 1.8; stopFor(0.05, s); Fx.text(hit.x, hit.y - 56, 'CRIT!', Theme.acc, 21, -90); Fx.ring(hit.x, hit.y, 6, 54, 0.22, Theme.acc, 4); }
     if (head && rag.helmet) {
       rag.helmet = false;
       Fx.chunk('pot', rag.head.x, rag.head.y - 10, rand(80, 260), -rand(300, 460), 16 * rag.s, 1.5); Sfx.clang();
@@ -895,7 +904,7 @@ const Game = (() => {
     } else if (id === 'dice') {
       const roll = randi(1, 6); dmg *= [0.45, 0.7, 0.95, 1.25, 1.7, 2.4][roll - 1]; Sfx.rattle();
       Fx.text(hit.x, hit.y - 48, 'ROLLED ' + roll, roll === 6 ? '#ffe14d' : roll === 1 ? '#a4abbf' : '#ffffff', roll === 6 ? 26 : 19, -80);
-      if (roll === 6) { hitStop = Math.max(hitStop, 0.06); Fx.confetti(hit.x, hit.y, 14); }
+      if (roll === 6) { stopFor(0.06, s); Fx.confetti(hit.x, hit.y, 14); }
     } else if (id === 'teddy') {
       if (!run.demo && player.hp < player.maxHp) { heal(4); Fx.text(player.rag.head.x, player.rag.head.y - 56, '+4', '#9ff0c0', 20, -70); Sfx.heal(); }
       Fx.burst(hit.x, hit.y, 8, { colors: ['#e9c79a', '#ffffff'], speed: [40, 200], life: [0.3, 0.6], size: [2, 4], grav: 100 });
@@ -916,7 +925,8 @@ const Game = (() => {
     else if (id === 'hole') { openHole(s); return; }
     else if (id === 'pinata') { burstPinata(s); }
 
-    Fx.hit(hit.x, hit.y, Math.atan2(s.vy, s.vx), head ? '#ffe14d' : '#ffffff', head ? 12 : 7);
+    if (SUBS.has(id)) { if (Math.random() < 0.5) Fx.hit(hit.x, hit.y, Math.atan2(s.vy, s.vx), '#ffffff', 3); }
+    else Fx.hit(hit.x, hit.y, Math.atan2(s.vy, s.vx), head ? '#ffe14d' : '#ffffff', head ? 12 : 7);
     hurtFoe(f, dmg, { x: hit.x, y: hit.y, dirx, diry, s, kb, head, hit });
     if (id === 'plunger' && rag.alive) yank(f, hit);
     if (AREA[id] && !s.dead) { AREA[id](s); return; }
@@ -954,10 +964,10 @@ const Game = (() => {
     if (f.tut && run.tut && !o.dot) run.tut.hits++;
     rag.flash = 1;
     const big = dmg >= 24;
-    if (!o.dot || dmg >= 1) Fx.text(o.x + rand(-8, 8), o.y - 24, String(Math.max(1, Math.round(dmg))), o.head ? '#ffe14d' : o.dot ? '#ffb070' : '#ffffff', o.dot ? 15 : clamp(17 + dmg * 0.3, 17, 34));
+    if ((!o.dot || dmg >= 1) && !(o.s && SUBS.has(o.s.def.id) && (f.lastText || 0) > time - 0.18)) { if (o.s && SUBS.has(o.s.def.id)) f.lastText = time; Fx.text(o.x + rand(-8, 8), o.y - 24, String(Math.max(1, Math.round(dmg))), o.head ? '#ffe14d' : o.dot ? '#ffb070' : '#ffffff', o.dot ? 15 : clamp(17 + dmg * 0.3, 17, 34)) }
     if (!o.dot) {
       if (o.head) Sfx.head(); else Sfx.thud(big);
-      if (o.head || big) hitStop = Math.max(hitStop, 0.045);
+      if (o.head || big) stopFor(0.045, o.s);
       if (o.s) logHit(o.s.seq);
       if (o.head) { track('headshots'); run.heads++; bump('head'); }
       f.lastHit = { s: o.s, air: rag.mode === 'tumble', head: !!o.head, far: Math.abs(o.x - HOME_X) > 1000 };
@@ -1044,10 +1054,11 @@ const Game = (() => {
     Sfx.ko(); Sfx.coin(run.combo);
     run.kos++; track('kills');
     bump('ko'); bump('clean'); if (o.ring) bump('ring');
-    if (lh.s && lh.s.owner === 'p' && ITEM[lh.s.def.id]) {
-      bump('item', 1, lh.s.def.id);
-      const up = Save.masterKill(lh.s.def.id);
-      if (up) { run.mastered.push(lh.s.def.id); Sfx.perk(); if (on.toast) on.toast(ITEM[lh.s.def.id].name.toUpperCase() + ' MASTERY ' + '\u2605'.repeat(up) + '  +5% DAMAGE', 'star'); }
+    if (lh.s && lh.s.owner === 'p' && ITEM[lh.s.mast || lh.s.def.id]) {
+      const mid = lh.s.mast || lh.s.def.id;
+      bump('item', 1, mid);
+      const up = Save.masterKill(mid);
+      if (up) { run.mastered.push(mid); Sfx.perk(); if (on.toast) on.toast(ITEM[mid].name.toUpperCase() + ' MASTERY ' + '\u2605'.repeat(up) + '  +5% DAMAGE', 'star'); }
     }
     const best = Save.data.best.kos;
     if (!run.beatBest && best >= 5 && run.kos > best) {
@@ -1971,6 +1982,7 @@ const Game = (() => {
     const th = theme();
     const shx = Save.data.settings.shake ? Math.sin(time * 71) * shake * 9 : 0, shy = Save.data.settings.shake ? Math.cos(time * 83) * shake * 7 : 0;
     ctx.setTransform(dpr * view.s, 0, 0, dpr * view.s, dpr * (view.ox + shx), dpr * (view.oy + shy));
+    ItemArt.setScale(dpr * view.s);
 
     for (const z of zones) {
       if (z.kind !== 'hole') continue;
