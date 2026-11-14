@@ -464,6 +464,7 @@ body.touch .slots { bottom: calc(10px + var(--safe-b)); }
 .perk { overflow: hidden; }
 .pk-kind i { font-style: normal; margin-left: 6px; letter-spacing: 0.08em; font-size: 8px; opacity: 0.9; }
 .perk.rar-common .pk-kind { color: var(--muted); }
+.perk.rar-common::before { left: 0; right: 0; height: 3px; background: linear-gradient(90deg, transparent, rgba(174, 182, 201, 0.7), transparent); opacity: 1; }
 .pk-orn { position: absolute; inset: 0; pointer-events: none; display: none; }
 .pk-orn u { position: absolute; width: 14px; height: 14px; border: 0 solid var(--c); opacity: 0.8; }
 .pk-orn u:nth-child(1) { left: 8px; bottom: 8px; border-width: 0 0 2px 2px; border-bottom-left-radius: 5px; }

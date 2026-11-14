@@ -56,13 +56,20 @@ const Game = (() => {
       fever: 0, fevers: 0, stand: 0, stood: false, bounty: null, bountyN: 0, bountyT: 3, bountyLast: '', goldT: rand(26, 40), beatBest: false, closeCalls: 0, mastered: [],
     };
   }
+  // the Rookie's headband shows your rank: green at the start, a new colour each time you rank up, a shifting rainbow at the top
+  const BANDS = ['#45e08a', '#35e0ff', '#4f8cff', '#8f6bff', '#d05bff', '#ff4f93', '#ff5a4d', '#ff9a3c', '#ffc933', '#f2f4fa'];
+  function bandColor(t) {
+    const i = Save.rankInfo().i;
+    if (i >= RANKS.length - 1) return `hsl(${Math.floor(t * 90) % 360}, 95%, 62%)`;
+    return BANDS[Math.min(i, BANDS.length - 1)];
+  }
   function buildWorld() {
     plats = []; foes = []; shots = []; crates = []; zones = []; throwLog.clear(); Fx.clear();
     home = new Plat(250, HOME_Y, 300, 'player'); home.h = 300; home.bobA = 0;
-    wall = new Plat(372, HOME_Y - 66, 44, 'wall'); wall.h = 66;
+    wall = new Plat(142, HOME_Y - 66, 44, 'wall'); wall.h = 66;
     plats.push(home, wall);
     const who = CHAR[Save.data.char] || CHAR.rookie;
-    const rag = new Rag({ x: HOME_X, y: HOME_Y, facing: 1, isPlayer: true, body: who.body, shade: who.shade, accent: who.accent || Theme.acc, hat: who.hat, plat: home, weight: 1.3, steady: true });
+    const rag = new Rag({ x: HOME_X, y: HOME_Y, facing: 1, isPlayer: true, body: who.body, shade: who.shade, accent: who.accent || bandColor(0), hat: who.hat, plat: home, weight: 1.3, steady: true });
     player = { rag, hp: 100, maxHp: 100, sta: 100, maxSta: 100, cd: 0, staWait: 0, slot: 0, bonus: null, dead: false, inv: 0 };
     refreshStats(true);
     selectFirstSlot();
@@ -109,18 +116,7 @@ const Game = (() => {
     aimCancel(); duckHeld = false; duckTired = false; duckOn = false; pending = null;
     const saved = opts.resume && Save.data.run;
     if (saved) {
-      // pick a half-finished run back up: same stage, knockouts, perks, health and stamina; foes start fresh
-      for (const k of ['kos', 'stage', 'stageKills', 'bestCombo', 'heads', 'rings', 'bosses', 'crates', 'stood', 'bountyN', 'closeCalls', 'fevers']) run[k] = saved[k] || run[k];
-      run.beatBest = run.kos > Save.data.best.kos;
-      run.coins = saved.coins || 0; run.perks = Object.assign({}, saved.perks);
-      const sb = Array.isArray(saved.bag) && saved.bag.length === 3 ? saved.bag.map(id => (id && ITEM[id] && Save.owns(id) ? id : null)) : null;
-      run.bag = sb && sb.some(Boolean) ? sb : Save.data.bag.slice();
-      themeFrom = themeTo = (run.stage - 1) % THEMES.length; themeT = 1;
-      refreshStats(true);
-      player.hp = clamp(saved.hp || player.maxHp, 1, player.maxHp);
-      if (saved.sta != null) player.sta = clamp(saved.sta, 0, player.maxSta);
-      Sfx.setStage(run.stage);
-      if (on.banner) on.banner('STAGE ' + run.stage, 'WELCOME BACK');
+      restoreRun(saved);
       return;
     }
     run.bag = Save.data.bag.slice();
@@ -129,15 +125,74 @@ const Game = (() => {
     if (opts.tutorial) startTut();
     else if (on.banner) on.banner('STAGE 1', THEMES[0].name.toUpperCase());
   }
-  // what a quit has to remember. Foes are not saved: a boss that was up comes back as the stage's boss.
+  /* What a quit has to remember: all of it. The score, the bag, health and stamina, the streak, frenzy,
+     last stand, the bounty, every foe (and the boss) with its health and island, crates in the air,
+     throws in flight, open pocket holes and a perk offer that was still on screen. */
+  const plain = o => JSON.parse(JSON.stringify(o));
   function saveRun() {
     // knocked out but the results have not come up yet: leaving now ends the run for good, with its stats recorded
     if (run && !run.demo && !run.tut && state === 'play' && player && player.dead) { finishRun(true); return 'ended'; }
     if (!run || run.demo || run.tut || state !== 'play' || !player || player.dead || run.overT > 0) return;
-    Save.setRun({
-      stage: run.stage, kos: run.kos, coins: run.coins, bag: run.bag, bestCombo: run.bestCombo, stood: run.stood, bountyN: run.bountyN, closeCalls: run.closeCalls, fevers: run.fevers, heads: run.heads, rings: run.rings, bosses: run.bosses, crates: run.crates,
-      stageKills: run.boss || run.bossT > 0 ? stageKills(run.stage) : run.stageKills, perks: run.perks, hp: Math.round(player.hp), sta: Math.round(player.sta),
-    });
+    const keep = {};
+    for (const k of ['stage', 'kos', 'coins', 'bestCombo', 'stood', 'bountyN', 'closeCalls', 'fevers', 'heads', 'rings', 'bosses', 'crates', 'stageKills', 'combo', 'fever', 'stand', 'bountyT', 'bountyLast',
+      'goldT', 'crateT', 'spawnT', 'bossT', 'perkT', 't', 'lastKoAt', 'beatBest']) keep[k] = run[k];
+    keep.bag = run.bag; keep.perks = run.perks; keep.mastered = run.mastered;
+    keep.bounty = run.bounty; keep.perkPick = run.perkPick || null;
+    keep.hp = player.hp; keep.sta = player.sta; keep.slot = player.slot; keep.cd = player.cd; keep.inv = Math.min(player.inv, 3);
+    keep.bonus = player.bonus ? { id: player.bonus.id, n: player.bonus.n, on: !!player.bonus.on } : null;
+    keep.foes = foes.filter(f => f.rag.alive && !f.dummy && f.plat && !f.plat.falling).map(f => ({
+      type: f.type, boss: f.boss ? BOSSES.indexOf(f.boss) : -1, x: f.plat.x, y: f.plat.baseY, w: f.plat.w, moveA: f.plat.moveA, moveS: f.plat.moveS,
+      hp: f.hp, maxHp: f.maxHp, burnT: f.burnT, bleed: f.bleed, bleedDps: f.bleedDps, minion: f.minion, gold: !!f.gold, goldT: f.goldT, goldMax: f.goldMax,
+      helmet: !!f.rag.helmet, shield: f.rag.shield, enraged: !!f.enraged, t: f.t, minionT: f.minionT,
+    }));
+    keep.cr = crates.filter(c => !c.popped).map(c => ({ x: c.x, y: c.y, ph: c.ph, t: c.t, kind: c.kind, col: c.col }));
+    keep.shots = shots.filter(q => !q.dead && (ITEM[q.def.id] || AMMO[q.def.id])).map(q => ({ id: q.def.id, owner: q.owner, x: q.x, y: q.y, vx: q.vx, vy: q.vy, dmg: q.dmg, age: q.age, bounces: q.bounces, art: q.art }));
+    keep.holes = zones.filter(z => z.kind === 'hole').map(z => ({ x: z.x, y: z.y, t: z.t, dur: z.dur, dmg: z.dmg, kb: z.kb, own: !!(z.s && z.s.owner === 'p') }));
+    Save.setRun(plain(keep));
+  }
+  // the other half: put it all back where it was
+  function restoreRun(sv) {
+    for (const k of ['stage', 'kos', 'coins', 'bestCombo', 'stood', 'bountyN', 'closeCalls', 'fevers', 'heads', 'rings', 'bosses', 'crates', 'stageKills', 'combo', 'fever', 'stand', 'bountyT', 'bountyLast',
+      'goldT', 'crateT', 'spawnT', 'bossT', 'perkT', 't', 'lastKoAt']) if (sv[k] != null) run[k] = sv[k];
+    run.beatBest = sv.beatBest != null ? sv.beatBest : run.kos > Save.data.best.kos;
+    run.perks = Object.assign({}, sv.perks); run.mastered = sv.mastered || []; run.bounty = sv.bounty || null;
+    const sb = Array.isArray(sv.bag) && sv.bag.length === 3 ? sv.bag.map(id => (id && ITEM[id] && Save.owns(id) ? id : null)) : null;
+    run.bag = sb && sb.some(Boolean) ? sb : Save.data.bag.slice();
+    themeFrom = themeTo = (run.stage - 1) % THEMES.length; themeT = 1;
+    refreshStats(true);
+    player.hp = clamp(sv.hp || player.maxHp, 1, player.maxHp);
+    if (sv.sta != null) player.sta = clamp(sv.sta, 0, player.maxSta);
+    if (sv.slot != null && run.bag[sv.slot]) player.slot = sv.slot; else selectFirstSlot();
+    player.cd = sv.cd || 0; player.inv = sv.inv || 0;
+    if (sv.bonus && ITEM[sv.bonus.id] && sv.bonus.n > 0) player.bonus = { id: sv.bonus.id, n: sv.bonus.n, on: !!sv.bonus.on };
+    if (run.stand > 0) player.inv = Math.max(player.inv, 99);
+    if (run.fever > 0) Sfx.setHype(true);
+    for (const o of sv.foes || []) {
+      const b = o.boss >= 0 ? BOSSES[o.boss] : null;
+      if (!FOES[o.type] || (o.boss >= 0 && !b)) continue;
+      const f = spawnFoe(o.type, b, { x: o.x, y: o.y, w: o.w });
+      f.hp = o.hp; f.maxHp = o.maxHp; f.burnT = o.burnT || 0; f.bleed = o.bleed || 0; f.bleedDps = o.bleedDps || 0; f.minion = !!o.minion; f.enraged = !!o.enraged;
+      f.plat.moveA = o.moveA || 0; f.plat.moveS = o.moveS || 0.6;
+      f.rag.helmet = !!o.helmet; f.rag.shield = o.shield || 0;
+      if (o.t != null) f.t = Math.max(0.6, o.t); if (o.minionT != null) f.minionT = o.minionT;
+      if (o.gold) { f.gold = true; f.passive = true; f.goldT = o.goldT; f.goldMax = o.goldMax || 9; f.coins = 0; f.rag.body = '#ffd24a'; f.rag.shade = '#e0a81e'; f.rag.accent = '#b97a1f'; f.rag.helmet = false; f.rag.hold = null; }
+      if (b) { f.name = b.name; run.boss = f; run.bossT = -1; }
+    }
+    for (const c of sv.cr || []) crates.push({ x: c.x, y: c.y, ph: c.ph, popped: false, t: c.t, kind: c.kind || 'mystery', col: c.col });
+    for (const q of sv.shots || []) {
+      const def = q.owner === 'p' ? ITEM[q.id] : AMMO[q.id];
+      if (!def) continue;
+      const sh = launch(def, { owner: q.owner, x: q.x, y: q.y, vx: q.vx, vy: q.vy, dmg: q.dmg, life: 6 });
+      sh.age = q.age || 0; sh.bounces = q.bounces != null ? q.bounces : sh.bounces; if (q.art) sh.art = q.art;
+    }
+    for (const h of sv.holes || []) zones.push({ kind: 'hole', x: h.x, y: h.y, t: h.t, dur: h.dur, seq: 0, dmg: h.dmg, kb: h.kb, s: h.own ? { owner: 'p' } : null });
+    Sfx.setStage(run.stage);
+    if (on.banner) on.banner('STAGE ' + run.stage, 'WELCOME BACK');
+    // a perk offer that was still on screen comes straight back
+    if (sv.perkPick && sv.perkPick.length) {
+      run.perkPick = sv.perkPick; run.perkT = -1; hold = true; aimCancel();
+      setTimeout(() => { if (run && run.perkPick && on.perk) on.perk(run.perkPick, run.stage); }, 80);
+    }
   }
 
   /* -------------------------------------------------------------- tutorial
@@ -463,7 +518,11 @@ const Game = (() => {
 
   function detonate(s) {
     if (s.dead) return;
-    if (s.owner === 'p') blast(s.x, s.y, s.def.blast * (s.r / s.def.r), s.dmg, s.kb, s, s.def.id === 'firework');
+    if (s.owner === 'p') {
+      const r = s.def.blast * (s.r / s.def.r);
+      blast(s.x, s.y, r, s.dmg, s.kb, s, s.def.id === 'firework');
+      selfBlast(s.x, s.y, r, s.dmg);      // your own explosives hurt you too, if you are close enough
+    }
     else blastPlayer(s.x, s.y, s.def.blast, s.dmg);
     kill(s);
   }
@@ -686,14 +745,16 @@ const Game = (() => {
      of that item, so a typical hit is unchanged and the swing is only a few percent either way. */
   function impactMul(s) {
     if (s.owner !== 'p') return 1;
-    const v = Math.hypot(s.vx, s.vy), ref = throwSpeed(s.def, 0.55) * (s.def.grav === 0 ? 1 : 0.9);
-    return clamp(1 + 0.2 * (v / ref - 1), 0.86, 1.2);
+    const v = Math.hypot(s.vx, s.vy), ref = (s.def.spd ? throwSpeed(s.def, 0.55) : 900) * (s.def.grav === 0 ? 1 : 0.9);
+    const m = clamp(1 + 0.2 * (v / ref - 1), 0.86, 1.2);
+    return Number.isFinite(m) ? m : 1;
   }
   // how hard a hit rocks the body follows how fast the thing was going: a slow lob only nudges, a hard throw floors them
   function speedF(s) {
     if (!s || s.def.blast) return 1;
-    const v = Math.hypot(s.vx, s.vy), ref = s.owner === 'p' ? throwSpeed(s.def, 0.55) * 0.9 : 900;
-    return clamp(v / ref, 0.3, 1.25);
+    const v = Math.hypot(s.vx, s.vy), ref = s.owner === 'p' && s.def.spd ? throwSpeed(s.def, 0.55) * 0.9 : 900;
+    const f = clamp(v / ref, 0.3, 1.25);
+    return Number.isFinite(f) ? f : 1;
   }
   function onFoeHit(s, f, hit) {
     s.hits.add(f);
@@ -779,6 +840,7 @@ const Game = (() => {
   function hurtFoe(f, dmg, o) {
     const rag = f.rag;
     if (!rag.alive) return;
+    if (!Number.isFinite(dmg)) dmg = 1;      // never let a stray NaN into a health bar
     if (f.boss && f.boss.resist && !o.dot && !(o.s && (o.s.def.heavy || o.s.def.blast))) { dmg *= f.boss.resist; if (o.s) Fx.text(o.x, o.y - 50, 'RESISTED', '#c9d0dc', 14); }
     if (!f.dummy) f.hp -= dmg;
     if (f.tut && run.tut && !o.dot) run.tut.hits++;
@@ -910,6 +972,13 @@ const Game = (() => {
     for (const e of shots) if (e.owner === 'e' && !e.dead && dist(x, y, e.x, e.y) < r + e.r) { Fx.chunk(e.art, e.x, e.y, (e.x - x) * 3, -300, e.r, 0.8); kill(e); }
     for (const c of crates) if (!c.popped && dist(x, y, c.x, c.y - 30) < r + 30) popCrate(c, s);
   }
+  function selfBlast(x, y, r, dmg) {
+    if (!player || player.dead || state !== 'play' || run.tut || run.demo) return;
+    const c = player.rag.chest, d = dist(x, y, c.x, c.y), reach = r + 30;
+    if (d > reach) return;
+    const fall = 1 - 0.6 * d / reach, n = d || 1;
+    hurtPlayer(dmg * 0.7 * fall * (player.rag.duck > 0.6 ? 0.5 : 1), { x: c.x, y: c.y, dirx: (c.x - x) / n, diry: (c.y - y) / n - 0.3 });
+  }
   function blastPlayer(x, y, r, dmg) {
     Fx.explosion(x, y, r * 0.9); Sfx.boom(false); shake = Math.max(shake, 0.5);
     if (player.dead || state !== 'play') return;
@@ -988,7 +1057,7 @@ const Game = (() => {
     const def = FOES[type];
     const sc = boss ? boss.scale : def.scale;
     const floater = !!def.balloons;
-    const w = boss ? 260 : type === 'brute' ? 200 : floater ? 130 : rand(144, 182);
+    const w = (at && at.w) || (boss ? 260 : type === 'brute' ? 200 : floater ? 130 : rand(144, 182));
     const pos = at || pickSpot(w, !!boss, floater);
     const pl = new Plat(pos.x, pos.y, w, 'foe');
     pl.state = 'in'; pl.bobA = floater ? (boss ? 36 : 13) : 5; pl.bobS = rand(0.8, 1.4);
@@ -1082,10 +1151,12 @@ const Game = (() => {
       while (rar.n > room(p)) rar = RARITIES[RARITIES.indexOf(rar) - 1];     // never more stacks than the perk can still take
       picks.push({ id: p.id, kind: p.kind, name: p.name, n: rar.n, rarity: rar, text: p.text(rar.n), have: pk(p.id) });
     }
-    hold = true; aimCancel();
+    hold = true; aimCancel(); run.perkPick = picks;
+    saveRun();
     if (on.perk) on.perk(picks, run.stage); else pickPerk(picks[0].id, picks[0].n);
   }
   function pickPerk(id, n = 1) {
+    run.perkPick = null;
     n = Math.max(1, Math.min(n | 0, (PERK[id].max || 99) - pk(id)));
     run.perks[id] = pk(id) + n;
     if (id === 'skin') { refreshStats(false); heal(35 * n); }
@@ -1200,7 +1271,14 @@ const Game = (() => {
   }
 
   /* --------------------------------------------------------------- crates */
-  function spawnCrate(kind) { crates.push({ x: rand(520, 720), y: WORLD_H + 60, ph: rand(0, TAU), popped: false, t: 0, kind: kind || 'mystery' }); }
+  const BALLOONS = ['#ff5d73', '#ffc933', '#4fa8ff', '#45e08a', '#b05be0', '#ff9a3c', '#35e0ff', '#ff4f93', '#c8ff2e'];
+  let lastBalloon = -1;
+  function spawnCrate(kind) {
+    let i; do { i = Math.floor(Math.random() * BALLOONS.length); } while (i === lastBalloon);
+    lastBalloon = i;
+    // anywhere across the sky, but never right over your own island
+    crates.push({ x: rand(620, WORLD_W - 330), y: WORLD_H + 60, ph: rand(0, TAU), popped: false, t: 0, kind: kind || 'mystery', col: BALLOONS[i] });
+  }
   function popCrate(c, s) {
     if (c.popped) return;
     c.popped = true;
@@ -1271,6 +1349,7 @@ const Game = (() => {
     }
     wall.y = home.y - 66;
     for (const f of foes) stepFoe(f, dt);
+    if (!CHAR[Save.data.char].accent) rag.accent = bandColor(time);
     rag.update(dt, plats);
     // your own island has invisible walls at both ends, and falling off anyway ends the run
     if (!player.dead && state === 'play' && rag.mode !== 'active') {
@@ -1375,6 +1454,7 @@ const Game = (() => {
         zones.splice(i, 1);
         Fx.ring(z.x, z.y, 10, 230, 0.4, '#e4d3ff', 9); Fx.burst(z.x, z.y, 26, { colors: ['#b98cff', '#e4d3ff', '#ffffff'], speed: [200, 700], life: [0.3, 0.7], size: [3, 6], grav: 0, drag: 2.5, glow: true });
         Sfx.boom(true); shake = Math.max(shake, 0.6);
+        if (z.s && z.s.owner === 'p') selfBlast(z.x, z.y, 190, z.dmg * 1.4);     // the pocket hole spits at you too
         for (const f of foes) {
           const rag = f.rag;
           if (!rag.alive) continue;
@@ -1717,7 +1797,7 @@ const Game = (() => {
     for (const c of crates) {
       const sw = Math.sin(c.t * 1.3 + c.ph) * 0.12;
       ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(c.x, c.y - 18); ctx.lineTo(c.x, c.y - 44); ctx.stroke();
-      ctx.fillStyle = '#ff9a3c'; ctx.beginPath(); ctx.ellipse(c.x, c.y - 66, 20, 24, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = c.col || '#ff9a3c'; ctx.beginPath(); ctx.ellipse(c.x, c.y - 66, 20, 24, 0, 0, TAU); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.ellipse(c.x - 6, c.y - 74, 4, 7, -0.5, 0, TAU); ctx.fill();
       ItemArt.draw(ctx, 'crate', c.x, c.y, sw, 22, time);
     }
@@ -1786,6 +1866,7 @@ const Game = (() => {
     get itemId() { return currentItemId(); }, get usingBonus() { return usingBonus(); }, get staFlash() { return staFlash; }, get tutorial() { return !!(run && run.tut); }, get themeDark() { return theme().dark; },
     get foes() { return foes; }, get shots() { return shots; }, get crates() { return crates; }, get time() { return time; },
     get bag() { return bag(); },
+    bandColor,
     // the hotbar closes up gaps in the bag, so key 2 is always the second thing shown
     selectNth(n) { const b = bag(), idx = b.map((id, i) => (id ? i : -1)).filter(i => i >= 0); if (idx[n] != null) selectSlot(idx[n]); },
     get fever() { return run ? clamp(run.fever / FEVER_T, 0, 1) : 0; }, get stand() { return run && !player.dead ? clamp(run.stand / STAND_T, 0, 1) : 0; }, get feverEvery() { return FEVER_EVERY; },

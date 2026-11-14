@@ -137,7 +137,7 @@ const UI = (() => {
     const dpr = Math.min(3, window.devicePixelRatio || 1), cv = document.createElement('canvas');
     cv.width = cv.height = Math.round(size * dpr); cv.style.width = cv.style.height = size + 'px';
     const g = cv.getContext('2d'); g.scale(dpr, dpr);
-    const r = new Rag({ x: 0, y: 0, facing: 1, isPlayer: true, body: c.body, shade: c.shade, accent: c.accent || Theme.acc, hat: c.hat });
+    const r = new Rag({ x: 0, y: 0, facing: 1, isPlayer: true, body: c.body, shade: c.shade, accent: c.accent || Game.bandColor(performance.now() / 1000), hat: c.hat });
     r.aim = -0.3; r.snap();
     const k = size / 185; g.translate(size * 0.46, size * 0.93); g.scale(k, k); r.draw(g, 0.4);
     return cv;
@@ -313,7 +313,6 @@ const UI = (() => {
       b.onclick = () => {
         Save.data.settings.accent = b.dataset.acc; Save.save(); Theme.set(b.dataset.acc); click();
         $('sheet').querySelectorAll('[data-acc]').forEach(o => o.classList.toggle('on', o === b));
-        if (Game.player && !CHAR[Save.data.char].accent) Game.player.rag.accent = Theme.acc;
       };
     });
     $('mDone').onclick = () => { click(); closeModal(); };

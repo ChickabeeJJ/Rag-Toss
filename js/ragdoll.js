@@ -50,7 +50,7 @@ class Rag {
     this.isPlayer = !!o.isPlayer;
     this.body = o.body || '#f7f2e7';
     this.shade = o.shade || '#d6cab4';
-    this.accent = o.accent || Theme.acc;
+    this.accent = o.accent || '#45e08a';
     this.hat = o.hat || null;
     this.root = { x: o.x, y: o.y };
     this.plat = o.plat || null;
