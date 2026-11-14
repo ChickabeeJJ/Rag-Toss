@@ -56,11 +56,13 @@ const Game = (() => {
       fever: 0, fevers: 0, stand: 0, stood: false, bounty: null, bountyN: 0, bountyT: 3, bountyLast: '', goldT: rand(26, 40), beatBest: false, closeCalls: 0, mastered: [],
     };
   }
-  // the Rookie's headband is whatever colour you picked (or the shifting rainbow)
+  // the Rookie's headband: the colour picked from those your rank has unlocked. Prismatic (top rank) slowly drifts through every colour as the match goes on.
   function bandColor(t) {
-    const b = Save.data.band;
-    if (b === 'rainbow') return `hsl(${Math.floor(t * 90) % 360}, 95%, 62%)`;
-    return /^#[0-9a-f]{6}$/i.test(b) ? b : '#45e08a';
+    let b = Save.data.band;
+    let at = BANDS.indexOf(b);
+    if (at < 0 || at > Save.rankInfo().i) b = BANDS[0];
+    if (b === 'prismatic') return `hsl(${Math.floor(((run && !run.demo ? run.t : t) * 7) % 360)}, 92%, 62%)`;
+    return b;
   }
   function buildWorld() {
     plats = []; foes = []; shots = []; crates = []; zones = []; throwLog.clear(); Fx.clear();

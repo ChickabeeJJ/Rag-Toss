@@ -675,3 +675,16 @@ body.touch .lo-x { opacity: 1; }
 
 .lo-side .actions { display: block; }
 .lo-side .actions .btn { width: 100%; }
+
+.sw.locked { background: #20263a; box-shadow: inset 0 0 0 3px var(--ink); color: rgba(255, 255, 255, 0.35); display: grid; place-items: center; }
+.sw.locked .ic { width: 13px; height: 13px; }
+.sw.prism { background: conic-gradient(#ff3b3b, #ffb13b, #f4ff3b, #3bff6a, #3bffe6, #3b7bff, #a63bff, #ff3bd8, #ff3b3b); animation: spin 8s linear infinite; }
+.sw.prism.on { animation: none; }
+.sw.prism.locked { animation: none; background: #20263a; }
+.band-note { font-weight: 800; font-size: 10px; letter-spacing: 0.08em; line-height: 1.5; color: var(--muted); }
+.band-note b { color: var(--acc); }
+/* tighter: the label sits close to its slider */
+.set-label + .slider { margin-top: -2px; }
+.slider { height: 32px; margin: 0 0 2px; }
+.slider input { height: 32px; }
+.sl-val { top: -14px; }

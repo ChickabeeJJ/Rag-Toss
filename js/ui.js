@@ -156,19 +156,6 @@ const UI = (() => {
     sync();
     return el;
   }
-  const hexToHue = hex => {
-    const n = parseInt(hex.slice(1), 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
-    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
-    if (!d) return 0;
-    const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
-    return Math.round(((h * 60) + 360) % 360);
-  };
-  const hueHex = h => {           // hsl(h, 90%, 58%) as a hex colour
-    const S = 0.9, L = 0.58, a = S * Math.min(L, 1 - L), k = n => (n + h / 30) % 12;
-    const f = n => Math.round((L - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))) * 255).toString(16).padStart(2, '0');
-    return '#' + f(0) + f(8) + f(4);
-  };
-
   /* -------------------------------------------------------------- loadout */
   let loSlot = 0, loLook = null;
   function openLoadout(slot) {
@@ -238,28 +225,22 @@ const UI = (() => {
   }
 
   /* ---------------------------------------------------------- headband */
-  const BAND_SWATCHES = ['#45e08a', '#35e0ff', '#4f8cff', '#8f6bff', '#d05bff', '#ff4f93', '#ff5a4d', '#ff9a3c', '#ffc933', '#f2f4fa'];
   function bandPanel() {
-    const cur = Save.data.band, hue = cur === 'rainbow' ? 0 : hexToHue(cur);
-    const sw = BAND_SWATCHES.map(h => `<button class="sw sm${cur === h ? ' on' : ''}" data-band="${h}" style="--s:${h}" aria-label="${h}"></button>`).join('')
-      + `<button class="sw sm rainbow${cur === 'rainbow' ? ' on' : ''}" data-band="rainbow" aria-label="Rainbow" title="Rainbow"></button>`;
+    const cur = Save.data.band, rk = Save.rankInfo().i;
+    const sw = BANDS.map((h, i) => {
+      const open = i <= rk;
+      return `<button class="sw sm${h === 'prismatic' ? ' prism' : ''}${cur === h && open ? ' on' : ''}${open ? '' : ' locked'}" data-band="${h}" data-need="${i}" style="--s:${h === 'prismatic' ? '#fff' : h}" aria-label="${h === 'prismatic' ? 'Prismatic' : h}">${open ? '' : ic('lock')}</button>`;
+    }).join('');
+    const next = BANDS.findIndex((h, i) => i > rk);
     return `<div class="band"><div class="set-label">HEADBAND COLOUR</div><div class="swatches">${sw}</div>
-      ${slider('bandHue', { min: 0, max: 359, value: hue, cls: 'hue', label: 'Headband hue', thumb: cur === 'rainbow' ? '#fff' : cur, text: v => v + '°' })}</div>`;
+      <div class="band-note">${next < 0 ? 'EVERY COLOUR UNLOCKED. PRISMATIC SLOWLY SHIFTS COLOUR AS YOU PLAY.' : `NEXT COLOUR AT <b>${esc(RANKS[next].name.toUpperCase())}</b>${next === BANDS.length - 1 ? ' (PRISMATIC)' : ''}`}</div></div>`;
   }
   function wireBand(root) {
-    const set = v => { Save.data.band = v; Save.save(); refreshRookie(); };
     root.querySelectorAll('[data-band]').forEach(b => { b.onclick = () => {
-      click();
-      const v = b.dataset.band, inp = root.querySelector('#bandHue'), sl = root.querySelector('[data-slider="bandHue"]');
-      if (v !== 'rainbow') { inp.value = hexToHue(v); inp.dispatchEvent(new Event('input')); }     // moves the handle to this colour
-      sl.style.setProperty('--thumb', v === 'rainbow' ? '#fff' : v);
-      set(v);
+      if (b.classList.contains('locked')) { Sfx.deny(); toast('UNLOCKS AT ' + RANKS[+b.dataset.need].name.toUpperCase(), 'lock'); return; }
+      click(); Save.data.band = b.dataset.band; Save.save(); refreshRookie();
       root.querySelectorAll('[data-band]').forEach(o => o.classList.toggle('on', o === b));
     }; });
-    wireSlider(root, 'bandHue', { min: 0, max: 359, text: v => v + '°' }, (h, el) => {
-      const hex = hueHex(h); el.style.setProperty('--thumb', hex); set(hex);
-      root.querySelectorAll('[data-band]').forEach(o => o.classList.remove('on'));
-    });
   }
   // redraw only the Rookie's pictures while a colour is being dragged, so the slider itself is never rebuilt
   function refreshRookie() {
@@ -299,7 +280,7 @@ const UI = (() => {
     else if (d.coins >= c.price) action = `<button class="btn primary" id="btnWear"><b>BUY</b><small>${fmt(c.price)} COINS</small></button>`;
     else action = `<button class="btn" disabled><b>${fmt(c.price)} COINS</b><small>${fmt(c.price - d.coins)} MORE TO GO</small></button>`;
     $('shopInfo').innerHTML = `<div class="pv-head"><b>${esc(c.name.toUpperCase())}</b></div><p>Just a different look. It changes nothing about how you throw.</p>${action}${c.id === 'rookie' ? bandPanel() : ''}`;
-    if (c.id === 'rookie') wireBand($('shopInfo'));
+    if (c.id === 'rookie') { Icons.hydrate($('shopInfo')); wireBand($('shopInfo')); }
     const w = $('btnWear');
     if (w) w.onclick = () => {
       if (own) { Save.equipChar(c.id); Sfx.equip(); }

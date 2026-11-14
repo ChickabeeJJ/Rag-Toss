@@ -258,3 +258,6 @@ const Theme = {
     st.setProperty('--acc-dim', mixHex('#161a25', a.hex, 0.16));
   },
 };
+
+/* Headband colours of the Rookie: each one unlocks with a rank. The last one drifts through the whole spectrum while you play. */
+const BANDS = ['#45e08a', '#35e0ff', '#4f8cff', '#8f6bff', '#d05bff', '#ff4f93', '#ff5a4d', '#ff9a3c', '#ffc933', '#f2f4fa', 'prismatic'];

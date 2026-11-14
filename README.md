@@ -97,7 +97,7 @@ From stage 3 some foes wear a pot that soaks one headshot, and from stage 4 some
 - **Characters.** Eight to wear (Rookie, Cowboy, Viking, Chef, Wizard, Knight, Pirate, Royal), each with its own colour and hat, bought with coins on the Characters tab of the Stuff screen. They are looks only; nothing about throwing changes.
 - **Stuff and upgrades.** 26 items and ten permanent upgrades: Thick Skull (health), Big Lungs (stamina), Second Breath (refill), Strong Arm (damage), Quick Hands (time between throws), Good Eye (longer aim line), Padding (damage taken), and Deep Pockets (coins).
 - **The results screen always points at the next thing.** It shows the next item you don't own with a bar for how close you are, flags affordable upgrades, and shows your rank bar.
-- **Ranks.** Lifetime knockouts move you through eleven ranks, from Butterfingers to The Last Throw. Each rank-up pays coins. The Rookie's headband colour is yours to pick on the Characters tab (swatches, a hue slider, or a rainbow).
+- **Ranks.** Lifetime knockouts move you through eleven ranks, from Butterfingers to The Last Throw. Each rank-up pays coins. The Rookie's headband colours unlock with ranks (one per rank, green first) and are picked on the Characters tab; the last one, Prismatic, slowly shifts through every colour during a match.
 - **Missions.** Three at a time from a pool of ten, refreshed at 00:00 UTC, with a 250-coin chest for finishing all three. There is no login reward.
 
 ## Controls
