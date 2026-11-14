@@ -168,7 +168,7 @@ const UPGRADES = [
   { id: 'armor', name: 'Padding', icon: 'shield', max: 8, base: 120, grow: 1.65, text: l => `-${l * 5}% DAMAGE TAKEN`, step: '-5% damage taken' },
   { id: 'greed', name: 'Deep Pockets', icon: 'coin', max: 8, base: 150, grow: 1.7, text: l => `+${l * 10}% COINS`, step: '+10% coins' },
   { id: 'crit', name: 'Sweet Spot', icon: 'eye', max: 6, base: 110, grow: 1.65, text: l => `+${l * 3}% CRIT CHANCE`, step: '+3% crit chance' },
-  { id: 'stand', name: 'Last Stand', icon: 'shield', max: 1, base: 600, grow: 1, once: true, text: () => 'ONE SECOND CHANCE EVERY RUN', step: 'survive one knockout per run' },
+  { id: 'stand', name: 'Last Stand', icon: 'shield', max: 1, base: 2500, grow: 1, once: true, text: () => 'ONE SECOND CHANCE EVERY RUN', step: 'survive one knockout per run' },
 ];
 const UPGRADE = Object.fromEntries(UPGRADES.map(u => [u.id, u]));
 const upgradeCost = (u, lvl) => Math.round(u.base * Math.pow(u.grow, lvl) / 10) * 10;

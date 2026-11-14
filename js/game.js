@@ -1138,18 +1138,21 @@ const Game = (() => {
   }
 
   /* ----------------------------------------------------------------- foes */
+  /* Where a new island goes. Each try is scored by how clear it is of the islands already there (1 = a full island's width
+     and a comfortable height away); the first clear spot wins, and if the sky is crowded the clearest of the tries does. */
   function pickSpot(w, boss, floater) {
-    let best = null;
-    for (let i = 0; i < 40; i++) {
+    let best = null, bestScore = -1;
+    for (let i = 0; i < 70; i++) {
       const x = boss ? rand(1160, 1380) : rand(760 + w / 2, 1500 - w / 2);
       const y = boss ? rand(430, 600) : floater ? rand(300, 540) : rand(300, 730);
-      let ok = true;
+      let score = 9;
       for (const pl of plats) {
         if (pl.kind !== 'foe' || pl.falling) continue;
-        if (Math.abs(pl.x - x) < (pl.w + w) / 2 + 46 && Math.abs(pl.baseY - y) < 170) { ok = false; break; }
+        const sx = Math.abs(pl.x - x) / ((pl.w + w) / 2 + 46), sy = Math.abs(pl.baseY - y) / 170;
+        score = Math.min(score, Math.max(sx, sy));
       }
-      best = { x, y };
-      if (ok) break;
+      if (score > bestScore) { bestScore = score; best = { x, y }; }
+      if (score >= 1) break;
     }
     return best;
   }
