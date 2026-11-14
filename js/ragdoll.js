@@ -56,6 +56,7 @@ class Rag {
     this.plat = o.plat || null;
     this.platOff = o.plat ? o.x - o.plat.x : 0;
     this.homeOff = this.platOff;    // where it likes to stand on its island
+    this.walkPh = 0; this.walkV = 0;   // the gait: how far through a stride, and how fast the body is travelling along its island
     this.homeOff0 = this.platOff;   // the spot it was spawned at (the player walks back to it)
     this.weight = o.weight || 1;    // heavier bodies take less from the same blow
     this.steady = !!o.steady;       // never loses its footing (the player, bosses)
@@ -218,11 +219,13 @@ class Rag {
     }
     const dizzy = this.stun > 0 ? Math.sin(t * 7) * 0.16 : 0;
     const breathe = Math.sin(t * 2.4) * 1.4 * s * (1 - cock);
-    const lean = f * (-0.3 * cock + 0.55 * commit + 1.05 * duck) + Math.sin(t * 1.3) * 0.02 + dizzy;
+    // walking: only when nothing else is going on with the body
+    const wk = clamp(Math.abs(this.walkV) / 36, 0, 1) * (1 - clamp(this.aimW * 2, 0, 1)) * (this.throwT >= 0 ? 0 : 1) * (1 - duck), wd = Math.sign(this.walkV) || 1, ph = this.walkPh;
+    const lean = f * (-0.3 * cock + 0.55 * commit + 1.05 * duck) + Math.sin(t * 1.3) * 0.02 + dizzy + wd * 0.1 * wk;
     this.leanT = lean;
     const fy = r.y - PT_R[P.FFOOT] * s;     // the foot point sits one radius above the ground
     const px = r.x - f * 9 * s * cock + f * 14 * s * commit;
-    const py = r.y - (58 - 33 * duck - 8 * cock - 3 * commit) * s + breathe;
+    const py = r.y - (58 - 33 * duck - 8 * cock - 3 * commit) * s + breathe - Math.abs(Math.sin(ph)) * 3 * s * wk + 2 * s * wk;
     T[P.PELVIS].x = px; T[P.PELVIS].y = py;
     const nx = px + Math.sin(lean) * 45 * s, ny = py - Math.cos(lean) * 45 * s;
     T[P.NECK].x = nx; T[P.NECK].y = ny;
@@ -230,17 +233,24 @@ class Rag {
     T[P.HEAD].x = nx + Math.sin(hl) * 17 * s; T[P.HEAD].y = ny - Math.cos(hl) * 17 * s;
     // legs: the front foot lifts as the arm cocks, then plants a long step ahead; the back heel drives up
     const ffx = r.x + f * (13 + 9 * duck + 6 * cock + 14 * commit) * s, bfx = r.x - f * (14 + 5 * duck + 7 * cock - 1 * commit) * s;
-    const ffy = fy - 4 * s * cock * (1 - commit), bfy = fy - 7 * s * commit;
-    T[P.FFOOT].x = ffx; T[P.FFOOT].y = ffy; T[P.BFOOT].x = bfx; T[P.BFOOT].y = bfy;
-    let k = ik2(px, py, ffx, ffy, 29 * s, 28 * s, -f);
+    let ffy = fy - 4 * s * cock * (1 - commit), bfy = fy - 7 * s * commit;
+    let ffxw = ffx, bfxw = bfx;
+    if (wk > 0.001) {
+      // each foot swings forward through the air and then slides back along the ground while the body moves over it
+      const st = 13 * s, sw = x => Math.max(0, Math.sin(x));
+      ffxw += -wd * st * Math.cos(ph) * wk; ffy -= sw(ph) * 11 * s * wk;
+      bfxw += -wd * st * Math.cos(ph + Math.PI) * wk; bfy -= sw(ph + Math.PI) * 11 * s * wk;
+    }
+    T[P.FFOOT].x = ffxw; T[P.FFOOT].y = ffy; T[P.BFOOT].x = bfxw; T[P.BFOOT].y = bfy;
+    let k = ik2(px, py, ffxw, ffy, 29 * s, 28 * s, -f);
     T[P.FKNEE].x = k.x; T[P.FKNEE].y = k.y;
-    k = ik2(px, py, bfx, bfy, 29 * s, 28 * s, -f);
+    k = ik2(px, py, bfxw, bfy, 29 * s, 28 * s, -f);
     T[P.BKNEE].x = k.x; T[P.BKNEE].y = k.y;
     // throwing arm: rest at the hip, cock behind the head, whip through along the aim and overshoot
     const sx = nx, sy = ny + 3 * s;
     let hx = nx + f * 15 * s, hy = ny + 24 * s + Math.sin(t * 2.4 + 1) * 1.5 * s;
     const bx = nx - ca * (20 + 26 * this.pull) * s, by = ny - sa * (20 + 26 * this.pull) * s - 16 * s * this.pull;
-    hx = lerp(hx, bx, aw); hy = lerp(hy, by, aw);
+    hx += Math.sin(ph) * 7 * s * wk * wd; hx = lerp(hx, bx, aw); hy = lerp(hy, by, aw);
     const reach = (46 + 52 * over) * s;
     hx = lerp(hx, nx + ca * reach, whip); hy = lerp(hy, ny + sa * reach, whip);
     hy -= Math.sin(whip * Math.PI) * 26 * s * (1 - over * 0.5);       // the hand goes over the top, not through the head
@@ -322,14 +332,18 @@ class Rag {
   balance(dt) {
     const s = this.s, pts = this.pts, pv = pts[P.PELVIS], nk = pts[P.NECK], pl = this.plat;
     const ex = pv.x - this.T[P.PELVIS].x;
+    let moved = 0;
     if (Math.abs(ex) > 6 * s) {
       let step = clamp(ex * 9, -200, 200) * dt * (0.4 + 1.4 * this.daze);
       if (this.steady) step = clamp(this.platOff + step, this.homeOff - 22, this.homeOff + 22) - this.platOff;
-      this.platOff += step; this.root.x += step;
-    } else if (this.daze < 0.05 && this.platOff !== this.homeOff) {
-      const to = approach(this.platOff, this.homeOff, 26 * dt);
-      this.root.x += to - this.platOff; this.platOff = to;
+      this.platOff += step; this.root.x += step; moved = step;
+    } else if (this.daze < 0.05 && this.platOff !== this.homeOff && this.aimW < 0.3 && this.throwT < 0 && this.duck < 0.3) {
+      // back to its spot on foot: a steady walking pace, with the legs doing the work (see computeTargets)
+      const to = approach(this.platOff, this.homeOff, 52 * s * dt);
+      moved = to - this.platOff; this.root.x += moved; this.platOff = to;
     }
+    this.walkV += ((dt > 0 ? moved / dt : 0) - this.walkV) * Math.min(1, 12 * dt);
+    this.walkPh += Math.abs(moved) / (13 * s) * Math.PI / 2;
     if (this.steady || !pl) return;
     if (Math.abs(this.platOff) > pl.w / 2 - 3 * s) { this.topple(); return; }
     const tilt = Math.atan2(nk.x - pv.x, pv.y - nk.y);

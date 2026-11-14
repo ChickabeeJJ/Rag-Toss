@@ -197,7 +197,7 @@ const UI = (() => {
     const slots = bag.map((id, i) => {
       const cls = 'lo-slot' + (i === loSlot ? ' sel' : '') + (id ? '' : ' empty');
       return id
-        ? `<button class="${cls}" data-slot="${i}"><kbd>${i + 1}</kbd><span class="lo-art" data-art="${id}"></span><b>${esc(ITEM[id].name)}</b><small>${ic('bolt')}${Math.round(ITEM[id].sta)} <em>${stars(id)}</em></small>${only ? '' : `<span class="lo-x" data-clear="${i}" title="Take out" role="button" aria-label="Take ${esc(ITEM[id].name)} out">${ic('close')}</span>`}</button>`
+        ? `<button class="${cls}" data-slot="${i}"><kbd>${i + 1}</kbd><span class="lo-art" data-art="${id}"></span><b>${esc(ITEM[id].name)}</b><small><span class="lo-cost">${ic('bolt')}${Math.round(ITEM[id].sta)}</span><em>${stars(id)}</em></small>${only ? '' : `<span class="lo-x" data-clear="${i}" title="Take out" role="button" aria-label="Take ${esc(ITEM[id].name)} out">${ic('close')}</span>`}</button>`
         : `<button class="${cls}" data-slot="${i}"><kbd>${i + 1}</kbd><span class="lo-plus">+</span><b>EMPTY</b><small>TAP A THROWABLE</small></button>`;
     }).join('');
     const mi = Save.masteryInfo(look.id);
