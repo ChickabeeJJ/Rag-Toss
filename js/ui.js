@@ -17,12 +17,12 @@ const UI = (() => {
   function init() {
     Icons.hydrate();
     applyUiScale();
-    Sfx.setSfx(Save.data.settings.sfx); Sfx.setMusic(Save.data.settings.music); Theme.set(Save.data.settings.accent);
+    Sfx.setSfx(Save.data.settings.sfx); Sfx.setMusic(Save.data.settings.music); Theme.set(Save.data.settings.accent); Sfx.setSfxVol(Save.data.settings.sfxVol); Sfx.setMusicVol(Save.data.settings.musicVol);
     $('btnPlay').onclick = () => { click(); play(Save.data.run ? { resume: true } : {}); };
     $('btnNew').onclick = () => { click(); Save.clearRun(); play(); };
     $('btnShop').onclick = () => { click(); show('shop'); };
     document.querySelectorAll('#shopTabs [data-tab]').forEach(b => { b.onclick = () => { click(); shopTab = b.dataset.tab; renderShop(); }; });
-    $('btnBag').onclick = () => { click(); show('shop'); };
+    $('btnBag').onclick = () => { click(); openLoadout(); };
     $('btnUpgrades').onclick = () => { click(); show('upgrades'); };
     $('btnMissions').onclick = () => { click(); openMissions(); };
     $('btnRank').onclick = () => { click(); openRank(); };
@@ -65,7 +65,7 @@ const UI = (() => {
   function show(id) {
     const from = screen;
     screen = id;
-    for (const s of ['home', 'shop', 'upgrades']) $(s).classList.toggle('hidden', s !== id);
+    for (const s of ['home', 'shop', 'upgrades', 'loadout']) $(s).classList.toggle('hidden', s !== id);
     $('hud').classList.toggle('hidden', id !== null);
     document.body.classList.toggle('playing', id === null);
     if (id !== null && Game.state !== 'menu') { Game.toMenu(); Platform.gameplayStop(); }
@@ -73,6 +73,7 @@ const UI = (() => {
     if (id === 'home') renderHome();
     if (id === 'shop') { renderShop(); $('shopGrid').classList.add('intro'); }
     if (id === 'upgrades') { renderUpgrades(); $('upList').classList.add('intro'); }
+    if (id === 'loadout') renderLoadout();
     if (id !== null && from === null) Sfx.stopMusic();
     coins();
     requestAnimationFrame(syncInset);
@@ -123,12 +124,148 @@ const UI = (() => {
     $('shopDot').classList.toggle('hidden', !ITEMS.some(i => !Save.owns(i.id) && d.coins >= i.price));
     $('upDot').classList.toggle('hidden', !UPGRADES.some(u => Save.lvl(u.id) < u.max && d.coins >= upgradeCost(u, Save.lvl(u.id))));
     $('missionDot').classList.toggle('hidden', !Save.missionsReady());
-    bagRow($('homeBag'), () => { click(); show('shop'); });
+    bagRow($('homeBag'), i => { click(); openLoadout(i); });
     const r = Save.rankInfo();
     $('rankStrip').innerHTML = `<div class="rk-top"><b>${esc(r.cur.name.toUpperCase())}</b><span>${r.next ? `${r.kos} / ${r.next.kos} KOs` : 'TOP RANK'}</span></div><div class="rk-track"><i style="width:${(r.t * 100).toFixed(1)}%"></i></div>`;
     const touch = document.body.classList.contains('touch');
     $('homeHint').innerHTML = touch ? '<span>DRAG BACK AND LET GO TO THROW</span>' : '<span><kbd>DRAG</kbd> PULL BACK TO THROW</span><span><kbd>S</kbd> DUCK</span><span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> SWAP</span><span><kbd>P</kbd> PAUSE</span>';
     coins();
+  }
+
+  /* -------------------------------------------------------------- sliders
+     One look for every slider: a groove with a glowing fill, a round white handle with a ring in the
+     accent colour, tick marks and a little value bubble that rises while you hold it. */
+  function slider(id, o) {
+    const p = (o.value - o.min) / (o.max - o.min);
+    return `<div class="slider ${o.cls || ''}" data-slider="${id}" style="--p:${(p * 100).toFixed(2)}%;--n:${p.toFixed(4)}${o.thumb ? ';--thumb:' + o.thumb : ''}">
+      <span class="sl-glow"></span><span class="sl-ticks"><i></i><i></i><i></i><i></i><i></i></span>
+      <input type="range" id="${id}" min="${o.min}" max="${o.max}" step="${o.step || 1}" value="${o.value}" aria-label="${esc(o.label || id)}">
+      <b class="sl-val">${esc(o.text ? o.text(o.value) : o.value)}</b></div>`;
+  }
+  function wireSlider(root, id, o, onInput) {
+    const el = root.querySelector(`[data-slider="${id}"]`), inp = el.querySelector('input'), val = el.querySelector('.sl-val');
+    const sync = () => {
+      const v = +inp.value, p = (v - o.min) / (o.max - o.min);
+      el.style.setProperty('--p', (p * 100).toFixed(2) + '%'); el.style.setProperty('--n', p.toFixed(4));
+      val.textContent = o.text ? o.text(v) : v;
+      return v;
+    };
+    inp.addEventListener('input', () => { const v = sync(); onInput(v, el); });
+    const hold = on => () => el.classList.toggle('held', on);
+    inp.addEventListener('pointerdown', hold(true)); window.addEventListener('pointerup', hold(false)); inp.addEventListener('blur', hold(false));
+    sync();
+    return el;
+  }
+  const hexToHue = hex => {
+    const n = parseInt(hex.slice(1), 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    if (!d) return 0;
+    const h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return Math.round(((h * 60) + 360) % 360);
+  };
+  const hueHex = h => {           // hsl(h, 90%, 58%) as a hex colour
+    const S = 0.9, L = 0.58, a = S * Math.min(L, 1 - L), k = n => (n + h / 30) % 12;
+    const f = n => Math.round((L - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)))) * 255).toString(16).padStart(2, '0');
+    return '#' + f(0) + f(8) + f(4);
+  };
+
+  /* -------------------------------------------------------------- loadout */
+  let loSlot = 0, loLook = null;
+  function openLoadout(slot) {
+    const bag = Save.data.bag;
+    loSlot = slot != null ? slot : Math.max(0, bag.indexOf(null) >= 0 ? bag.indexOf(null) : 0);
+    loLook = bag[loSlot] || bag.find(Boolean) || 'rock';
+    show('loadout');
+  }
+  const itemMeters = it => {
+    const m = (label, v) => `<span>${label}</span><i class="meter" style="--v:${Math.round(clamp(v, 0.05, 1) * 100)}%"></i>`;
+    return `<div class="stats lo-stats">${m('DAMAGE', it.id === 'sack' ? 0.6 : (it.dmg * (it.multi || 1)) / 44)}${m('SHOVE', it.id === 'plunger' ? 1 : it.kb / 3.2)}${m('STAMINA', it.sta / 14)}</div>`;
+  };
+  function renderLoadout() {
+    const d = Save.data, bag = d.bag, root = $('loRoot');
+    if (!ITEM[loLook]) loLook = 'rock';
+    const only = bag.filter(Boolean).length <= 1, look = ITEM[loLook], lookOwn = Save.owns(look.id), lookSlot = bag.indexOf(look.id);
+    const stars = id => { const m = Save.masteryInfo(id); return '★'.repeat(m.lvl) + '<u>' + '★'.repeat(MASTERY.length - m.lvl) + '</u>'; };
+    const slots = bag.map((id, i) => {
+      const cls = 'lo-slot' + (i === loSlot ? ' sel' : '') + (id ? '' : ' empty');
+      return id
+        ? `<button class="${cls}" data-slot="${i}"><kbd>${i + 1}</kbd><span class="lo-art" data-art="${id}"></span><b>${esc(ITEM[id].name)}</b><small>${ic('bolt')}${Math.round(ITEM[id].sta)} <em>${stars(id)}</em></small>${only ? '' : `<span class="lo-x" data-clear="${i}" title="Take out" role="button" aria-label="Take ${esc(ITEM[id].name)} out">${ic('close')}</span>`}</button>`
+        : `<button class="${cls}" data-slot="${i}"><kbd>${i + 1}</kbd><span class="lo-plus">+</span><b>EMPTY</b><small>TAP A THROWABLE</small></button>`;
+    }).join('');
+    const mi = Save.masteryInfo(look.id);
+    let act;
+    if (!lookOwn) act = d.coins >= look.price ? `<button class="btn primary wide" id="loShop"><b>BUY IT IN THE SHOP</b><small>${fmt(look.price)} COINS</small></button>` : `<button class="btn wide" id="loShop"><b>${fmt(look.price)} COINS</b><small>${fmt(look.price - d.coins)} MORE TO GO · SEE IT IN THE SHOP</small></button>`;
+    else if (lookSlot === loSlot) act = `<div class="note">IN SLOT ${loSlot + 1} RIGHT NOW</div>`;
+    else act = `<button class="btn primary wide" id="loPut"><b>${lookSlot >= 0 ? 'SWAP INTO' : 'PUT IN'} SLOT ${loSlot + 1}</b></button>`;
+    const items = [...ITEMS.filter(i => Save.owns(i.id)), ...ITEMS.filter(i => !Save.owns(i.id))].map(it => {
+      const own = Save.owns(it.id), sl = bag.indexOf(it.id);
+      return `<button class="lo-item${own ? '' : ' locked'}${sl >= 0 ? ' inbag' : ''}${it.id === loLook ? ' look' : ''}${sl === loSlot ? ' here' : ''}" data-item="${it.id}">
+        ${sl >= 0 ? `<i class="bagtag">${sl + 1}</i>` : ''}<span class="lo-art" data-art="${it.id}"></span><b>${esc(it.name)}</b>${own ? (sl >= 0 ? '<small class="eq">IN BAG</small>' : '') : `<small class="${d.coins >= it.price ? '' : 'poor'}">${ic('coin')}${fmt(it.price)}</small>`}</button>`;
+    }).join('');
+    root.innerHTML = `<div class="lo-side card">
+        <div class="lo-label"><b>YOUR BAG</b><span>SLOT ${loSlot + 1} IS SELECTED</span></div>
+        <div class="lo-slots">${slots}</div>
+        <div class="lo-help">${bag.some(Boolean) ? `TAP A THROWABLE TO PUT IT IN <b>SLOT ${loSlot + 1}</b>. TAP A SLOT TO CHOOSE WHERE IT GOES.` : ''}</div>
+        <div class="lo-detail"><div class="lo-big" data-art="${look.id}"></div>
+          <div class="lo-info"><div class="pv-head"><b>${esc(look.name.toUpperCase())}</b><span class="tag">${esc(look.tag)}</span></div><p>${esc(look.desc)}</p></div></div>
+        ${itemMeters(look)}
+        ${lookOwn ? `<div class="mastery"><div class="rk-top"><b>MASTERY <i>${stars(look.id).replace(/<\/?u>/g, '')}</i></b><span>${mi.next ? mi.kills + ' / ' + mi.next + ' KOs' : 'MAXED'}${mi.lvl ? ' · +' + mi.lvl * 5 + '% DMG' : ''}</span></div><div class="rk-track"><i style="width:${(mi.t * 100).toFixed(1)}%"></i></div></div>` : ''}
+        ${act}
+        <div class="actions"><button class="btn primary wide" id="loDone"><b>DONE</b></button></div>
+      </div>
+      <div class="lo-main card"><div class="lo-label"><b>THROWABLES</b><span>${d.items.length} / ${ITEMS.length} OWNED</span></div><div class="lo-grid">${items}</div></div>`;
+    root.querySelectorAll('[data-art]').forEach(el => { el.appendChild(ItemArt.iconEl(el.dataset.art, el.classList.contains('lo-big') ? 96 : 54)); });
+    root.querySelectorAll('[data-slot]').forEach(b => { b.onclick = e => {
+      const x = e.target.closest('[data-clear]');
+      if (x) { e.stopPropagation(); if (Save.unequip(+x.dataset.clear)) { Sfx.equip(); Game.refreshBag(); loSlot = +x.dataset.clear; } else Sfx.deny(); renderLoadout(); return; }
+      click(); loSlot = +b.dataset.slot; if (bag[loSlot]) loLook = bag[loSlot]; renderLoadout();
+    }; });
+    const put = id => {
+      const own = Save.owns(id), cur = bag.indexOf(id);
+      if (!own || cur === loSlot) { click(); loLook = id; renderLoadout(); return; }
+      Save.equip(id, loSlot); Sfx.equip(); Game.refreshBag(); loLook = id;
+      const nx = [0, 1, 2].find(i => i !== loSlot && !Save.data.bag[i]);          // on to the next empty slot, if there is one
+      const placed = loSlot; if (nx != null) loSlot = nx;
+      renderLoadout();
+      const el = root.querySelector(`[data-slot="${placed}"]`); if (el) { el.classList.add('landed'); setTimeout(() => el.classList.remove('landed'), 420); }
+    };
+    root.querySelectorAll('[data-item]').forEach(b => { b.onclick = () => put(b.dataset.item); });
+    const lp = $('loPut'); if (lp) lp.onclick = () => put(look.id);
+    const ls = $('loShop'); if (ls) ls.onclick = () => { click(); shopTab = 'items'; shopSel = look.id; show('shop'); };
+    $('loDone').onclick = () => { click(); show('home'); };
+    Icons.hydrate(root);
+    coins();
+  }
+
+  /* ---------------------------------------------------------- headband */
+  const BAND_SWATCHES = ['#45e08a', '#35e0ff', '#4f8cff', '#8f6bff', '#d05bff', '#ff4f93', '#ff5a4d', '#ff9a3c', '#ffc933', '#f2f4fa'];
+  function bandPanel() {
+    const cur = Save.data.band, hue = cur === 'rainbow' ? 0 : hexToHue(cur);
+    const sw = BAND_SWATCHES.map(h => `<button class="sw sm${cur === h ? ' on' : ''}" data-band="${h}" style="--s:${h}" aria-label="${h}"></button>`).join('')
+      + `<button class="sw sm rainbow${cur === 'rainbow' ? ' on' : ''}" data-band="rainbow" aria-label="Rainbow" title="Rainbow"></button>`;
+    return `<div class="band"><div class="set-label">HEADBAND COLOUR</div><div class="swatches">${sw}</div>
+      ${slider('bandHue', { min: 0, max: 359, value: hue, cls: 'hue', label: 'Headband hue', thumb: cur === 'rainbow' ? '#fff' : cur, text: v => v + '°' })}</div>`;
+  }
+  function wireBand(root) {
+    const set = v => { Save.data.band = v; Save.save(); refreshRookie(); };
+    root.querySelectorAll('[data-band]').forEach(b => { b.onclick = () => {
+      click();
+      const v = b.dataset.band, inp = root.querySelector('#bandHue'), sl = root.querySelector('[data-slider="bandHue"]');
+      if (v !== 'rainbow') { inp.value = hexToHue(v); inp.dispatchEvent(new Event('input')); }     // moves the handle to this colour
+      sl.style.setProperty('--thumb', v === 'rainbow' ? '#fff' : v);
+      set(v);
+      root.querySelectorAll('[data-band]').forEach(o => o.classList.toggle('on', o === b));
+    }; });
+    wireSlider(root, 'bandHue', { min: 0, max: 359, text: v => v + '°' }, (h, el) => {
+      const hex = hueHex(h); el.style.setProperty('--thumb', hex); set(hex);
+      root.querySelectorAll('[data-band]').forEach(o => o.classList.remove('on'));
+    });
+  }
+  // redraw only the Rookie's pictures while a colour is being dragged, so the slider itself is never rebuilt
+  function refreshRookie() {
+    const pv = $('shopPreview');
+    if (charSel === 'rookie' && pv) { const old = pv.querySelector('canvas'); const nw = charCanvas(CHAR.rookie, 210); if (old) old.replaceWith(nw); else pv.appendChild(nw); }
+    const tile = $('shopGrid').querySelector('.item.char canvas'); if (tile) tile.replaceWith(charCanvas(CHAR.rookie, 92));
   }
 
   /* ----------------------------------------------------------------- shop */
@@ -161,7 +298,8 @@ const UI = (() => {
     else if (own) action = '<button class="btn primary" id="btnWear"><b>WEAR</b></button>';
     else if (d.coins >= c.price) action = `<button class="btn primary" id="btnWear"><b>BUY</b><small>${fmt(c.price)} COINS</small></button>`;
     else action = `<button class="btn" disabled><b>${fmt(c.price)} COINS</b><small>${fmt(c.price - d.coins)} MORE TO GO</small></button>`;
-    $('shopInfo').innerHTML = `<div class="pv-head"><b>${esc(c.name.toUpperCase())}</b></div><p>Just a different look. It changes nothing about how you throw.</p>${action}`;
+    $('shopInfo').innerHTML = `<div class="pv-head"><b>${esc(c.name.toUpperCase())}</b></div><p>Just a different look. It changes nothing about how you throw.</p>${action}${c.id === 'rookie' ? bandPanel() : ''}`;
+    if (c.id === 'rookie') wireBand($('shopInfo'));
     const w = $('btnWear');
     if (w) w.onclick = () => {
       if (own) { Save.equipChar(c.id); Sfx.equip(); }
@@ -306,7 +444,9 @@ const UI = (() => {
 
   function openSettings() {
     const sw = ACCENTS.map(a => `<button class="sw${a.id === Theme.id ? ' on' : ''}" data-acc="${a.id}" style="--s:${a.hex}" title="${a.name}" aria-label="${a.name}"></button>`).join('');
-    openModal('settings', `<h2>SETTINGS</h2>${toggleRow()}<div class="set-label">THEME COLOUR</div><div class="swatches">${sw}</div>
+    const S = Save.data.settings, pct = v => Math.round(v) + '%';
+    const vol = `<div class="set-label">MUSIC VOLUME</div>${slider('musicVol', { min: 0, max: 100, value: Math.round(S.musicVol * 100), label: 'Music volume', text: pct })}<div class="set-label">SOUND VOLUME</div>${slider('sfxVol', { min: 0, max: 100, value: Math.round(S.sfxVol * 100), label: 'Sound volume', text: pct })}`;
+    openModal('settings', `<h2>SETTINGS</h2>${toggleRow()}<div class="set-label">THEME COLOUR</div><div class="swatches">${sw}</div>${vol}
       <div class="actions"><button class="btn primary wide" id="mDone"><b>DONE</b></button><button class="btn wide danger" id="mReset"><b>RESET PROGRESS</b></button></div><a class="legal" href="privacy.html" target="_blank" rel="noopener">PRIVACY POLICY</a>`);
     wireToggles();
     $('sheet').querySelectorAll('[data-acc]').forEach(b => {
@@ -315,6 +455,9 @@ const UI = (() => {
         $('sheet').querySelectorAll('[data-acc]').forEach(o => o.classList.toggle('on', o === b));
       };
     });
+    wireSlider($('sheet'), 'musicVol', { min: 0, max: 100, text: pct }, v => { Save.data.settings.musicVol = v / 100; Sfx.setMusicVol(v / 100); Save.save(); });
+    wireSlider($('sheet'), 'sfxVol', { min: 0, max: 100, text: pct }, v => { Save.data.settings.sfxVol = v / 100; Sfx.setSfxVol(v / 100); Save.save(); });
+    $('sfxVol').addEventListener('change', () => { Sfx.ensure(); Sfx.coin(2); });
     $('mDone').onclick = () => { click(); closeModal(); };
     let armed = false;
     $('mReset').onclick = () => {

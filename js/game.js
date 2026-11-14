@@ -56,12 +56,11 @@ const Game = (() => {
       fever: 0, fevers: 0, stand: 0, stood: false, bounty: null, bountyN: 0, bountyT: 3, bountyLast: '', goldT: rand(26, 40), beatBest: false, closeCalls: 0, mastered: [],
     };
   }
-  // the Rookie's headband shows your rank: green at the start, a new colour each time you rank up, a shifting rainbow at the top
-  const BANDS = ['#45e08a', '#35e0ff', '#4f8cff', '#8f6bff', '#d05bff', '#ff4f93', '#ff5a4d', '#ff9a3c', '#ffc933', '#f2f4fa'];
+  // the Rookie's headband is whatever colour you picked (or the shifting rainbow)
   function bandColor(t) {
-    const i = Save.rankInfo().i;
-    if (i >= RANKS.length - 1) return `hsl(${Math.floor(t * 90) % 360}, 95%, 62%)`;
-    return BANDS[Math.min(i, BANDS.length - 1)];
+    const b = Save.data.band;
+    if (b === 'rainbow') return `hsl(${Math.floor(t * 90) % 360}, 95%, 62%)`;
+    return /^#[0-9a-f]{6}$/i.test(b) ? b : '#45e08a';
   }
   function buildWorld() {
     plats = []; foes = []; shots = []; crates = []; zones = []; throwLog.clear(); Fx.clear();

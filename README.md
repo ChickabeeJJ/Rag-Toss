@@ -93,10 +93,11 @@ From stage 3 some foes wear a pot that soaks one headshot, and from stage 4 some
 - **Mastery.** Every throwable earns up to five stars from knockouts (8, 25, 60, 120, 220). Each star is +5% damage with it, for good.
 - **Small things.** Coins fly from a knockout to the counter, which rolls up. About one hit in eleven is a crit (the Sweet Spot upgrade adds 3% per level). A throw that just misses you is a close call and gives stamina back. The counter shows your best and tells you when you are three away from beating it.
 - **Coins.** Earned per knockout, multiplied by your streak, plus boss bonuses. They're banked as you earn them, so quitting a run keeps them.
+- **Loadout.** The CHANGE button opens a dedicated loadout screen: three big slots, every throwable you own in a grid, tap a slot then tap what goes in it, with stats and mastery for whatever you touch last.
 - **Characters.** Eight to wear (Rookie, Cowboy, Viking, Chef, Wizard, Knight, Pirate, Royal), each with its own colour and hat, bought with coins on the Characters tab of the Stuff screen. They are looks only; nothing about throwing changes.
 - **Stuff and upgrades.** 26 items and ten permanent upgrades: Thick Skull (health), Big Lungs (stamina), Second Breath (refill), Strong Arm (damage), Quick Hands (time between throws), Good Eye (longer aim line), Padding (damage taken), and Deep Pockets (coins).
 - **The results screen always points at the next thing.** It shows the next item you don't own with a bar for how close you are, flags affordable upgrades, and shows your rank bar.
-- **Ranks.** Lifetime knockouts move you through eleven ranks, from Butterfingers to The Last Throw. Each rank-up pays coins. The Rookie's headband changes colour with your rank, from green up to a shifting rainbow at the top.
+- **Ranks.** Lifetime knockouts move you through eleven ranks, from Butterfingers to The Last Throw. Each rank-up pays coins. The Rookie's headband colour is yours to pick on the Characters tab (swatches, a hue slider, or a rainbow).
 - **Missions.** Three at a time from a pool of ten, refreshed at 00:00 UTC, with a 250-coin chest for finishing all three. There is no login reward.
 
 ## Controls

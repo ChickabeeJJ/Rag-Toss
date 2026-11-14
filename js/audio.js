@@ -6,7 +6,7 @@
 
 const Sfx = (() => {
   let ac = null, master = null, sfxBus = null, musicBus = null, noiseBuf = null;
-  let sfxOn = true, musicOn = true, platMuted = false, paused = false;
+  let sfxVol = 1, musicVol = 1, sfxOn = true, musicOn = true, platMuted = false, paused = false;
   let track = null, rate = 1, hype = false, ducked = true, musicPlaying = false;
   const last = {};
 
@@ -30,8 +30,8 @@ const Sfx = (() => {
   }
   function applyGains() {
     if (!ac) return;
-    sfxBus.gain.value = sfxOn && !platMuted ? 1 : 0;
-    musicBus.gain.setTargetAtTime(musicOn && !platMuted ? (ducked ? 0.2 : 0.42) : 0, ac.currentTime, 0.25);
+    sfxBus.gain.value = sfxOn && !platMuted ? sfxVol : 0;
+    musicBus.gain.setTargetAtTime(musicOn && !platMuted ? (ducked ? 0.2 : 0.42) * musicVol : 0, ac.currentTime, 0.25);
   }
   // don't let the same sound stack up in one frame (nine candies landing at once)
   function gate(id, ms = 40) { const n = performance.now(); if (last[id] && n - last[id] < ms) return false; last[id] = n; return true; }
@@ -143,6 +143,7 @@ const Sfx = (() => {
 
   return Object.assign(S, {
     ensure, suspend, startMusic, stopMusic, setStage, setHype,
+    setSfxVol(v) { sfxVol = Math.max(0, Math.min(1, v)); applyGains(); }, setMusicVol(v) { musicVol = Math.max(0, Math.min(1, v)); applyGains(); },
     setSfx(v) { sfxOn = v; applyGains(); }, setMusic(v) { musicOn = v; applyGains(); },
     setPlatformMute(v) { platMuted = v; applyGains(); },
   });
