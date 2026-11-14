@@ -41,7 +41,7 @@ const ITEMS = [
   { id: 'anvil', name: 'Anvil', price: 3800, sta: 13, dmg: 42, r: 17, kb: 1.2, spd: 0.9, grav: 0.85, spin: 0, heavy: true,
     tag: 'DROPS', desc: 'Throw it over their heads. The moment it is above a foe it stops dead and drops straight down.' },
   { id: 'pinata', name: 'Pinata', price: 4400, sta: 10, dmg: 7, r: 15, kb: 0.4, spd: 0.95, grav: 1, spin: 6,
-    tag: 'BURSTS', desc: 'Pops at the top of its arc and rains nine hard candies on everything below.' },
+    tag: 'BURSTS', desc: 'Pops at the top of its arc and rains eight hard candies on everything below.' },
   { id: 'jar', name: 'Storm Jar', price: 5200, sta: 11, dmg: 16, r: 12, kb: 0.6, spd: 1, grav: 1, spin: 8,
     tag: 'CHAINS', desc: 'Smashes into lightning that jumps to every foe in reach and stuns them.' },
   { id: 'hole', name: 'Pocket Hole', price: 6200, sta: 14, dmg: 20, r: 13, kb: 2.4, spd: 0.95, grav: 0.9, spin: 10,

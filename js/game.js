@@ -530,8 +530,8 @@ const Game = (() => {
   function burstPinata(s) {
     if (s.dead) return;
     Fx.confetti(s.x, s.y, 28); Sfx.pop();
-    const n = 9; logAdd(s.seq, n);
-    for (let i = 0; i < n; i++) launch(AMMO.candy, { owner: 'p', x: s.x, y: s.y, vx: s.vx * 0.55 + rand(-300, 300), vy: rand(-260, 180), dmg: s.dmg, seq: s.seq, life: 4 });
+    const n = 8; logAdd(s.seq, n);      // eight sweets at 65% each: a good haul, not a one-item win
+    for (let i = 0; i < n; i++) launch(AMMO.candy, { owner: 'p', x: s.x, y: s.y, vx: s.vx * 0.55 + rand(-300, 300), vy: rand(-260, 180), dmg: s.dmg * 0.65, seq: s.seq, life: 4 });
     kill(s);
   }
   function burstHive(s) {

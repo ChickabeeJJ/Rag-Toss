@@ -47,38 +47,48 @@ const Icons = (() => {
 
   /* ---- line icons: one thin stroke, no fills, no outlines. Used for perks and upgrades. ---- */
   const star = (cx, cy, n, r1, r2, rot = 0) => { let d = ''; for (let i = 0; i < n * 2; i++) { const r = i % 2 ? r2 : r1, a = rot + i * Math.PI / n; d += (i ? 'L' : 'M') + (cx + Math.cos(a) * r).toFixed(1) + ' ' + (cy + Math.sin(a) * r).toFixed(1); } return d + 'Z'; };
-  const FIST = '<path d="M13 24v-5a3.2 3.2 0 0 1 6.4 0v-1.4a3.2 3.2 0 0 1 6.4 0v1.4a3.2 3.2 0 0 1 6.4 0v1.8a3.2 3.2 0 0 1 6.4 0V31c0 7-5.5 12-12 12h-2.5C16.5 43 13 38.5 13 33z"/><path d="M19.4 20v7M25.8 18.4v8.6M32.2 20v7"/>';
-  const HEART = '<path d="M24 41S8 31.5 8 20.5A8.5 8.5 0 0 1 24 16a8.5 8.5 0 0 1 16 4.5C40 31.5 24 41 24 41z"/>';
-  const BOLT = '<path d="M26 6 11 27h11l-2 15 17-23H26z"/>';
+  // two-tone: a soft body fill plus a crisp line, with a few solid accents
+  const FL = (d, a = 0.42) => `<path d="${d}" fill="currentColor" fill-opacity="${a}"/>`;
+  const SO = d => `<path d="${d}" fill="currentColor" stroke="none"/>`;
+  const FIST_D = 'M13 24v-5a3.2 3.2 0 0 1 6.4 0v-1.4a3.2 3.2 0 0 1 6.4 0v1.4a3.2 3.2 0 0 1 6.4 0v1.8a3.2 3.2 0 0 1 6.4 0V31c0 7-5.5 12-12 12h-2.5C16.5 43 13 38.5 13 33z';
+  const FIST = FL(FIST_D) + '<path d="M19.4 20v7M25.8 18.4v8.6M32.2 20v7"/>';
+  const HEART_D = 'M24 41S8 31.5 8 20.5A8.5 8.5 0 0 1 24 16a8.5 8.5 0 0 1 16 4.5C40 31.5 24 41 24 41z';
+  const HEART = FL(HEART_D, 0.46);
+  const BOLT = FL('M26 6 11 27h11l-2 15 17-23H26z', 0.5);
   const LINE = {
     // perks
     heavy: FIST,
-    twin: '<circle cx="19" cy="24" r="10"/><circle cx="29" cy="24" r="10"/>',
-    skin: HEART + '<path d="M24 20.5v9M19.5 25h9"/>',
-    lungs: '<path d="M24 8v14M24 22l-5 5M24 22l5 5"/><path d="M19 22c-7 0-10 9-10 16 0 3 8 3 10-2z"/><path d="M29 22c7 0 10 9 10 16 0 3-8 3-10-2z"/>',
-    leech: '<path d="M24 15c-6-4-14 0-14 9 0 9 6 17 11 17 2 0 2-1 3-1s1 1 3 1c5 0 11-8 11-17 0-9-8-13-14-9z"/><path d="M24 15c0-4 1-7 4-9"/>',
-    eye: '<path d="M4 24c5-9 12-13 20-13s15 4 20 13c-5 9-12 13-20 13S9 33 4 24z"/><circle cx="24" cy="24" r="6"/>',
-    pop: `<path d="${star(24, 24, 8, 19, 11, -0.2)}"/>`,
-    big: '<rect x="17" y="17" width="14" height="14" rx="2"/><path d="M8 17V8h9M31 8h9v9M40 31v9h-9M17 40H8v-9"/>',
-    crate: '<rect x="8" y="21" width="32" height="19" rx="2"/><path d="M6 21h36v-5H6zM24 16v24"/><path d="M24 16c-3-6-9-6-9-2.5s6 2.5 9 2.5zM24 16c3-6 9-6 9-2.5s-6 2.5-9 2.5z"/>',
-    rich: '<ellipse cx="24" cy="15" rx="12" ry="5"/><path d="M12 15v8c0 2.8 5.4 5 12 5s12-2.2 12-5v-8M12 23v8c0 2.8 5.4 5 12 5s12-2.2 12-5v-8"/>',
-    shove: '<path d="M9 12l12 12-12 12M24 12l12 12-12 12"/>',
-    hot: '<path d="M24 5c1 7 11 11 11 22a11 11 0 0 1-22 0c0-5 3-8 5-11 1 3 3 4 4 3 1-4 1-9 2-14z"/><path d="M24 40a5 5 0 0 1-5-5c0-3 3-5 5-8 2 3 5 5 5 8a5 5 0 0 1-5 5z"/>',
-    spring: '<path d="M12 9h24M12 39h24"/><path d="M16 36l16-4-16-4 16-4-16-4 16-4-16-4"/>',
-    cheap: '<path d="M10 38C8 22 20 8 38 8c0 16-10 28-28 30z"/><path d="M10 38C18 28 26 20 34 12"/>',
+    twin: FL('M19 14a10 10 0 1 0 0 20 10 10 0 1 0 0-20z', 0.22) + FL('M29 14a10 10 0 1 0 0 20 10 10 0 1 0 0-20z', 0.22),
+    skin: HEART + '<path d="M24 21v9M19.5 25.5h9" stroke-width="2.6"/>',
+    lungs: '<path d="M24 8v14M24 22l-5 5M24 22l5 5"/>' + FL('M19 22c-7 0-10 9-10 16 0 3 8 3 10-2z', 0.34) + FL('M29 22c7 0 10 9 10 16 0 3-8 3-10-2z', 0.34),
+    leech: FL('M24 15c-6-4-14 0-14 9 0 9 6 17 11 17 2 0 2-1 3-1s1 1 3 1c5 0 11-8 11-17 0-9-8-13-14-9z', 0.34) + '<path d="M24 15c0-4 1-7 4-9"/>' + SO('M18 22.5a2 2 0 1 0 0 .01zM30 22.5a2 2 0 1 0 0 .01z'),
+    eye: FL('M4 24c5-9 12-13 20-13s15 4 20 13c-5 9-12 13-20 13S9 33 4 24z', 0.2) + FL('M24 17.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 1 0 0-13z', 0.5) + SO('M24 21.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 1 0 0-5z'),
+    pop: FL(star(24, 24, 8, 19, 11, -0.2), 0.34) + SO('M24 20.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 1 0 0-7z'),
+    big: FL('M17 17h14v14H17z', 0.4) + '<path d="M8 17V8h9M31 8h9v9M40 31v9h-9M17 40H8v-9"/>',
+    crate: FL('M8 21h32v19H8z', 0.3) + FL('M6 21h36v-5H6z', 0.5) + '<path d="M24 16v24"/>' + FL('M24 16c-3-6-9-6-9-2.5s6 2.5 9 2.5zM24 16c3-6 9-6 9-2.5s-6 2.5-9 2.5z', 0.6),
+    rich: FL('M12 31v-8h24v8c0 2.8-5.4 5-12 5s-12-2.2-12-5z', 0.3) + FL('M12 23v-8h24v8c0 2.8-5.4 5-12 5s-12-2.2-12-5z', 0.3) + FL('M24 10c-6.6 0-12 2.2-12 5s5.4 5 12 5 12-2.2 12-5-5.4-5-12-5z', 0.55),
+    shove: FL('M9 12l12 12-12 12z', 0.4) + FL('M24 12l12 12-12 12z', 0.4),
+    hot: FL('M24 5c1 7 11 11 11 22a11 11 0 0 1-22 0c0-5 3-8 5-11 1 3 3 4 4 3 1-4 1-9 2-14z', 0.3) + FL('M24 40a5 5 0 0 1-5-5c0-3 3-5 5-8 2 3 5 5 5 8a5 5 0 0 1-5 5z', 0.85),
+    spring: FL('M12 7h24v4H12zM12 37h24v4H12z', 0.5) + '<path d="M16 36l16-4-16-4 16-4-16-4 16-4-16-4"/>',
+    cheap: FL('M10 38C8 22 20 8 38 8c0 16-10 28-28 30z', 0.34) + '<path d="M10 38C18 28 26 20 34 12"/>',
     // upgrades
     health: HEART,
     stamina: BOLT,
-    regen: '<path d="M38 24a14 14 0 1 1-4.1-9.9M38 8v7h-7"/><path d="M25 17l-5 8h8l-4 8"/>',
+    regen: '<path d="M38 24a14 14 0 1 1-4.1-9.9M38 8v7h-7"/>' + FL('M25 17l-5 8h8l-4 8z', 0.7),
     power: FIST,
-    quick: '<circle cx="24" cy="24" r="15"/><path d="M24 14v10l7 4"/>',
-    guide: '<circle cx="24" cy="24" r="14"/><circle cx="24" cy="24" r="5"/><path d="M24 4v6M24 38v6M4 24h6M38 24h6"/>',
-    armor: '<path d="M24 6l15 5v11c0 9-6 16-15 20-9-4-15-11-15-20V11z"/>',
-    greed: '<circle cx="24" cy="24" r="15"/><circle cx="24" cy="24" r="8"/>',
-    crit: '<circle cx="24" cy="24" r="15"/><circle cx="24" cy="24" r="2.5"/><path d="M24 5v8M24 35v8M5 24h8M35 24h8"/>',
-    stand: HEART + '<path d="M26 17l-5 8h6l-4 8"/>',
+    quick: FL('M24 9a15 15 0 1 0 0 30 15 15 0 1 0 0-30z', 0.2) + '<path d="M24 15v9l6 4"/>' + SO('M24 22a2 2 0 1 0 0 4 2 2 0 1 0 0-4z'),
+    guide: FL('M24 10a14 14 0 1 0 0 28 14 14 0 1 0 0-28z', 0.14) + '<path d="M24 4v6M24 38v6M4 24h6M38 24h6"/>' + SO('M24 19a5 5 0 1 0 0 10 5 5 0 1 0 0-10z'),
+    armor: FL('M24 6l15 5v11c0 9-6 16-15 20-9-4-15-11-15-20V11z', 0.3) + '<path d="M24 6v36"/>',
+    greed: FL('M24 9a15 15 0 1 0 0 30 15 15 0 1 0 0-30z', 0.3) + FL('M24 16a8 8 0 1 0 0 16 8 8 0 1 0 0-16z', 0.45),
+    crit: FL('M24 9a15 15 0 1 0 0 30 15 15 0 1 0 0-30z', 0.16) + '<path d="M24 5v8M24 35v8M5 24h8M35 24h8"/>' + SO('M24 20a4 4 0 1 0 0 8 4 4 0 1 0 0-8z'),
+    stand: HEART + SO('M26 17l-5 8h6l-4 8z'),
   };
-  const line = id => `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LINE[id] || ''}</svg>`;
+  // every icon is scaled to one visual size and centred on its own drawn shape (measured, not guessed)
+  const FIT = {"heavy":[25.8,28.7,1.176],"twin":[24,24,1.126],"skin":[24,26.23,1.057],"lungs":[24,24.02,1.057],"leech":[24,23.5,0.973],"eye":[24,24,0.857],"pop":[24,24,0.918],"big":[24,24,1.058],"crate":[24,25.56,0.947],"rich":[24,23,1.285],"shove":[22.5,24,1.241],"hot":[24,22.5,0.973],"spring":[24,24,1.0],"cheap":[23.89,23,1.126],"health":[24,26.23,1.057],"stamina":[24,24,0.947],"regen":[24,23,1.126],"power":[25.8,28.7,1.176],"quick":[24,24,1.126],"guide":[24,24,0.857],"armor":[24,24,0.947],"greed":[24,24,1.126],"crit":[24,24,0.9],"stand":[24,26.23,1.057]};
+  const line = id => {
+    const t = FIT[id], k = t ? t[2] : 1;
+    return `<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="${(2 / k).toFixed(2)}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g${t ? ` transform="translate(24 24) scale(${k}) translate(${-t[0]} ${-t[1]})"` : ''}>${LINE[id] || ''}</g></svg>`;
+  };
   const perk = line;
 
   function svg(name) { return `<svg viewBox="0 0 24 24" aria-hidden="true">${P[name] || ''}</svg>`; }

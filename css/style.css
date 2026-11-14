@@ -457,7 +457,7 @@ body.touch .slots { bottom: calc(10px + var(--safe-b)); }
 .pk-badge { position: relative; width: 84px; height: 84px; display: grid; place-items: center; margin: 22px 0 10px; }
 .pk-glow { display: none; }
 .pk-ic { width: 84px; height: 84px; display: grid; place-items: center; border-radius: 50%; color: var(--c); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent); background: none; transition: background 0.2s, box-shadow 0.2s, transform 0.2s; }
-.pk-ic svg { width: 44px; height: 44px; }
+.pk-ic svg { width: 54px; height: 54px; }
 .perk:hover .pk-ic { background: color-mix(in srgb, var(--c) 16%, transparent); box-shadow: inset 0 0 0 2px var(--c); transform: scale(1.05); }
 .pk-type { font-weight: 800; font-size: 9.5px; letter-spacing: 0.2em; margin-top: -4px; }
 /* ---- rarity: the rarer the card, the more is going on in it ---- */
