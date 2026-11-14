@@ -137,6 +137,8 @@ const Game = (() => {
     // knocked out but the results have not come up yet: leaving now ends the run for good, with its stats recorded
     if (run && !run.demo && !run.tut && state === 'play' && player && player.dead) { finishRun(true); return 'ended'; }
     if (!run || run.demo || run.tut || state !== 'play' || !player || player.dead || run.overT > 0) return;
+    // a run that was started and left alone (no throw, no knockout) is not worth keeping
+    if (!run.resumed && !run.throws && !run.kos) return 'empty';
     const keep = {};
     for (const k of ['stage', 'kos', 'coins', 'bestCombo', 'stood', 'bountyN', 'closeCalls', 'fevers', 'heads', 'rings', 'bosses', 'crates', 'stageKills', 'combo', 'fever', 'stand', 'bountyT', 'bountyLast',
       'goldT', 'crateT', 'spawnT', 'bossT', 'perkT', 't', 'lastKoAt', 'beatBest', 'spawned']) keep[k] = run[k];
@@ -156,6 +158,7 @@ const Game = (() => {
   }
   // the other half: put it all back where it was
   function restoreRun(sv) {
+    run.resumed = true;
     for (const k of ['stage', 'kos', 'coins', 'bestCombo', 'stood', 'bountyN', 'closeCalls', 'fevers', 'heads', 'rings', 'bosses', 'crates', 'stageKills', 'combo', 'fever', 'stand', 'bountyT', 'bountyLast',
       'goldT', 'crateT', 'spawnT', 'bossT', 'perkT', 't', 'lastKoAt', 'spawned']) if (sv[k] != null) run[k] = sv[k];
     run.beatBest = sv.beatBest != null ? sv.beatBest : run.kos > Save.data.best.kos;
@@ -420,7 +423,7 @@ const Game = (() => {
     volley(ang, RELEASE_AT);
     if (twin) volley(ang - 0.06, RELEASE_AT + 0.11);
     Sfx.throw(!!real.heavy);
-    track('throws');
+    track('throws'); run.throws = (run.throws || 0) + 1;
     return true;
   }
 
