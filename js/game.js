@@ -95,7 +95,8 @@ const Game = (() => {
   const staCost = def => def.sta * (1 - Math.min(0.6, 0.2 * pk('cheap')));
   const armor = () => 1 - 0.05 * Save.lvl('armor');
   const foeHpMul = () => 1.12 * (1 + 0.19 * (run.stage - 1) + 0.03 * Math.pow(Math.max(0, run.stage - 4), 2));
-  const foeDmgMul = () => 1 + 0.1 * (run.stage - 1) + 0.01 * Math.pow(Math.max(0, run.stage - 6), 2);
+  // enemies hit a little harder with every one that has been sent at you: +0.3% each, in a straight line
+  const foeDmgMul = () => (1 + 0.1 * (run.stage - 1) + 0.01 * Math.pow(Math.max(0, run.stage - 6), 2)) * (1 + 0.003 * (run.spawned || 0));
   const usingBonus = () => !!(player.bonus && player.bonus.on);
   const currentItemId = () => (usingBonus() ? player.bonus.id : bag()[player.slot] || 'rock');
 
@@ -136,7 +137,7 @@ const Game = (() => {
     if (!run || run.demo || run.tut || state !== 'play' || !player || player.dead || run.overT > 0) return;
     const keep = {};
     for (const k of ['stage', 'kos', 'coins', 'bestCombo', 'stood', 'bountyN', 'closeCalls', 'fevers', 'heads', 'rings', 'bosses', 'crates', 'stageKills', 'combo', 'fever', 'stand', 'bountyT', 'bountyLast',
-      'goldT', 'crateT', 'spawnT', 'bossT', 'perkT', 't', 'lastKoAt', 'beatBest']) keep[k] = run[k];
+      'goldT', 'crateT', 'spawnT', 'bossT', 'perkT', 't', 'lastKoAt', 'beatBest', 'spawned']) keep[k] = run[k];
     keep.bag = run.bag; keep.perks = run.perks; keep.mastered = run.mastered;
     keep.bounty = run.bounty; keep.perkPick = run.perkPick || null;
     keep.hp = player.hp; keep.sta = player.sta; keep.slot = player.slot; keep.cd = player.cd; keep.inv = Math.min(player.inv, 3);
@@ -154,7 +155,7 @@ const Game = (() => {
   // the other half: put it all back where it was
   function restoreRun(sv) {
     for (const k of ['stage', 'kos', 'coins', 'bestCombo', 'stood', 'bountyN', 'closeCalls', 'fevers', 'heads', 'rings', 'bosses', 'crates', 'stageKills', 'combo', 'fever', 'stand', 'bountyT', 'bountyLast',
-      'goldT', 'crateT', 'spawnT', 'bossT', 'perkT', 't', 'lastKoAt']) if (sv[k] != null) run[k] = sv[k];
+      'goldT', 'crateT', 'spawnT', 'bossT', 'perkT', 't', 'lastKoAt', 'spawned']) if (sv[k] != null) run[k] = sv[k];
     run.beatBest = sv.beatBest != null ? sv.beatBest : run.kos > Save.data.best.kos;
     run.perks = Object.assign({}, sv.perks); run.mastered = sv.mastered || []; run.bounty = sv.bounty || null;
     const sb = Array.isArray(sv.bag) && sv.bag.length === 3 ? sv.bag.map(id => (id && ITEM[id] && Save.owns(id) ? id : null)) : null;
@@ -1153,6 +1154,7 @@ const Game = (() => {
     return best;
   }
   function spawnFoe(type, boss, at) {
+    if (!run.demo && !run.tut) run.spawned = (run.spawned || 0) + 1;
     const def = FOES[type];
     const sc = boss ? boss.scale : def.scale;
     const floater = !!def.balloons;

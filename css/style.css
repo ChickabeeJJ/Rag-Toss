@@ -698,3 +698,5 @@ body.touch .lo-x { opacity: 1; }
 #preview .pv-info p { font-weight: 600; font-size: 13px; line-height: 1.4; color: #c9cfdf; }
 #preview .pv-btns { display: flex; gap: 8px; flex: none; }
 @media (max-width: 700px) { #preview .pvbar { flex-direction: column; align-items: stretch; } #preview .pv-btns .btn { flex: 1; } }
+
+body.cg .legal { display: none !important; }

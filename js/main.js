@@ -13,6 +13,8 @@
   if (matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches) document.body.classList.add('touch');
   try { await Promise.all([document.fonts.load('900 20px Rubik'), document.fonts.load('600 20px Rubik')]); } catch (e) { /* fonts are optional */ }
   Game.init(canvas);
+  // on CrazyGames the platform owns the privacy page and links out of the game are not allowed, so ours stays out of sight there
+  if (Platform.hasSdk) document.body.classList.add('cg');
   Platform.loadingStop();
   UI.init();
 
@@ -39,8 +41,10 @@
 
   /* --------------------------------------------------------- keyboard */
   const DUCK = new Set(['KeyS', 'ArrowDown', 'Space', 'ShiftLeft', 'ShiftRight', 'ControlLeft']);
+  const SCROLLERS = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown']);
   window.addEventListener('keydown', e => {
     if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    if (SCROLLERS.has(e.code) && UI.screen === null) e.preventDefault();      // the page never scrolls under a match
     Sfx.ensure();
     // P pauses (Escape is left to the browser for leaving fullscreen)
     if (e.code === 'KeyP') {
@@ -55,7 +59,8 @@
     // the hotbar keys work whenever a run is on screen: also behind the pause sheet, and right after coming back from another tab
     const hotOk = UI.screen === null && Game.state === 'play' && (!UI.modalOpen() || UI.modalKind === 'pause');
     if (e.repeat || !(hotOk || inPlay())) return;
-    switch (e.code) {
+    const key = e.code || ('Digit' + e.key);
+    switch (key) {
       case 'Digit1': case 'Numpad1': Game.selectNth(0); break;
       case 'Digit2': case 'Numpad2': Game.selectNth(1); break;
       case 'Digit3': case 'Numpad3': Game.selectNth(2); break;
@@ -64,13 +69,20 @@
       case 'KeyE': case 'Tab': e.preventDefault(); Game.cycleSlot(1); break;
       default: break;
     }
-  });
+  }, true);
   window.addEventListener('keyup', e => { if (DUCK.has(e.code)) Game.setDuck(false); });
   window.addEventListener('pagehide', () => { Game.saveRun(); Save.save(); });
   window.addEventListener('blur', () => { Game.setDuck(false); Game.aimCancel(); });
   // coming back to the page (or clicking it) always hands the keyboard back to the game
   const grab = () => { try { window.focus(); if (document.activeElement && document.activeElement !== document.body && document.activeElement.blur) document.activeElement.blur(); } catch (e) { /* ignore */ } };
   window.addEventListener('focus', grab); window.addEventListener('pointerdown', grab, true);
+  /* Inside the CrazyGames frame the keyboard can stay with the page around the game after a tab switch or a click
+     elsewhere. Any sign of life over the game takes it back, so the hotbar keys never go quiet. */
+  let focusT = 0;
+  const reclaim = () => { const n = performance.now(); if (n - focusT < 200) return; focusT = n; if (!document.hasFocus()) { try { window.focus(); } catch (e) { /* ignore */ } } };
+  ['pointermove', 'pointerenter', 'touchstart', 'mousemove', 'wheel'].forEach(t => window.addEventListener(t, reclaim, { passive: true, capture: true }));
+  document.documentElement.addEventListener('mouseenter', reclaim);
+  canvas.tabIndex = -1;
 
   window.addEventListener('resize', () => { Game.resize(); UI.checkRotate(); UI.applyUiScale(); UI.syncInset(); });
   document.addEventListener('visibilitychange', () => {

@@ -98,6 +98,7 @@ From stage 3 some foes wear a pot that soaks one headshot, and from stage 4 some
 
 ## Why you play another run
 
+- **Enemies hit harder the more are sent.** On top of the stage scaling, enemy damage rises 0.3% for every enemy that has spawned in the run.
 - **The run itself escalates.** More foes at once (up to four), tougher and more accurate every stage, a new foe type each stage, a boss after 15 knockouts (two more each stage after that) and a new sky after each one.
 - **Perks.** Fourteen of them, offered three at a time after every boss (click, or press 1, 2 or 3), stackable and kept until you're knocked out. Each card rolls a rarity, and a rarer card is the same perk several times over: Common x1, Rare x2, Epic x3, Legendary x5 (about 58% / 27% / 11% / 3.5% early on, with the rare ones a little likelier each stage).
 - **Runs are saved.** Quitting from the pause menu (or closing the tab) keeps your stage, knockouts, perks, health and the bag you started with (changing your loadout only applies to the next new run). The home screen then says CONTINUE, with a smaller button to start over. Dying ends the saved run.
