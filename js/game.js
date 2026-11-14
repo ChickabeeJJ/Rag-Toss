@@ -18,7 +18,7 @@ const Game = (() => {
   const throwLog = new Map();
   let run = null;
   let themeFrom = 0, themeTo = 0, themeT = 1;
-  const aim = { on: false, id: null, sx: 0, sy: 0, cx: 0, cy: 0, power: 0, ang: 0, max: 200, t: 0 };
+  const aim = { vis: 0, moved: 0, on: false, id: null, sx: 0, sy: 0, cx: 0, cy: 0, power: 0, ang: 0, max: 200, t: 0 };
   const PULL_DEAD = 16;
   let duckHeld = false, duckTired = false, duckOn = false, duckT = 0, pending = null, demoT = 1.5, staFlash = 0;
   const on = { over: null, perk: null, toast: null, banner: null, tut: null };
@@ -348,6 +348,7 @@ const Game = (() => {
   /* ---------------------------------------------------------------- input */
   function aimStart(x, y, id) {
     if (state !== 'play' || paused || hold || player.dead || aim.on) return;
+    aim.vis = 0; aim.moved = time;
     aim.on = true; aim.id = id; aim.sx = aim.cx = x; aim.sy = aim.cy = y; aim.power = 0; aim.t = 0; aim.maxed = false; aim.snap = null; aim.ux = null;
     aim.max = clamp(Math.min(cw, ch) * 0.3, 110, 230);
     aim.afford = player.sta >= throwCost();      // only a throw you could pay for when you started holding will fire itself
@@ -359,8 +360,11 @@ const Game = (() => {
     const dx = aim.sx - x, dy = aim.sy - y, len = Math.hypot(dx, dy);
     const p = clamp((len - PULL_DEAD) / (aim.max - PULL_DEAD), 0, 1);
     if (Math.abs(p - aim.power) > 0.04 && p > 0) Sfx.stretch(p);
+    const na = len > 4 ? Math.atan2(dy, dx) : aim.ang;
+    // the guide only means something once the pull has stopped changing: note every time it is still moving
+    if (Math.abs(p - aim.power) > 0.012 || Math.abs(angDiff(na, aim.ang)) > 0.02) aim.moved = time;
     aim.power = p;
-    if (len > 4) aim.ang = Math.atan2(dy, dx);
+    aim.ang = na;
   }
   function aimEnd(id) {
     if (!aim.on || aim.id !== id) return;
@@ -1695,6 +1699,10 @@ const Game = (() => {
     time += dtReal;
     shake = Math.max(0, shake - dtReal * 2.4);
     if (aim.on) aim.t += dtReal;
+    {
+      const settled = aim.on && aim.power > 0.12 && time - aim.moved > 0.08 && aim.t > 0.12;
+      aim.vis = approach(aim.vis, settled ? 1 : 0, dtReal * (settled ? 6 : 14));
+    }
     if (aim.snap) aim.snap.t += dtReal;
     if (aim.flash > 0) aim.flash -= dtReal;
     hurtFlash = Math.max(0, hurtFlash - dtReal * 2.2); healFlash = Math.max(0, healFlash - dtReal * 1.6); staFlash = Math.max(0, staFlash - dtReal);
@@ -1840,7 +1848,7 @@ const Game = (() => {
 
   // the arc: dots that flow away from the hand, shrinking, with a reticle where it lands
   function drawAimGuide() {
-    if (!aim.on || aim.power <= 0 || player.dead || player.rag.duck > 0.5) return;
+    if (!aim.on || aim.power <= 0 || player.dead || player.rag.duck > 0.5 || aim.vis < 0.02) return;
     const def = ITEM[currentItemId()];
     const v = throwSpeed(def, aim.power), p0 = release(player.rag, aim.ang);
     let vx = Math.cos(aim.ang) * v, vy = Math.sin(aim.ang) * v;
@@ -1848,6 +1856,7 @@ const Game = (() => {
     const n = 9 + 3 * ulvl('guide'), gap = 30, can = player.sta >= staCost(def) || usingBonus();
     const col = can ? '#ffffff' : '#ff8a94';
     const hit = can ? predictImpact(def, aim.power, aim.ang) : null;
+    const shown = n * aim.vis * aim.vis * (3 - 2 * aim.vis);      // the dots draw themselves on from the hand outwards, easing in
     let x = p0.x, y = p0.y, d = (time * 70) % gap, i = 0;
     const h = 0.004;
     for (let k = 0; k < 1100 && i < n; k++) {
@@ -1855,13 +1864,14 @@ const Game = (() => {
       x += sx; y += sy; d += Math.hypot(sx, sy);
       if (d < gap) continue;
       d -= gap; i++;
-      const f = 1 - i / (n + 1);
-      ctx.globalAlpha = 0.4 + 0.6 * f;
+      const f = 1 - i / (n + 1), reveal = clamp(shown - (i - 1), 0, 1);
+      if (reveal <= 0) break;
+      ctx.globalAlpha = (0.4 + 0.6 * f) * reveal;
       ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, 2.8 + 3.2 * f, 0, TAU); ctx.fill();
     }
     if (hit) {
       const pulse = 1 + 0.12 * Math.sin(time * 9), r = (hit.foe ? 17 : 11) * pulse;
-      ctx.globalAlpha = hit.foe ? 0.95 : 0.55; ctx.lineCap = 'round';
+      ctx.globalAlpha = (hit.foe ? 0.95 : 0.55) * clamp((aim.vis - 0.55) * 2.2, 0, 1); ctx.lineCap = 'round';
       for (const [w, c] of [[3, hit.foe ? '#ff5d73' : '#ffffff']]) {
         ctx.strokeStyle = c; ctx.lineWidth = w;
         ctx.beginPath(); ctx.arc(hit.x, hit.y, r, 0, TAU); ctx.stroke();
@@ -2072,7 +2082,7 @@ const Game = (() => {
     get hold() { return hold; }, get run() { return run; }, get player() { return player; }, get aiming() { return aim.on; },
     get itemId() { return currentItemId(); }, get usingBonus() { return usingBonus(); }, get staFlash() { return staFlash; }, get tutorial() { return !!(run && run.tut); }, get themeDark() { return theme().dark; },
     get foes() { return foes; }, get shots() { return shots; }, get crates() { return crates; }, get time() { return time; },
-    get bag() { return bag(); },
+    get bag() { return bag(); }, get aimVis() { return aim.vis; },
     preview, endPreview, replayPreview() { demoT = Math.min(demoT, 0.7); }, get previewing() { return !!previewId; },
     bandColor,
     // the hotbar closes up gaps in the bag, so key 2 is always the second thing shown
