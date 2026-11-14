@@ -459,7 +459,11 @@ class Rag {
       for (let i = 0; i < 3; i++) {
         const a = time * 6 + i * TAU / 3;
         const x = hd.x + Math.cos(a) * 18 * s, y = hd.y - 20 * s + Math.sin(a) * 5 * s;
-        ctx.beginPath(); ctx.arc(x, y, 3 * s, 0, TAU); ctx.fill();
+        // a small five-point star, turning as it circles
+        const R = 5.4 * s, r = 2.3 * s, rot = time * 4 + i;
+        ctx.beginPath();
+        for (let k = 0; k < 10; k++) { const rr = k % 2 ? r : R, aa = rot + k * Math.PI / 5 - Math.PI / 2; ctx.lineTo(x + Math.cos(aa) * rr, y + Math.sin(aa) * rr); }
+        ctx.closePath(); ctx.fill();
       }
     }
     ctx.restore();
