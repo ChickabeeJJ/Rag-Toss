@@ -445,13 +445,38 @@ class Rag {
     seg(1, 3, 11, body); seg(3, 4, 9.5, body);
     ctx.fillStyle = body;
     ctx.beginPath(); ctx.arc(pts[P.FHAND].x, pts[P.FHAND].y, 5.8 * s, 0, TAU); ctx.fill();
-    // frozen: a block of ice around the trunk
+    // frozen: a faceted crystal around the trunk, with shards and a glint
     if (this.frozen > 0) {
       const c = this.chest;
-      ctx.globalAlpha = fade * 0.45; ctx.fillStyle = '#cfeeff';
-      ctx.beginPath(); ctx.roundRect(c.x - 30 * s, c.y - 58 * s, 60 * s, 104 * s, 10 * s); ctx.fill();
-      ctx.globalAlpha = fade * 0.9; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(c.x - 20 * s, c.y - 46 * s); ctx.lineTo(c.x - 8 * s, c.y - 30 * s); ctx.moveTo(c.x + 12 * s, c.y + 10 * s); ctx.lineTo(c.x + 22 * s, c.y + 28 * s); ctx.stroke();
+      const X = (x, y) => [c.x + x * s, c.y + y * s];
+      const outline = [[0, -62], [-13, -54], [-29, -44], [-34, -6], [-26, 30], [-13, 50], [0, 57], [13, 50], [26, 30], [34, -6], [29, -44], [13, -54]];
+      const hub = X(-3, -6);
+      const tint = ['#bfe9ff', '#8ccbf0', '#dff5ff', '#a7dcf7', '#f2fbff', '#9ad3f3'];
+      ctx.save();
+      for (let k = 0; k < outline.length; k++) {      // each facet is a wedge from the middle out to one edge of the crystal
+        const a = X(...outline[k]), b = X(...outline[(k + 1) % outline.length]);
+        ctx.globalAlpha = fade * 0.62; ctx.fillStyle = tint[k % tint.length];
+        ctx.beginPath(); ctx.moveTo(hub[0], hub[1]); ctx.lineTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.closePath(); ctx.fill();
+      }
+      // shards growing out of it
+      const shards = [[[-24, -48], [-34, -76], [-8, -56]], [[12, -54], [30, -72], [30, -44]], [[-34, -10], [-52, -22], [-32, -26]], [[30, 22], [50, 32], [24, 40]], [[-24, 26], [-40, 44], [-14, 46]]];
+      for (const sh of shards) {
+        const p0 = X(...sh[0]), p1 = X(...sh[1]), p2 = X(...sh[2]);
+        ctx.globalAlpha = fade * 0.7; ctx.fillStyle = '#e4f7ff'; ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.closePath(); ctx.fill();
+        ctx.globalAlpha = fade * 0.4; ctx.fillStyle = '#7fc2ea'; ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.lineTo((p0[0] + p2[0]) / 2, (p0[1] + p2[1]) / 2); ctx.closePath(); ctx.fill();
+      }
+      // a thin bright rim and a few internal cracks of light
+      ctx.globalAlpha = fade * 0.75; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.4; ctx.lineJoin = 'round';
+      ctx.beginPath(); outline.forEach(([x, y], k) => { const q = X(x, y); if (k) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); }); ctx.closePath(); ctx.stroke();
+      ctx.globalAlpha = fade * 0.35; ctx.beginPath(); for (const [x, y] of [[0, -62], [0, 57], [-34, -6], [34, -6]]) { const q = X(x, y); ctx.moveTo(hub[0], hub[1]); ctx.lineTo(q[0], q[1]); } ctx.stroke();
+      // two glints that wink
+      ctx.fillStyle = '#ffffff';
+      for (const [gx, gy, ph] of [[-14, -34, 0], [16, 12, 2.1]]) {
+        const k = Math.max(0, Math.sin(time * 3.2 + ph)), q = X(gx, gy), r = (2 + 7 * k) * s;
+        if (k < 0.05) continue;
+        ctx.globalAlpha = fade * k; ctx.beginPath(); ctx.moveTo(q[0], q[1] - r); ctx.lineTo(q[0] + r * 0.28, q[1] - r * 0.28); ctx.lineTo(q[0] + r, q[1]); ctx.lineTo(q[0] + r * 0.28, q[1] + r * 0.28); ctx.lineTo(q[0], q[1] + r); ctx.lineTo(q[0] - r * 0.28, q[1] + r * 0.28); ctx.lineTo(q[0] - r, q[1]); ctx.lineTo(q[0] - r * 0.28, q[1] - r * 0.28); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
     }
     // dizzy stars
     if (this.stun > 0 && this.mode !== 'dead') {
