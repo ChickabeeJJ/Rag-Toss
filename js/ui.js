@@ -135,28 +135,61 @@ const UI = (() => {
   }
 
   /* -------------------------------------------------------------- sliders
-     One look for every slider: a groove with a glowing fill, a round white handle with a ring in the
-     accent colour, tick marks and a little value bubble that rises while you hold it. */
+     A slider built from scratch rather than the browser's own: a recessed rail with a glowing fill, tick marks that light up as
+     the handle passes them, a round handle that glides after the pointer on a spring, a value bubble that rises while it is held,
+     and full keyboard and touch control. Every slider in the game is one of these. */
   function slider(id, o) {
-    const p = (o.value - o.min) / (o.max - o.min);
-    return `<div class="slider ${o.cls || ''}" data-slider="${id}" style="--p:${(p * 100).toFixed(2)}%;--n:${p.toFixed(4)}${o.thumb ? ';--thumb:' + o.thumb : ''}">
-      <span class="sl-glow"></span><span class="sl-ticks"><i></i><i></i><i></i><i></i><i></i></span>
-      <input type="range" id="${id}" min="${o.min}" max="${o.max}" step="${o.step || 1}" value="${o.value}" aria-label="${esc(o.label || id)}">
-      <b class="sl-val">${esc(o.text ? o.text(o.value) : o.value)}</b></div>`;
+    const p = (o.value - o.min) / (o.max - o.min), n = o.ticks != null ? o.ticks : 4;
+    const ticks = Array.from({ length: n + 1 }, (_, k) => `<i style="left:${(k / n * 100).toFixed(2)}%"></i>`).join('');
+    return `<div class="sl" id="${id}" data-slider="${id}" role="slider" tabindex="0" aria-label="${esc(o.label || id)}" aria-valuemin="${o.min}" aria-valuemax="${o.max}" aria-valuenow="${o.value}" style="--p:${p.toFixed(4)}">
+      <div class="sl-track"><div class="sl-rail"><div class="sl-fill"></div></div><div class="sl-ticks">${ticks}</div>
+      <div class="sl-thumb"><span class="sl-knob"></span><b class="sl-val">${esc(o.text ? o.text(o.value) : o.value)}</b></div></div></div>`;
   }
-  function wireSlider(root, id, o, onInput) {
-    const el = root.querySelector(`[data-slider="${id}"]`), inp = el.querySelector('input'), val = el.querySelector('.sl-val');
-    const sync = () => {
-      const v = +inp.value, p = (v - o.min) / (o.max - o.min);
-      el.style.setProperty('--p', (p * 100).toFixed(2) + '%'); el.style.setProperty('--n', p.toFixed(4));
-      val.textContent = o.text ? o.text(v) : v;
-      return v;
+  function wireSlider(root, id, o, onInput, onChange) {
+    const el = root.querySelector(`[data-slider="${id}"]`), track = el.querySelector('.sl-track'), val = el.querySelector('.sl-val');
+    const step = o.step || 1, span = o.max - o.min, n = o.ticks != null ? o.ticks : 4;
+    const tickEls = el.querySelectorAll('.sl-ticks i');
+    let value = +el.getAttribute('aria-valuenow'), target = (value - o.min) / span, shown = target, raf = 0, dragging = false, lastTick = -1;
+    const paint = () => {
+      el.style.setProperty('--p', shown.toFixed(4));
+      tickEls.forEach((t, k) => t.classList.toggle('lit', k / n <= shown + 0.001));
     };
-    inp.addEventListener('input', () => { const v = sync(); onInput(v, el); });
-    const hold = on => () => el.classList.toggle('held', on);
-    inp.addEventListener('pointerdown', hold(true)); window.addEventListener('pointerup', hold(false)); inp.addEventListener('blur', hold(false));
-    sync();
-    return el;
+    const loop = () => {
+      shown += (target - shown) * 0.3;                                // the handle glides: it eases towards where the value is
+      if (Math.abs(target - shown) < 0.0006) { shown = target; raf = 0; } else raf = requestAnimationFrame(loop);
+      paint();
+    };
+    const glide = () => { if (!raf) raf = requestAnimationFrame(loop); };
+    const set = (v, user) => {
+      v = clamp(Math.round((v - o.min) / step) * step + o.min, o.min, o.max);
+      if (v === value) return false;
+      value = v; target = (v - o.min) / span;
+      el.setAttribute('aria-valuenow', v); val.textContent = o.text ? o.text(v) : v;
+      const k = Math.round(target * n);                               // a little pop each time the handle crosses a tick mark
+      if (user && k !== lastTick) { lastTick = k; el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop'); }
+      glide();
+      if (user && onInput) onInput(v, el);
+      return true;
+    };
+    const fromPointer = e => { const r = track.getBoundingClientRect(); return o.min + clamp((e.clientX - r.left) / r.width, 0, 1) * span; };
+    el.addEventListener('pointerdown', e => {
+      if (e.button != null && e.button > 0) return;
+      dragging = true; el.classList.add('held'); el.focus({ preventScroll: true });
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+      set(fromPointer(e), true); e.preventDefault();
+    });
+    el.addEventListener('pointermove', e => { if (dragging) set(fromPointer(e), true); });
+    const end = () => { if (!dragging) return; dragging = false; el.classList.remove('held'); if (onChange) onChange(value, el); };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end); el.addEventListener('lostpointercapture', end);
+    el.addEventListener('keydown', e => {
+      const big = Math.max(step, span / 10);
+      const to = { ArrowLeft: value - step, ArrowDown: value - step, ArrowRight: value + step, ArrowUp: value + step, PageDown: value - big, PageUp: value + big, Home: o.min, End: o.max }[e.key];
+      if (to == null) return;
+      e.preventDefault(); e.stopPropagation();
+      if (set(to, true) && onChange) onChange(value, el);
+    }, true);
+    paint();
+    return { el, get: () => value, set: v => { set(v, false); } };
   }
   /* -------------------------------------------------------------- preview
      Any throwable, bought or not, can be tried on a pair of foes that take it and never hit back. */
@@ -460,9 +493,8 @@ const UI = (() => {
         $('sheet').querySelectorAll('[data-acc]').forEach(o => o.classList.toggle('on', o === b));
       };
     });
-    wireSlider($('sheet'), 'musicVol', { min: 0, max: 100, text: pct }, v => { Save.data.settings.musicVol = v / 100; Sfx.setMusicVol(v / 100); Save.save(); });
-    wireSlider($('sheet'), 'sfxVol', { min: 0, max: 100, text: pct }, v => { Save.data.settings.sfxVol = v / 100; Sfx.setSfxVol(v / 100); Save.save(); });
-    $('sfxVol').addEventListener('change', () => { Sfx.ensure(); Sfx.coin(2); });
+    wireSlider($('sheet'), 'musicVol', { min: 0, max: 100, step: 1, text: pct }, v => { Save.data.settings.musicVol = v / 100; Sfx.setMusicVol(v / 100); Save.save(); });
+    wireSlider($('sheet'), 'sfxVol', { min: 0, max: 100, step: 1, text: pct }, v => { Save.data.settings.sfxVol = v / 100; Sfx.setSfxVol(v / 100); Save.save(); }, () => { Sfx.ensure(); Sfx.coin(2); });
     $('mDone').onclick = () => { click(); closeModal(); };
     let armed = false;
     $('mReset').onclick = () => {
