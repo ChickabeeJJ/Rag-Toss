@@ -345,11 +345,9 @@ const ItemArt = (() => {
   };
   P.melon = g => {
     g.save(); g.translate(0, 3);
-    g.beginPath(); g.arc(0, -6, 14, 0, Math.PI); g.closePath(); fillStroke(g, lin(g, 0, -6, 0, 9, '#3fb55a', '#2a8a45'));
-    g.beginPath(); g.arc(0, -6, 12.2, 0, Math.PI); g.closePath(); g.fillStyle = '#f4f7e6'; g.fill();
-    g.beginPath(); g.arc(0, -6, 10.8, 0, Math.PI); g.closePath(); fillStroke(g, rad(g, 0, -6, 1, 12, '#ff7889', '#ff3f5e', '#e02347'));
-    g.fillStyle = '#1c1820'; for (const [x, y, r] of [[-6, -1.4, 0.4], [-2, 1.8, 0.1], [2.4, 1.6, -0.1], [6.2, -1.2, -0.4], [0, -2.4, 0], [-4, 4.6, 0.3], [4.4, 4.2, -0.3]]) { g.save(); g.translate(x, y); g.rotate(r); ell(g, 0, 0, 1.1, 1.9); g.fill(); g.restore(); }
-    g.fillStyle = '#2a8a45'; g.fillRect(-14, -7.4, 28, 2.8); g.fillStyle = '#f4f7e6'; g.fillRect(-12.2, -7.4, 24.4, 1.2);
+    g.beginPath(); g.arc(0, -7, 14, 0, Math.PI); g.closePath(); fillStroke(g, lin(g, 0, -7, 0, 8, '#3fb55a', '#2a8a45'));
+    g.beginPath(); g.arc(0, -7, 11.2, 0, Math.PI); g.closePath(); fillStroke(g, rad(g, 0, -7, 1, 12, '#ff7a8b', '#ff3f5e', '#e02347'));
+    g.fillStyle = '#1c1820'; for (const [x, y, r] of [[-5.6, -0.6, 0.4], [0, 2.4, 0], [5.6, -0.6, -0.4], [-2.6, 5, 0.2], [2.8, 5, -0.2]]) { g.save(); g.translate(x, y); g.rotate(r); ell(g, 0, 0, 1.1, 1.9); g.fill(); g.restore(); }
     g.restore();
   };
   P.seed = g => {
@@ -389,20 +387,15 @@ const ItemArt = (() => {
     circ(g, 0, -13.4, 2.6); fillStroke(g, '#b57a14'); circ(g, 0, -13.4, 1.1); g.fillStyle = '#4a3008'; g.fill();
     g.restore();
   };
-  P.egg = (g, t) => {
-    ell(g, 0, 2, 10, 12.6); fillStroke(g, rad(g, -3, -2, 1, 15, '#f6f0da', '#d9cc9c', '#b3a266'));
-    g.save(); ell(g, 0, 2, 10, 12.6); g.clip(); g.fillStyle = 'rgba(122,166,40,0.55)'; for (const [x, y, r] of [[-3.6, 6.6, 3.6], [4.2, 1.6, 2.7], [-1, -4.4, 2.2], [5.6, 8.4, 2]]) { circ(g, x, y, r); g.fill(); } g.restore();
-    g.strokeStyle = '#5b5130'; g.lineWidth = 1.1; g.lineJoin = 'round'; g.beginPath(); g.moveTo(-6.4, -2); g.lineTo(-3.2, 0.6); g.lineTo(-1, -2.2); g.lineTo(2, 0.8); g.lineTo(5, -1.6); g.stroke();
-    g.strokeStyle = 'rgba(122,170,40,0.85)'; g.lineWidth = 1.6; g.lineCap = 'round';
-    for (let i = 0; i < 3; i++) { const x = -5 + i * 5, ph = t * 4 + i * 1.7; g.beginPath(); g.moveTo(x, -12); g.bezierCurveTo(x - 3, -14.4 + Math.sin(ph), x + 3, -16.6, x, -19 + Math.sin(ph) * 0.8); g.stroke(); }
+  P.egg = g => {
+    ell(g, 0, 1, 10.4, 13.2); fillStroke(g, rad(g, -3, -3, 1, 16, '#f7f2dc', '#dccf9f', '#b9a96c'));
+    g.save(); ell(g, 0, 1, 10.4, 13.2); g.clip(); g.fillStyle = 'rgba(122,166,40,0.5)'; for (const [x, y, r] of [[-3.6, 6, 3.4], [4.6, 0.6, 2.6], [1.2, 9.6, 2.2]]) { circ(g, x, y, r); g.fill(); } g.restore();
   };
   P.cushion = g => {
     g.save(); g.rotate(-0.08);
     g.beginPath(); g.moveTo(-14, 0); g.bezierCurveTo(-14, -9, -6, -11, 0, -11); g.bezierCurveTo(6, -11, 14, -9, 14, 0); g.bezierCurveTo(14, 9, 6, 11, 0, 11); g.bezierCurveTo(-6, 11, -14, 9, -14, 0); g.closePath();
     fillStroke(g, rad(g, -4, -4, 1, 18, '#ff8fb0', '#f0457c', '#c22b5f'));
-    g.setLineDash([2.4, 2.4]); g.strokeStyle = 'rgba(255,255,255,0.4)'; g.lineWidth = 1.1; g.beginPath(); g.ellipse(0, 0, 11, 7.8, 0, 0, TAU); g.stroke(); g.setLineDash([]);
-    g.beginPath(); g.roundRect(12, -2.6, 6.2, 5.2, 1.6); fillStroke(g, '#a82050'); g.fillStyle = '#6e1234'; g.fillRect(16.4, -2, 1.6, 4);
-    g.strokeStyle = 'rgba(0,0,0,0.16)'; g.lineWidth = 1.3; g.lineCap = 'round'; g.beginPath(); g.moveTo(-6, -2); g.quadraticCurveTo(0, 2, 6, -2); g.stroke();
+    g.beginPath(); g.roundRect(12, -2.6, 6, 5.2, 1.6); fillStroke(g, '#a82050');
     g.restore();
   };
   P.trap = (g, t) => {

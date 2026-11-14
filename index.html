@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0c0e15">
   <meta name="description" content="Rag Toss - a ragdoll throwing duel. Pull back, let go and fling rubber chickens, anvils, beehives and dozens of other things at an endless parade of ragdolls on floating islands.">
   <title>Rag Toss</title>
-  <link rel="stylesheet" href="css/style.css?v=29">
+  <link rel="stylesheet" href="css/style.css?v=30">
   <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 </head>
 <body>
@@ -132,6 +132,14 @@
     <div class="lo" id="loRoot"></div>
   </section>
 
+  <!-- ============================== PREVIEW ============================== -->
+  <div id="preview" class="hidden">
+    <div class="pvbar">
+      <div class="pv-info"><div class="pv-head"><b id="pvName"></b><span class="tag" id="pvTag"></span></div><p id="pvDesc"></p></div>
+      <div class="pv-btns"><button class="btn" id="pvAgain"><span class="ic" data-icon="restart"></span><b>THROW AGAIN</b></button><button class="btn primary" id="pvBack"><b>BACK</b></button></div>
+    </div>
+  </div>
+
   <div id="modal" class="modal hidden"><div class="sheet" id="sheet"></div></div>
   <div id="toasts"></div>
   <div id="rotate" class="hidden"><div><span class="ic" data-icon="rotate"></span><p>TURN YOUR DEVICE SIDEWAYS</p><button class="btn primary" id="btnRotateOk"><b>PLAY ANYWAY</b></button></div></div>
@@ -141,13 +149,13 @@
   <script src="js/audio.js?v=6"></script>
   <script src="js/data.js?v=12"></script>
   <script src="js/progress.js?v=6"></script>
-  <script src="js/items.js?v=8"></script>
+  <script src="js/items.js?v=9"></script>
   <script src="js/world.js?v=3"></script>
   <script src="js/ragdoll.js?v=8"></script>
   <script src="js/fx.js?v=3"></script>
-  <script src="js/game.js?v=26"></script>
+  <script src="js/game.js?v=27"></script>
   <script src="js/icons.js?v=9"></script>
-  <script src="js/ui.js?v=22"></script>
+  <script src="js/ui.js?v=23"></script>
   <script src="js/main.js?v=4"></script>
 </body>
 </html>

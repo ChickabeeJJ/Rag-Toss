@@ -1560,17 +1560,44 @@ const Game = (() => {
   }
 
   // the home screen: your thrower lobs whatever is in slot one at a dummy
+  /* ---- item preview: the shop shows a thing doing what it does, on foes that take it and never fight back ---- */
+  let previewId = null, previewGap = 0;
+  function spawnPreviewFoes() {
+    const spots = [{ x: 860, y: 530 }, { x: 1010, y: 440 }];
+    for (const at of spots) {
+      const f = spawnFoe('chucker', null, at);
+      f.passive = true; f.preview = true; f.hp = f.maxHp = 9999; f.plat.state = 'idle'; f.plat.y = f.plat.baseY; f.rag.snap();
+    }
+  }
+  function preview(id) {
+    state = 'menu'; paused = false; hold = false; slowT = 0; hitStop = 0;
+    run = freshRun(true);
+    themeFrom = themeTo = (Math.max(1, Save.data.best.stage) - 1) % THEMES.length; themeT = 1;
+    buildWorld();
+    previewId = id; previewGap = 0; spawnPreviewFoes();
+    demoT = 1.0; aimCancel(); Sfx.setStage(1);
+  }
+  function endPreview() { previewId = null; toMenu(); }
   function stepDemo(dt) {
-    const rag = player.rag, d = foes.find(f => f.dummy);
+    const rag = player.rag;
+    let d;
+    if (previewId) {
+      // keep two targets standing: top the health up, and bring them back if they were knocked off
+      const live2 = foes.filter(f => f.preview && f.rag.alive);
+      if (!live2.length) { if ((previewGap += dt) > 1.1) { previewGap = 0; foes.length = 0; plats.splice(0, plats.length, home, wall); spawnPreviewFoes(); } return; }
+      for (const f of live2) { f.hp = f.maxHp; f.t = Math.max(f.t, 1); f.state = 'idle'; if (f.blind > 0) f.blind -= dt * 0.5; }
+      d = live2[0];
+    } else d = foes.find(f => f.dummy);
     if (!d || !d.rag.alive) return;
     demoT -= dt;
-    const id = currentItemId(), def = ITEM[id] || ITEM.rock;
+    const id = previewId || currentItemId(), def = ITEM[id] || ITEM.rock;
     rag.hold = player.cd > 0.12 ? null : id; rag.holdR = def.r * 0.95;
     player.cd -= dt; player.sta = player.maxSta;
     if (demoT < 0.7 && demoT > 0) {
       const c = d.rag.chest, n = rag.T[P.NECK];
-      const T = 0.95, g = G * (def.grav || 0.001);
-      const vx = (c.x - n.x) / T, vy = (c.y - 20 - n.y) / T - 0.5 * g * T;
+      const T = def.life ? def.life * 0.6 : 0.95, g = G * (def.grav || 0.001);
+      const aimAt = previewId && id === 'anvil' ? { x: d.rag.head.x, y: d.rag.head.y - 150 } : previewId && id === 'hole' ? { x: c.x - 60, y: c.y } : { x: c.x, y: c.y - 20 };
+      const vx = (aimAt.x - n.x) / T, vy = (aimAt.y - n.y) / T - 0.5 * g * T;
       rag.aim = Math.atan2(vy, vx); rag.aimW = approach(rag.aimW, 1, dt * 8); rag.pull = clamp(1 - demoT / 0.7, 0, 1);
       player.demo = { vx, vy };
     } else if (demoT <= 0 && player.demo) {
@@ -1578,7 +1605,7 @@ const Game = (() => {
       const n = real.multi || 1, seq = logNew(n);
       for (let i = 0; i < n; i++) launch(real, { owner: 'p', x: p0.x, y: p0.y, vx: player.demo.vx / (real.spd && real.grav === 0 ? 1.4 : 1), vy: player.demo.vy + (i - (n - 1) / 2) * 60, dmg: real.dmg, seq, power: 0.5 });
       rag.throwT = 0; rag.pull = 0; player.cd = 0.5; player.demo = null;
-      demoT = rand(2.4, 3.4);
+      demoT = previewId ? rand(3.2, 4) : rand(2.4, 3.4);
     } else { rag.aimW = approach(rag.aimW, 0, dt * 4); }
     if (d.rag.frozen > 0) d.rag.frozen -= dt;
   }
@@ -1960,6 +1987,7 @@ const Game = (() => {
     get itemId() { return currentItemId(); }, get usingBonus() { return usingBonus(); }, get staFlash() { return staFlash; }, get tutorial() { return !!(run && run.tut); }, get themeDark() { return theme().dark; },
     get foes() { return foes; }, get shots() { return shots; }, get crates() { return crates; }, get time() { return time; },
     get bag() { return bag(); },
+    preview, endPreview, replayPreview() { demoT = Math.min(demoT, 0.7); }, get previewing() { return !!previewId; },
     bandColor,
     // the hotbar closes up gaps in the bag, so key 2 is always the second thing shown
     selectNth(n) { const b = bag(), idx = b.map((id, i) => (id ? i : -1)).filter(i => i >= 0); if (idx[n] != null) selectSlot(idx[n]); },

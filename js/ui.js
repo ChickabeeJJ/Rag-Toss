@@ -28,6 +28,8 @@ const UI = (() => {
     $('btnRank').onclick = () => { click(); openRank(); };
     $('btnSettings').onclick = () => { click(); openSettings(); };
     $('btnPause').onclick = () => { click(); openPause(); };
+    $('pvBack').onclick = () => { click(); closePreview(); };
+    $('pvAgain').onclick = () => { click(); Game.replayPreview(); };
     $('btnRotateOk').onclick = () => { rotateDismissed = true; checkRotate(); };
     document.querySelectorAll('[data-back]').forEach(b => { b.onclick = () => { click(); show('home'); }; });
     $('modal').addEventListener('pointerdown', e => { if (e.target === $('modal') && ['missions', 'rank', 'settings'].includes(modalKind)) closeModal(); });
@@ -156,6 +158,25 @@ const UI = (() => {
     sync();
     return el;
   }
+  /* -------------------------------------------------------------- preview
+     Any throwable, bought or not, can be tried on a pair of foes that take it and never hit back. */
+  let previewFrom = null;
+  function openPreview(id) {
+    previewFrom = screen;
+    const it = ITEM[id];
+    $('pvName').textContent = it.name.toUpperCase(); $('pvTag').textContent = it.tag; $('pvDesc').textContent = it.desc;
+    $(previewFrom).classList.add('hidden');
+    $('preview').classList.remove('hidden');
+    Game.setMenuInset(0);
+    Game.preview(id);
+  }
+  function closePreview() {
+    $('preview').classList.add('hidden');
+    Game.endPreview();
+    const back = previewFrom || 'shop'; previewFrom = null;
+    show(back);
+  }
+
   /* -------------------------------------------------------------- loadout */
   let loSlot = 0, loLook = null;
   function openLoadout(slot) {
@@ -197,6 +218,7 @@ const UI = (() => {
           <div class="lo-info"><div class="pv-head"><b>${esc(look.name.toUpperCase())}</b><span class="tag">${esc(look.tag)}</span></div><p>${esc(look.desc)}</p></div></div>
         ${itemMeters(look)}
         ${lookOwn ? `<div class="mastery"><div class="rk-top"><b>MASTERY <i>${stars(look.id).replace(/<\/?u>/g, '')}</i></b><span>${mi.next ? mi.kills + ' / ' + mi.next + ' KOs' : 'MAXED'}${mi.lvl ? ' · +' + mi.lvl * 5 + '% DMG' : ''}</span></div><div class="rk-track"><i style="width:${(mi.t * 100).toFixed(1)}%"></i></div></div>` : ''}
+        <button class="btn wide pvbtn" id="loPreview">${ic('play')}<b>PREVIEW IT</b></button>
         ${act}
         <div class="actions"><button class="btn primary wide" id="loDone"><b>DONE</b></button></div>
       </div>
@@ -217,6 +239,7 @@ const UI = (() => {
       const el = root.querySelector(`[data-slot="${placed}"]`); if (el) { el.classList.add('landed'); setTimeout(() => el.classList.remove('landed'), 420); }
     };
     root.querySelectorAll('[data-item]').forEach(b => { b.onclick = () => put(b.dataset.item); });
+    $('loPreview').onclick = () => { click(); openPreview(look.id); };
     const lp = $('loPut'); if (lp) lp.onclick = () => put(look.id);
     const ls = $('loShop'); if (ls) ls.onclick = () => { click(); shopTab = 'items'; shopSel = look.id; show('shop'); };
     $('loDone').onclick = () => { click(); show('home'); };
@@ -326,9 +349,10 @@ const UI = (() => {
     else if (own) action = full ? '<div class="note hi">BAG FULL. TAP A SLOT ABOVE TO SWAP IT IN.</div>' : '<button class="btn primary" id="btnEq"><b>ADD TO BAG</b></button>';
     else if (d.coins >= it.price) action = `<button class="btn primary" id="btnBuy"><b>BUY</b><small>${fmt(it.price)} COINS</small></button>`;
     else action = `<button class="btn" disabled><b>${fmt(it.price)} COINS</b><small>${fmt(it.price - d.coins)} MORE TO GO</small></button>`;
-    $('shopInfo').innerHTML = `<div class="pv-head"><b>${esc(it.name.toUpperCase())}</b><span class="tag">${esc(it.tag)}</span></div><p>${esc(it.desc)}</p>
+    $('shopInfo').innerHTML = `<div class="pv-head"><b>${esc(it.name.toUpperCase())}</b><span class="tag">${esc(it.tag)}</span></div><p>${esc(it.desc)}</p><button class="btn wide pvbtn" id="btnPreview">${ic('play')}<b>PREVIEW IT</b></button>
       ${own ? (m => `<div class="mastery"><div class="rk-top"><b>MASTERY <i>${'\u2605'.repeat(m.lvl)}${'\u2606'.repeat(MASTERY.length - m.lvl)}</i></b><span>${m.next ? m.kills + ' / ' + m.next + ' KOs' : 'MAXED'}${m.lvl ? ' · +' + m.lvl * 5 + '% DMG' : ''}</span></div><div class="rk-track"><i style="width:${(m.t * 100).toFixed(1)}%"></i></div></div>`)(Save.masteryInfo(it.id)) : ''}
       <div class="stats">${stat('DAMAGE', it.id === 'sack' ? 0.6 : (it.dmg * (it.multi || 1)) / 44)}${stat('SHOVE', it.id === 'plunger' ? 1 : it.kb / 3.2)}${stat('STAMINA', it.sta / 14)}</div>${action}`;
+    $('btnPreview').onclick = () => { click(); openPreview(it.id); };
     const eq = $('btnEq');
     if (eq) eq.onclick = () => { toggleBag(it.id); renderShop(); };
     $('shopBag').classList.toggle('swap', own && !inBag && full);
