@@ -28,6 +28,8 @@ const Game = (() => {
   const coinFx = []; let coinTarget = { x: 0, y: 0 }, coinPing = 0, feverGlow = 0;
   const ARC_T = 0.8;           // the throw rejoins the previewed arc about this far into its flight
   const RELEASE_AT = 0.07;     // seconds into the whip when the item leaves the hand
+  // upgrades are read from the levels the run started with: buying one only reaches the next new run
+  const ulvl = id => (run && run.ups ? run.ups[id] || 0 : Save.lvl(id));
   const pk = id => (run && run.perks[id]) || 0;
   // a foe still riding its island up from below the screen can't be hit yet
   const live = f => f.rag.alive && !(f.plat && f.plat.state === 'in' && f.rag.mode === 'active');
@@ -76,29 +78,29 @@ const Game = (() => {
     selectFirstSlot();
   }
   function refreshStats(full) {
-    const maxHp = 100 + 15 * Save.lvl('health') + 35 * pk('skin');
+    const maxHp = 100 + 15 * ulvl('health') + 35 * pk('skin');
     if (full) player.hp = maxHp; else player.hp = Math.min(maxHp, player.hp + Math.max(0, maxHp - player.maxHp));
     player.maxHp = maxHp;
-    player.maxSta = 200 + 20 * Save.lvl('stamina');
+    player.maxSta = 200 + 20 * ulvl('stamina');
     if (full) player.sta = player.maxSta;
   }
   // a run throws from the bag it started with: changing the loadout in the shop only reaches the next new run
   const bag = () => (run && run.bag) || Save.data.bag;
   function selectFirstSlot() { const b = bag(); if (!b[player.slot]) player.slot = Math.max(0, b.findIndex(Boolean)); }
-  const dmgMul = () => (1 + 0.08 * Save.lvl('power')) * (1 + 0.25 * pk('heavy'));
-  const coinMul = () => (1 + 0.1 * Save.lvl('greed')) * (1 + 0.3 * pk('rich'));
+  const dmgMul = () => (1 + 0.08 * ulvl('power')) * (1 + 0.25 * pk('heavy'));
+  const coinMul = () => (1 + 0.1 * ulvl('greed')) * (1 + 0.3 * pk('rich'));
   // Stamina: a big pool, small costs. A throw takes a few points, holding a wind-up
   // sips at it, a duck is a flat fee, and it refills by itself the whole time.
   const DUCK_COST = 5, HOLD_DRAIN = 2.5, DUCK_MAX = 1.5;
-  const staRegen = () => 7.7 * (1 + 0.1 * Save.lvl('regen')) * (1 + 0.4 * pk('lungs'));
-  const throwCd = () => 0.42 * (1 - 0.08 * Save.lvl('quick'));
+  const staRegen = () => 7.7 * (1 + 0.1 * ulvl('regen')) * (1 + 0.4 * pk('lungs'));
+  const throwCd = () => 0.42 * (1 - 0.08 * ulvl('quick'));
   const staCost = def => def.sta * (1 - Math.min(0.6, 0.2 * pk('cheap')));
-  const armor = () => 1 - 0.05 * Save.lvl('armor');
+  const armor = () => 1 - 0.05 * ulvl('armor');
   const foeHpMul = () => 1.12 * (1 + 0.19 * (run.stage - 1) + 0.03 * Math.pow(Math.max(0, run.stage - 4), 2));
   // enemies hit a little harder with every one that has been sent at you: +0.3% each, in a straight line
   const foeDmgMul = () => (1 + 0.1 * (run.stage - 1) + 0.01 * Math.pow(Math.max(0, run.stage - 6), 2)) * (1 + 0.003 * (run.spawned || 0));
   const usingBonus = () => !!(player.bonus && player.bonus.on);
-  const currentItemId = () => (usingBonus() ? player.bonus.id : bag()[player.slot] || 'rock');
+  const currentItemId = () => (previewId ? previewId : usingBonus() ? player.bonus.id : bag()[player.slot] || 'rock');
 
   function toMenu() {
     state = 'menu'; paused = false; hold = false; slowT = 0; hitStop = 0;
@@ -121,7 +123,7 @@ const Game = (() => {
       restoreRun(saved);
       return;
     }
-    run.bag = Save.data.bag.slice();
+    run.bag = Save.data.bag.slice(); run.ups = Object.assign({}, Save.data.upgrades);
     Save.clearRun();
     Sfx.setStage(1);
     if (opts.tutorial) startTut();
@@ -138,7 +140,7 @@ const Game = (() => {
     const keep = {};
     for (const k of ['stage', 'kos', 'coins', 'bestCombo', 'stood', 'bountyN', 'closeCalls', 'fevers', 'heads', 'rings', 'bosses', 'crates', 'stageKills', 'combo', 'fever', 'stand', 'bountyT', 'bountyLast',
       'goldT', 'crateT', 'spawnT', 'bossT', 'perkT', 't', 'lastKoAt', 'beatBest', 'spawned']) keep[k] = run[k];
-    keep.bag = run.bag; keep.perks = run.perks; keep.mastered = run.mastered;
+    keep.bag = run.bag; keep.ups = run.ups; keep.perks = run.perks; keep.mastered = run.mastered;
     keep.bounty = run.bounty; keep.perkPick = run.perkPick || null;
     keep.hp = player.hp; keep.sta = player.sta; keep.slot = player.slot; keep.cd = player.cd; keep.inv = Math.min(player.inv, 3);
     keep.bonus = player.bonus ? { id: player.bonus.id, n: player.bonus.n, on: !!player.bonus.on } : null;
@@ -160,6 +162,7 @@ const Game = (() => {
     run.perks = Object.assign({}, sv.perks); run.mastered = sv.mastered || []; run.bounty = sv.bounty || null;
     const sb = Array.isArray(sv.bag) && sv.bag.length === 3 ? sv.bag.map(id => (id && ITEM[id] && Save.owns(id) ? id : null)) : null;
     run.bag = sb && sb.some(Boolean) ? sb : Save.data.bag.slice();
+    run.ups = sv.ups && typeof sv.ups === 'object' ? Object.assign({}, sv.ups) : Object.assign({}, Save.data.upgrades);
     themeFrom = themeTo = (run.stage - 1) % THEMES.length; themeT = 1;
     refreshStats(true);
     player.hp = clamp(sv.hp || player.maxHp, 1, player.maxHp);
@@ -841,7 +844,7 @@ const Game = (() => {
     const rag = f.rag, def = s.def, id = def.id;
     let head = hit.part === 'head' || (id === 'anvil' && s.st === 1);
     let mult = head ? 2 * (1 + 0.5 * pk('eye')) : hit.part === 'body' ? 1 : 0.75;
-    if (!head && !f.dummy && !run.tut && Math.random() < (id === 'horseshoe' ? 0.42 : 0.09) + 0.03 * Save.lvl('crit')) { mult *= 1.8; hitStop = Math.max(hitStop, 0.05); Fx.text(hit.x, hit.y - 56, 'CRIT!', Theme.acc, 21, -90); Fx.ring(hit.x, hit.y, 6, 54, 0.22, Theme.acc, 4); }
+    if (!head && !f.dummy && !run.tut && Math.random() < (id === 'horseshoe' ? 0.42 : 0.09) + 0.03 * ulvl('crit')) { mult *= 1.8; hitStop = Math.max(hitStop, 0.05); Fx.text(hit.x, hit.y - 56, 'CRIT!', Theme.acc, 21, -90); Fx.ring(hit.x, hit.y, 6, 54, 0.22, Theme.acc, 4); }
     if (head && rag.helmet) {
       rag.helmet = false;
       Fx.chunk('pot', rag.head.x, rag.head.y - 10, rand(80, 260), -rand(300, 460), 16 * rag.s, 1.5); Sfx.clang();
@@ -870,7 +873,7 @@ const Game = (() => {
       }
     } else if (id === 'plunger') {
       kb = 0; Sfx.yank();
-      zones.push({ kind: 'rope', t: 0.28, rag });
+      zones.push({ kind: 'rope', t: 1.0, max: 1.0, rag, nodes: null });
     } else if (id === 'anvil' && s.st === 1) { rag.stun = Math.max(rag.stun, 1.6); Sfx.anvil(); dirx = 0; diry = 1; shake = Math.max(shake, 0.5); }
     else if (id === 'pie') { f.blind = 5; Fx.burst(hit.x, hit.y, 12, { colors: ['#fffaf0', '#f3e6cd'], speed: [80, 300], life: [0.3, 0.6], size: [3, 6], grav: 500 }); Fx.text(rag.head.x, rag.head.y - 44, 'BLINDED', '#fff3d6', 17); Sfx.pop(); }
     else if (id === 'sauce') { f.burnT = 5; Fx.burst(hit.x, hit.y, 14, { colors: ['#ff4a2a', '#ff9a3c', '#ffd24a'], speed: [80, 320], life: [0.3, 0.7], size: [3, 6], grav: -80, glow: true }); Sfx.fizz(); }
@@ -1101,7 +1104,7 @@ const Game = (() => {
     player.hp -= dmg;
     if (run.tut) player.hp = Math.max(player.hp, player.maxHp * 0.5);   // nobody loses the tutorial
     if (run.bounty && run.bounty.k === 'clean' && !run.bounty.done) run.bounty.prog = 0;
-    const stand = player.hp <= 0 && !run.stood && Save.lvl('stand') > 0 && !run.tut && !run.demo && dmg < 1e8;
+    const stand = player.hp <= 0 && !run.stood && ulvl('stand') > 0 && !run.tut && !run.demo && dmg < 1e8;
     if (stand) {
       run.stood = true; run.stand = STAND_T; player.hp = 1; player.inv = 99; player.cd = 0;
       player.sta = Math.max(player.sta, player.maxSta * 0.6);
@@ -1178,7 +1181,8 @@ const Game = (() => {
     plats.push(pl);
     const rag = new Rag({ x: pos.x, y: pl.y, scale: sc, facing: -1, body: (boss && boss.body) || def.body, shade: (boss && boss.shade) || def.shade, accent: shade((boss && boss.body) || def.body, -0.45), hat: boss ? boss.hat : def.hat, plat: pl, weight: boss ? 4.5 : def.anchor / 1.7, steady: !!boss });
     const cycle = boss ? Math.floor((run.stage - 1) / BOSSES.length) : 0;      // how many times this boss has come round before
-    const hp = boss ? bossHp(boss.hp * 1.2 * (1 + 0.09 * (run.stage - 1)) * (1 + 0.25 * cycle)) : def.hp * foeHpMul();
+    // each return adds 50% health, and no boss that has already been round once is softer than four fifths of the Wall
+    const hp = boss ? bossHp(Math.max(boss.hp * 1.2 * (1 + 0.09 * (run.stage - 1)) * (1 + 0.5 * cycle), cycle > 0 ? 300 * 1.2 * (1 + 0.09 * (run.stage - 1)) * 0.8 : 0)) : def.hp * foeHpMul();
     const f = {
       type, def, rag, plat: pl, hp, maxHp: hp, state: 'enter', t: rand(0.9, 1.8), burst: boss ? boss.burst : def.burst || 1, left: 0, sol: null,
       boss: boss || null, cycle, minion: false, dummy: false, bleed: 0, bleedDps: 0, burnT: 0, dotT: 0.5, coins: boss ? 40 + run.stage * 6 : def.coins,
@@ -1291,7 +1295,7 @@ const Game = (() => {
     const src = f.boss && f.boss.flight ? f.boss : f.def;
     const T = rand(src.flight[0], src.flight[1]) * far * 1;
     // bosses throw wide and don't sharpen up as the stages go on
-    const err = (f.boss ? f.def.err * 2.05 * Math.max(0.9, 1 - 0.015 * (run.stage - 1)) : f.def.err * Math.max(0.3, 1 - 0.07 * (run.stage - 1))) * (f.blind > 0 ? 3.5 : 1) * ((f.boss && f.boss.errMul) || 1);
+    const err = (f.boss ? f.def.err * 2.05 * Math.max(0.55, 1 - 0.015 * (run.stage - 1) - 0.08 * (f.cycle || 0)) : f.def.err * Math.max(0.3, 1 - 0.07 * (run.stage - 1))) * (f.blind > 0 ? 3.5 : 1) * ((f.boss && f.boss.errMul) || 1);
     const vx = dx / T * (1 + gauss() * 0.27 * err), vy = (dy / T - 0.5 * G * T) * (1 + gauss() * 0.19 * err) + gauss() * 70 * err;
     return { vx, vy, ang: Math.atan2(vy, vx), T, ex: n.x + vx * T, ey: n.y + vy * T + 0.5 * G * T * T };
   }
@@ -1302,7 +1306,7 @@ const Game = (() => {
       if (!rag.alive || rag.mode !== 'active' || rag.frozen > 0 || rag.stun > 0) return;      // knocked off its throw
       const p0 = release(rag, sol.ang);
       const vx = (sol.ex - p0.x) / sol.T, vy = (sol.ey - p0.y) / sol.T - 0.5 * G * sol.T;     // still arrives where it was aimed
-      const n = B && B.fan ? B.fan : 1, dmg = f.tut ? 3 : ammo.dmg * foeDmgMul() * (B ? (B.dmg || 1) * 1.12 * Math.min(2.2, 1 + 0.12 * (f.cycle || 0)) : 1);
+      const n = B && B.fan ? B.fan : 1, dmg = f.tut ? 3 : ammo.dmg * foeDmgMul() * (B ? (B.dmg || 1) * 1.12 * Math.min(2.4, 1 + 0.18 * (f.cycle || 0)) : 1);
       for (let i = 0; i < n; i++) {
         const a = (i - (n - 1) / 2) * (B && B.spread || 0), c = Math.cos(a), sn = Math.sin(a);
         launch(ammo, { owner: 'e', x: p0.x, y: p0.y, vx: vx * c - vy * sn, vy: vx * sn + vy * c, dmg, from: f, scale: B ? 1.25 : 1, life: 6 });
@@ -1318,10 +1322,16 @@ const Game = (() => {
     if (f.gold) {
       const c = rag.chest;
       if (Math.random() < dt * 9) Fx.burst(c.x + rand(-26, 26), c.y + rand(-60, 40), 1, { colors: ['#fff3b0', '#ffd24a'], speed: [10, 50], life: [0.3, 0.7], size: [2, 4], grav: -60, glow: true });
-      if (!(f.plat && f.plat.state === 'in') && (f.goldT -= dt) <= 0) {      // out of time: the island lets go and takes the prize with it
+      if (!Number.isFinite(f.goldT)) f.goldT = 9;
+      if (!Number.isFinite(f.goldMax) || f.goldMax <= 0) f.goldMax = 9;
+      f.goldAge = (f.goldAge || 0) + dt;
+      if (!(f.plat && f.plat.state === 'in')) f.goldT -= dt;
+      if (f.goldT <= 0 || f.goldAge > f.goldMax + 8) {      // out of time (or somehow still here long after): the island lets go and takes the prize with it
         f.gold = false; f.dummy = true;
         Fx.text(rag.head.x, rag.head.y - 60, 'GOT AWAY', '#c9d0dc', 18);
         if (f.plat && !f.plat.falling) f.plat.drop();
+        if (f.rag.mode === 'active') f.rag.knock(rand(-40, 40), 120, P.PELVIS, 0.5);
+        f.rag.body = '#c9ced9'; f.rag.shade = '#9aa1b3';
       }
     }
     // statuses
@@ -1377,7 +1387,7 @@ const Game = (() => {
       if (f.t <= 0) {
         foeThrow(f);
         if (--f.left > 0) { f.windMax = f.t = (f.boss && f.boss.gap) || 0.3; f.sol = aimAt(f); }
-        else { const rs = (f.boss && f.boss.rest) || def.rest; f.state = 'idle'; f.t = rand(rs[0], rs[1]) * Math.max(0.5, 1.1 - 0.06 * (run.stage - 1)) * (f.enraged ? 0.7 : 1) * (f.boss ? 0.9 : 1); }
+        else { const rs = (f.boss && f.boss.rest) || def.rest; f.state = 'idle'; f.t = rand(rs[0], rs[1]) * Math.max(0.5, 1.1 - 0.06 * (run.stage - 1)) * (f.enraged ? 0.7 : 1) * (f.boss ? 0.9 * Math.max(0.65, 1 - 0.07 * (f.cycle || 0)) : 1); }
       }
     }
     // bosses whistle up help
@@ -1541,11 +1551,37 @@ const Game = (() => {
     if ((run.crateT -= dt * (1 + pk('crate'))) <= 0 && crates.length === 0) { spawnCrate(); run.crateT = rand(20, 30); }
   }
 
+  /* The plunger's rope: a chain of points hanging from your hand to the foe, a fixed length, pulled by gravity.
+     As the foe is dragged in it goes slack and swings, and while it is stretched it snaps straight. */
+  const ROPE_N = 16;
+  function stepRope(z, dt) {
+    const a = player.rag.hand, b = z.rag.chest;
+    if (!z.nodes) {
+      const d = Math.hypot(b.x - a.x, b.y - a.y);
+      z.len = d * 1.12; z.nodes = [];
+      for (let k = 0; k < ROPE_N; k++) { const t = k / (ROPE_N - 1); z.nodes.push({ x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) + Math.sin(t * Math.PI) * 18, px: 0, py: 0 }); z.nodes[k].px = z.nodes[k].x; z.nodes[k].py = z.nodes[k].y; }
+    }
+    const nodes = z.nodes, seg = z.len / (ROPE_N - 1), sub = 3, h = dt / sub;
+    for (let st = 0; st < sub; st++) {
+      for (let k = 1; k < ROPE_N - 1; k++) {
+        const p = nodes[k], vx = (p.x - p.px) * 0.992, vy = (p.y - p.py) * 0.992;
+        p.px = p.x; p.py = p.y; p.x += vx; p.y += vy + 1400 * h * h;
+      }
+      for (let it = 0; it < 10; it++) {
+        nodes[0].x = a.x; nodes[0].y = a.y; nodes[ROPE_N - 1].x = b.x; nodes[ROPE_N - 1].y = b.y;
+        for (let k = 0; k < ROPE_N - 1; k++) {
+          const p = nodes[k], q = nodes[k + 1], dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy) || 1e-4, diff = (d - seg) / d;
+          const pw = k === 0 ? 0 : 0.5, qw = k + 1 === ROPE_N - 1 ? 0 : 0.5, tot = (pw + qw) || 1;
+          p.x += dx * diff * pw / tot; p.y += dy * diff * pw / tot; q.x -= dx * diff * qw / tot; q.y -= dy * diff * qw / tot;
+        }
+      }
+    }
+  }
   function stepZones(dt) {
     for (let i = zones.length - 1; i >= 0; i--) {
       const z = zones[i];
       if (z.kind === 'delay') { if ((z.t -= dt) <= 0) { zones.splice(i, 1); z.fn(); } continue; }
-      if (z.kind === 'rope') { if ((z.t -= dt) <= 0) zones.splice(i, 1); continue; }
+      if (z.kind === 'rope') { if ((z.t -= dt) <= 0 || !z.rag.alive) zones.splice(i, 1); else stepRope(z, dt); continue; }
       // pocket hole: drag everything in, then spit it out
       z.t += dt;
       const R = 310;
@@ -1628,15 +1664,16 @@ const Game = (() => {
       const T = def.life ? def.life * 0.6 : 0.95, g = G * (def.grav || 0.001);
       const aimAt = previewId && id === 'anvil' ? { x: d.rag.head.x, y: d.rag.head.y - 150 } : previewId && id === 'hole' ? { x: c.x - 60, y: c.y } : { x: c.x, y: c.y - 20 };
       const vx = (aimAt.x - n.x) / T, vy = (aimAt.y - n.y) / T - 0.5 * g * T;
-      rag.aim = Math.atan2(vy, vx); rag.aimW = approach(rag.aimW, 1, dt * 8); rag.pull = clamp(1 - demoT / 0.7, 0, 1);
-      player.demo = { vx, vy };
+      // the same pose and release as a real throw: pull back, cock, whip, let go
+      const ang = Math.atan2(vy, vx), pw = clamp((Math.hypot(vx, vy) / (def.spd || 1) - THROW_MIN) / (THROW_MAX - THROW_MIN), 0.2, 1);
+      rag.aim = ang; rag.aimW = approach(rag.aimW, 1, dt * 9); rag.pull = clamp(1 - demoT / 0.7, 0, 1) * pw;
+      player.demo = { ang, pw };
     } else if (demoT <= 0 && player.demo) {
-      const p0 = release(rag, rag.aim), real = id === 'sack' ? ITEM.rock : def;
-      const n = real.multi || 1, seq = logNew(n);
-      for (let i = 0; i < n; i++) launch(real, { owner: 'p', x: p0.x, y: p0.y, vx: player.demo.vx / (real.spd && real.grav === 0 ? 1.4 : 1), vy: player.demo.vy + (i - (n - 1) / 2) * 60, dmg: real.dmg, seq, power: 0.5 });
-      rag.throwT = 0; rag.pull = 0; player.cd = 0.5; player.demo = null;
+      player.cd = 0; player.sta = player.maxSta;
+      tryThrow(player.demo.ang, player.demo.pw);
+      player.demo = null;
       demoT = previewId ? rand(3.2, 4) : rand(2.4, 3.4);
-    } else { rag.aimW = approach(rag.aimW, 0, dt * 4); }
+    } else { rag.aimW = approach(rag.aimW, 0, dt * 5); if (rag.throwT < 0) rag.pull = approach(rag.pull, 0, dt * 6); }
     if (d.rag.frozen > 0) d.rag.frozen -= dt;
   }
 
@@ -1794,7 +1831,7 @@ const Game = (() => {
     const v = throwSpeed(def, aim.power), p0 = release(player.rag, aim.ang);
     let vx = Math.cos(aim.ang) * v, vy = Math.sin(aim.ang) * v;
     const g = G * (def.grav != null ? def.grav : 1);
-    const n = 9 + 3 * Save.lvl('guide'), gap = 30, can = player.sta >= staCost(def) || usingBonus();
+    const n = 9 + 3 * ulvl('guide'), gap = 30, can = player.sta >= staCost(def) || usingBonus();
     const col = can ? '#ffffff' : '#ff8a94';
     const hit = can ? predictImpact(def, aim.power, aim.ang) : null;
     let x = p0.x, y = p0.y, d = (time * 70) % gap, i = 0;
@@ -1954,9 +1991,14 @@ const Game = (() => {
     for (const f of foes) f.rag.draw(ctx, time);
     for (const z of zones) {
       if (z.kind !== 'rope') continue;
-      const a = player.rag.hand, b = z.rag.chest;
-      ctx.globalAlpha = clamp(z.t / 0.15, 0, 1); ctx.strokeStyle = '#e0aa6c'; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.quadraticCurveTo((a.x + b.x) / 2, Math.min(a.y, b.y) - 30, b.x, b.y); ctx.stroke(); ctx.globalAlpha = 1;
+      if (!z.nodes) continue;
+      const n = z.nodes;
+      ctx.globalAlpha = clamp(z.t / 0.2, 0, 1); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      const path = () => { ctx.beginPath(); ctx.moveTo(n[0].x, n[0].y); for (let k = 1; k < n.length - 1; k++) ctx.quadraticCurveTo(n[k].x, n[k].y, (n[k].x + n[k + 1].x) / 2, (n[k].y + n[k + 1].y) / 2); ctx.lineTo(n[n.length - 1].x, n[n.length - 1].y); };
+      ctx.strokeStyle = '#8a5c2c'; ctx.lineWidth = 4; path(); ctx.stroke();                         // the body of the rope
+      ctx.strokeStyle = '#d9a566'; ctx.lineWidth = 2.6; path(); ctx.stroke();
+      ctx.setLineDash([2.2, 3.4]); ctx.strokeStyle = 'rgba(110,70,30,0.55)'; ctx.lineWidth = 3; path(); ctx.stroke(); ctx.setLineDash([]);   // the twist
+      ctx.globalAlpha = 1;
     }
     player.rag.draw(ctx, time);
     for (const s of shots) {

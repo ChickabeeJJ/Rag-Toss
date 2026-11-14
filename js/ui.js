@@ -439,7 +439,7 @@ const UI = (() => {
     wireToggles();
     $('mResume').onclick = () => { click(); resume(); };
     $('mRestart').onclick = () => { click(); Game.saveRun(); Save.clearRun(); play({ tutorial: !Save.data.tutDone }); };
-    $('mHome').onclick = () => { click(); const ended = Game.saveRun() === 'ended'; closeModal(true); show('home'); toast(ended ? 'KNOCKED OUT. THAT RUN IS OVER.' : 'RUN SAVED. CONTINUE ANY TIME.', 'check'); };
+    $('mHome').onclick = () => { click(); const ended = Game.saveRun() === 'ended'; closeModal(true); show('home'); toast(ended ? 'KNOCKED OUT. THAT RUN IS OVER.' : 'RUN SAVED', 'check'); };
   }
   function resume() {
     if (modalKind !== 'pause') return;

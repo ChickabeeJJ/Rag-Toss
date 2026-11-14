@@ -347,7 +347,11 @@ const ItemArt = (() => {
     g.save(); g.translate(0, 3);
     g.beginPath(); g.arc(0, -7, 14, 0, Math.PI); g.closePath(); fillStroke(g, lin(g, 0, -7, 0, 8, '#3fb55a', '#2a8a45'));
     g.beginPath(); g.arc(0, -7, 11.2, 0, Math.PI); g.closePath(); fillStroke(g, rad(g, 0, -7, 1, 12, '#ff7a8b', '#ff3f5e', '#e02347'));
-    g.fillStyle = '#1c1820'; for (const [x, y, r] of [[-5.6, -0.6, 0.4], [0, 2.4, 0], [5.6, -0.6, -0.4], [-2.6, 5, 0.2], [2.8, 5, -0.2]]) { g.save(); g.translate(x, y); g.rotate(r); ell(g, 0, 0, 1.1, 1.9); g.fill(); g.restore(); }
+    // seeds sit on the red, in two tidy arcs, each leaning along the line out from the centre
+    g.fillStyle = '#1c1820';
+    for (const [rr, th] of [[7.2, 0.26], [7.2, 0.5], [7.2, 0.74], [3.6, 0.38], [3.6, 0.62]]) {
+      const a = Math.PI * th; g.save(); g.translate(Math.cos(a) * rr, -7 + Math.sin(a) * rr); g.rotate(a - Math.PI / 2); ell(g, 0, 0, 0.8, 1.45); g.fill(); g.restore();
+    }
     g.restore();
   };
   P.seed = g => {
