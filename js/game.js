@@ -527,6 +527,65 @@ const Game = (() => {
     else blastPlayer(s.x, s.y, s.def.blast, s.dmg);
     kill(s);
   }
+  /* ---- things that go off where they land: a bell, a melon, a bucket of paint, a cushion, a disco ball ---- */
+  const nearFoes = (x, y, r) => foes.filter(f => live(f) && dist(x, y, f.rag.chest.x, f.rag.chest.y) < r + 30 * f.rag.s);
+  const AREA = {
+    bell(s) {
+      Sfx.dong(); shake = Math.max(shake, 0.4);
+      for (const r of [40, 90, 150]) Fx.ring(s.x, s.y, r * 0.25, r + 70, 0.5, '#ffe27a', 5);
+      for (const f of nearFoes(s.x, s.y, 190)) {
+        f.rag.stun = Math.max(f.rag.stun, f.boss ? 0.8 : 1.8); f.state = 'idle'; f.t = Math.max(f.t, f.boss ? 1.1 : 2);
+        Fx.text(f.rag.head.x, f.rag.head.y - 44, 'DONG', '#ffe27a', 18);
+        const c = f.rag.chest, d = dist(s.x, s.y, c.x, c.y) || 1;
+        if (!f.dummy) hurtFoe(f, s.dmg * 0.7, { x: c.x, y: c.y - 10, dirx: (c.x - s.x) / d, diry: -0.2, s, kb: 0.4 });
+      }
+      kill(s);
+    },
+    melon(s) {
+      Sfx.pop(); Fx.burst(s.x, s.y, 20, { colors: ['#ff3f5e', '#ff7889', '#3fb55a', '#f4f7e6'], speed: [100, 420], life: [0.4, 0.9], size: [3, 7], grav: 800 });
+      const n = 5; logAdd(s.seq, n);
+      for (let i = 0; i < n; i++) launch(AMMO.seed, { owner: 'p', x: s.x, y: s.y - 4, vx: -150 + i * 75 + rand(-40, 40), vy: -rand(240, 440), dmg: s.dmg * 0.4, seq: s.seq, life: 3 });
+      kill(s);
+    },
+    paint(s) {
+      Sfx.splat && Sfx.splat(); Sfx.pop();
+      Fx.burst(s.x, s.y, 26, { colors: ['#ff4fa8', '#ff86c6', '#ffb3dc'], speed: [120, 460], life: [0.4, 0.9], size: [3, 8], grav: 700 });
+      Fx.ring(s.x, s.y, 20, 230, 0.4, '#ff4fa8', 6);
+      for (const f of nearFoes(s.x, s.y, 240)) { f.marked = 6; Fx.text(f.rag.head.x, f.rag.head.y - 44, 'MARKED', '#ff86c6', 17); }
+      kill(s);
+    },
+    cushion(s) {
+      Sfx.parp();
+      Fx.dust(s.x, s.y, 14, '#d9e8b0'); Fx.ring(s.x, s.y, 20, 210, 0.4, '#e8f3c4', 6); shake = Math.max(shake, 0.3);
+      for (const f of nearFoes(s.x, s.y, 190)) {
+        const c = f.rag.chest, d = dist(s.x, s.y, c.x, c.y) || 1, fall = 1 - 0.5 * clamp(d / 220, 0, 1);
+        hurtFoe(f, s.dmg, { x: c.x, y: c.y - 10, dirx: (c.x - s.x) / d, diry: -0.4, s, kb: s.kb * fall });
+      }
+      kill(s);
+    },
+    disco(s) {
+      Sfx.tick(); Sfx.gold();
+      Fx.ring(s.x, s.y, 20, 360, 0.6, '#ffffff', 6); Fx.confetti(s.x, s.y, 20);
+      for (const f of foes) { if (!live(f) || f.dummy) continue; f.blind = 5; Fx.text(f.rag.head.x, f.rag.head.y - 44, 'DAZZLED', '#cfe0ff', 17); Fx.ring(f.rag.head.x, f.rag.head.y, 6, 46, 0.4, '#ffffff', 3); }
+      kill(s);
+    },
+  };
+  // an alarm clock stuck on something goes off two seconds later
+  function armClock(x, y, rag) {
+    Sfx.stick();
+    zones.push({ kind: 'delay', t: 1.0, fn: () => Sfx.warn() }); zones.push({ kind: 'delay', t: 1.5, fn: () => Sfx.warn() });
+    zones.push({ kind: 'delay', t: 2.0, fn: () => {
+      const c = rag && rag.alive ? rag.chest : { x, y };
+      Sfx.alarm(); shake = Math.max(shake, 0.5);
+      for (const r of [50, 110, 180]) Fx.ring(c.x, c.y, r * 0.2, r + 60, 0.5, '#ff6a63', 6);
+      for (const f of nearFoes(c.x, c.y, 215)) {
+        f.rag.stun = Math.max(f.rag.stun, f.boss ? 0.9 : 2); f.state = 'idle'; f.t = Math.max(f.t, f.boss ? 1.2 : 2.2);
+        Fx.text(f.rag.head.x, f.rag.head.y - 44, 'RING!', '#ff9aa0', 18);
+        const fc = f.rag.chest, d = dist(c.x, c.y, fc.x, fc.y) || 1;
+        hurtFoe(f, 22 * dmgMul(), { x: fc.x, y: fc.y - 10, dirx: (fc.x - c.x) / d, diry: -0.3, kb: 0.6 });
+      }
+    } });
+  }
   function burstPinata(s) {
     if (s.dead) return;
     Fx.confetti(s.x, s.y, 28); Sfx.pop();
@@ -644,6 +703,7 @@ const Game = (() => {
               if (id === 'hole') { openHole(s); return; }
               if (id === 'jar') { zap(s); return; }
               if (id === 'beehive') { burstHive(s); return; }
+              if (AREA[id]) { AREA[id](s); return; }
               Fx.chunk(s.art, s.x, s.y, -Math.abs(s.vx) * 0.35, -rand(200, 380), s.r, 0.9);
               kill(s); return;
             }
@@ -680,6 +740,11 @@ const Game = (() => {
       if (id === 'jar') { zap(s); return; }
       if (id === 'hole') { s.y -= 30; openHole(s); return; }
       if (id === 'pinata') { burstPinata(s); return; }
+      if (AREA[id]) { AREA[id](s); return; }
+      if (id === 'clock') {
+        if (pl.kind !== 'wall' && n.ny < -0.5 && pl.props.length < 8) pl.props.push({ id: 'clock', ox: s.x - pl.x, oy: s.y - pl.y + s.r * 0.4, rot: s.rot, r: s.r, life: 2.1 });
+        armClock(s.x, s.y, null); kill(s); return;
+      }
       if (id === 'anvil' && s.st === 1) { quake(pl, s); kill(s); return; }
       if (id === 'bowling') {
         bounceOff(s, n, 0.3); s.vx *= 0.992;
@@ -762,7 +827,7 @@ const Game = (() => {
     const rag = f.rag, def = s.def, id = def.id;
     let head = hit.part === 'head' || (id === 'anvil' && s.st === 1);
     let mult = head ? 2 * (1 + 0.5 * pk('eye')) : hit.part === 'body' ? 1 : 0.75;
-    if (!head && !f.dummy && !run.tut && Math.random() < 0.09 + 0.03 * Save.lvl('crit')) { mult *= 1.8; hitStop = Math.max(hitStop, 0.05); Fx.text(hit.x, hit.y - 56, 'CRIT!', Theme.acc, 21, -90); Fx.ring(hit.x, hit.y, 6, 54, 0.22, Theme.acc, 4); }
+    if (!head && !f.dummy && !run.tut && Math.random() < (id === 'horseshoe' ? 0.42 : 0.09) + 0.03 * Save.lvl('crit')) { mult *= 1.8; hitStop = Math.max(hitStop, 0.05); Fx.text(hit.x, hit.y - 56, 'CRIT!', Theme.acc, 21, -90); Fx.ring(hit.x, hit.y, 6, 54, 0.22, Theme.acc, 4); }
     if (head && rag.helmet) {
       rag.helmet = false;
       Fx.chunk('pot', rag.head.x, rag.head.y - 10, rand(80, 260), -rand(300, 460), 16 * rag.s, 1.5); Sfx.clang();
@@ -805,6 +870,27 @@ const Game = (() => {
       zones.push({ kind: 'delay', t: 0.9, fn: () => Sfx.warn() }); zones.push({ kind: 'delay', t: 1.2, fn: () => Sfx.warn() });
       zones.push({ kind: 'delay', t: 1.5, fn: () => { const c = rag.alive ? rag.chest : at; blast(c.x, c.y, 115, 30 * dmgMul(), 1.7, null, false); } });
     }
+    else if (id === 'banana') {
+      Fx.text(rag.head.x, rag.head.y - 44, 'SLIP!', '#ffe970', 19); Sfx.boing();
+      if (f.boss) { rag.stun = Math.max(rag.stun, 0.9); f.state = 'idle'; f.t = Math.max(f.t, 1); } else { kb = Math.max(kb, f.anchor + 0.5); diry = -0.9; dirx *= 0.5; }
+    } else if (id === 'dice') {
+      const roll = randi(1, 6); dmg *= [0.45, 0.7, 0.95, 1.25, 1.7, 2.4][roll - 1]; Sfx.rattle();
+      Fx.text(hit.x, hit.y - 48, 'ROLLED ' + roll, roll === 6 ? '#ffe14d' : roll === 1 ? '#a4abbf' : '#ffffff', roll === 6 ? 26 : 19, -80);
+      if (roll === 6) { hitStop = Math.max(hitStop, 0.06); Fx.confetti(hit.x, hit.y, 14); }
+    } else if (id === 'teddy') {
+      if (!run.demo && player.hp < player.maxHp) { heal(4); Fx.text(player.rag.head.x, player.rag.head.y - 56, '+4', '#9ff0c0', 20, -70); Sfx.heal(); }
+      Fx.burst(hit.x, hit.y, 8, { colors: ['#e9c79a', '#ffffff'], speed: [40, 200], life: [0.3, 0.6], size: [2, 4], grav: 100 });
+    } else if (id === 'egg') {
+      f.bleed = 8; f.bleedDps = Math.min(18, f.bleedDps + 5 * dmgMul()); Sfx.pop();
+      Fx.burst(hit.x, hit.y, 14, { colors: ['#e6d99a', '#9bbf3a', '#f6f0da'], speed: [60, 260], life: [0.3, 0.7], size: [3, 6], grav: 500 });
+      Fx.text(rag.head.x, rag.head.y - 44, 'STINKY', '#b6d84a', 17);
+    } else if (id === 'trap') {
+      rag.stun = Math.max(rag.stun, f.boss ? 0.6 : 1.6); f.state = 'idle'; f.t = Math.max(f.t, f.boss ? 1 : 1.9);
+      Sfx.snap(); Fx.ring(hit.x, hit.y, 4, 38, 0.2, '#ffffff', 4); Fx.text(rag.head.x, rag.head.y - 44, 'SNAP', '#ffe9a0', 18);
+    } else if (id === 'clock') {
+      glued = true; rag.addStuck('clock', hit, Math.atan2(s.vy, s.vx), s.r); Fx.text(hit.x, hit.y - 34, 'TICKING', '#ffb3a0', 16);
+      armClock(hit.x, hit.y, rag);
+    }
     if (pk('hot')) f.burnT = 3;
     if (id === 'beehive') { burstHive(s); }
     else if (id === 'jar') { zap(s); return; }
@@ -814,6 +900,7 @@ const Game = (() => {
     Fx.hit(hit.x, hit.y, Math.atan2(s.vy, s.vx), head ? '#ffe14d' : '#ffffff', head ? 12 : 7);
     hurtFoe(f, dmg, { x: hit.x, y: hit.y, dirx, diry, s, kb, head, hit });
     if (id === 'plunger' && rag.alive) yank(f, hit);
+    if (AREA[id] && !s.dead) { AREA[id](s); return; }
     if (glued) { kill(s); return; }
     hitResolve(s, f, hit);
   }
@@ -829,7 +916,7 @@ const Game = (() => {
       return;
     }
     if (def.stick && f && hit) { f.rag.addStuck(s.art, hit, Math.atan2(s.vy, s.vx), s.r); Sfx.stick(); kill(s); return; }
-    if (def.id === 'bee' || def.id === 'candy') { kill(s); return; }
+    if (def.id === 'bee' || def.id === 'candy' || def.id === 'seed') { kill(s); return; }
     breakShot(s);
   }
   function yank(f, hit) {
@@ -842,6 +929,7 @@ const Game = (() => {
     const rag = f.rag;
     if (!rag.alive) return;
     if (!Number.isFinite(dmg)) dmg = 1;      // never let a stray NaN into a health bar
+    if (f.marked > 0 && !o.dot) dmg *= 1.3;
     if (f.boss && f.boss.resist && !o.dot && !(o.s && (o.s.def.heavy || o.s.def.blast))) { dmg *= f.boss.resist; if (o.s) Fx.text(o.x, o.y - 50, 'RESISTED', '#c9d0dc', 14); }
     if (!f.dummy) f.hp -= dmg;
     if (f.tut && run.tut && !o.dot) run.tut.hits++;
@@ -1209,6 +1297,7 @@ const Game = (() => {
       }
     }
     // statuses
+    if (f.marked > 0) f.marked -= dt;
     if (rag.frozen > 0) rag.frozen -= dt;
     if (rag.stun > 0) rag.stun -= dt;
     rag.burn = f.burnT;
@@ -1611,6 +1700,10 @@ const Game = (() => {
       }
       ctx.globalAlpha = 1;
     }
+    if (f.marked > 0) {
+      ctx.globalAlpha = Math.min(0.5, f.marked * 0.3); ctx.fillStyle = '#ff4fa8';
+      const c = rag.chest; ctx.beginPath(); ctx.ellipse(c.x - 3, c.y - 2, 16 * s, 22 * s, 0.2, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.arc(c.x + 12 * s, c.y + 14 * s, 6 * s, 0, TAU); ctx.fill(); ctx.globalAlpha = 1;
+    }
     if (f.boss || f.hp >= f.maxHp) return;
     const w = 46 * s, x = hd.x - w / 2, y = hd.y - 34 * s - (rag.crown ? 14 * s : 0);
     ctx.fillStyle = 'rgba(12,14,21,0.75)'; ctx.beginPath(); ctx.roundRect(x - 2, y - 2, w + 4, 9, 4); ctx.fill();
@@ -1800,7 +1893,7 @@ const Game = (() => {
       ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(c.x, c.y - 18); ctx.lineTo(c.x, c.y - 44); ctx.stroke();
       ctx.fillStyle = c.col || '#ff9a3c'; ctx.beginPath(); ctx.ellipse(c.x, c.y - 66, 20, 24, 0, 0, TAU); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.beginPath(); ctx.ellipse(c.x - 6, c.y - 74, 4, 7, -0.5, 0, TAU); ctx.fill();
-      ItemArt.draw(ctx, 'crate', c.x, c.y, sw, 22, time);
+      ctx.__tint = c.col || null; ItemArt.draw(ctx, 'crate', c.x, c.y, sw, 22, time); ctx.__tint = null;
     }
     for (const f of foes) f.rag.draw(ctx, time);
     for (const z of zones) {

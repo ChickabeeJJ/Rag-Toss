@@ -2,7 +2,7 @@
 
 A ragdoll throwing duel on floating islands. You stand on your island, the other ragdolls stand on theirs, and everybody throws things. Press anywhere, **pull back and let go** to throw. Every thrower is a **physical ragdoll that can also stand**: a verlet skeleton with mass, collision radii and one-way knee and elbow hinges, held up by muscle springs. Nothing about a hit is scripted. A throw pushes the bone it lands on, the muscles go soft for a moment, the body bends around the blow and the feet shuffle to catch up. Push the hips past the edge of the island or tip the trunk too far and the body lets go and falls limp, either onto the island (it gets back up) or off it for a **ring-out**.
 
-You don't throw arrows. You throw **stuff**: a rubber chicken, a bowling ball, a beehive, an anvil. There are **26 things to throw**, each with its own gimmick, and you carry three of them into a run. A run never ends on its own: foes keep coming, every 8 knockouts a **boss** walks in, and every boss you beat lets you pick a **perk** before the next stage. Coins from a run buy more stuff and permanent upgrades, so the next run goes further.
+You don't throw arrows. You throw **stuff**: a rubber chicken, a bowling ball, a beehive, an anvil. There are **41 things to throw**, each with its own gimmick, and you carry three of them into a run. A run never ends on its own: foes keep coming, every 8 knockouts a **boss** walks in, and every boss you beat lets you pick a **perk** before the next stage. Coins from a run buy more stuff and permanent upgrades, so the next run goes further.
 
 It's pure HTML5 and vanilla JS, with no build step and no dependencies. It has the same structure as Element Rag and Slo-Mo: all art is drawn procedurally, every sound effect is synthesized (the music is one mp3), and the CrazyGames SDK v3 is wrapped in `js/platform.js`.
 
@@ -51,6 +51,21 @@ The very first launch boots **straight into the tutorial**: a four-step, skippab
 | Pocket Hole | Opens a hole that drags foes and their throws in, then spits everyone out | 6200 |
 | Golden Duck | A knockout with the duck pays triple coins. Bounces once | 7500 |
 | Mystery Sack | Every throw is something random, even things you don't own, and hits 30% harder | 9000 |
+| Banana Peel | Whatever it hits slips and goes down flat, however sturdy; bosses stumble for a second | 280 |
+| Dice | Rolls 1-6 on every hit: a one barely scratches, a six hits over twice as hard | 520 |
+| Marbles | Five bouncing marbles in one throw | 680 |
+| Shuriken | Two fast flat stars that pierce everything | 900 |
+| Horseshoe | Nearly every other hit is a critical | 1050 |
+| Teddy Bear | Soft and bouncy; every hit heals you 4 | 1300 |
+| Brass Bell | Rings where it lands and stuns every foe nearby | 1500 |
+| Rotten Egg | Splats into a stink that poisons for eight seconds | 1700 |
+| Watermelon | Hits hard, then bursts into five seeds | 2000 |
+| Paint Bucket | Splashes everyone nearby: marked foes take 30% more damage for six seconds | 2400 |
+| Whoopee Cushion | Lands with a gust that shoves every foe nearby away | 2900 |
+| Mousetrap | Snaps shut: stuns the foe for a second and a half, and sticks | 3300 |
+| Disco Ball | Every foe on screen loses their aim for five seconds | 4000 |
+| Alarm Clock | Sticks on, then goes off two seconds later and stuns everyone nearby | 4800 |
+| Cannonball | Fast, flat and very heavy; it skips off whatever it hits | 5600 |
 
 Items are plain data in `ITEMS` in `js/data.js`. What each one does in the air and on impact lives in `js/game.js` (`TICK` for in-flight behaviour, `onFoeHit` and `hitResolve` for impact). Its picture is a painter in `js/items.js`, which also draws the shop and HUD icons.
 
@@ -95,7 +110,7 @@ From stage 3 some foes wear a pot that soaks one headshot, and from stage 4 some
 - **Coins.** Earned per knockout, multiplied by your streak, plus boss bonuses. They're banked as you earn them, so quitting a run keeps them.
 - **Loadout.** The CHANGE button opens a dedicated loadout screen: three big slots, every throwable you own in a grid, tap a slot then tap what goes in it, with stats and mastery for whatever you touch last.
 - **Characters.** Eight to wear (Rookie, Cowboy, Viking, Chef, Wizard, Knight, Pirate, Royal), each with its own colour and hat, bought with coins on the Characters tab of the Stuff screen. They are looks only; nothing about throwing changes.
-- **Stuff and upgrades.** 26 items and ten permanent upgrades: Thick Skull (health), Big Lungs (stamina), Second Breath (refill), Strong Arm (damage), Quick Hands (time between throws), Good Eye (longer aim line), Padding (damage taken), and Deep Pockets (coins).
+- **Stuff and upgrades.** 41 items and ten permanent upgrades: Thick Skull (health), Big Lungs (stamina), Second Breath (refill), Strong Arm (damage), Quick Hands (time between throws), Good Eye (longer aim line), Padding (damage taken), and Deep Pockets (coins).
 - **The results screen always points at the next thing.** It shows the next item you don't own with a bar for how close you are, flags affordable upgrades, and shows your rank bar.
 - **Ranks.** Lifetime knockouts move you through eleven ranks, from Butterfingers to The Last Throw. Each rank-up pays coins. The Rookie's headband colours unlock with ranks (one per rank, green first) and are picked on the Characters tab; the last one, Prismatic, slowly shifts through every colour during a match.
 - **Missions.** Three at a time from a pool of ten, refreshed at 00:00 UTC, with a 250-coin chest for finishing all three. There is no login reward.

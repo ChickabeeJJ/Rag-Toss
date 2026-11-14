@@ -116,6 +116,11 @@ const Sfx = (() => {
     gold() { for (let i = 0; i < 4; i++) tone([1319, 1661, 1976, 2637][i], 0.16, 'sine', 0.13, 0, i * 0.07); },
     jackpot() { for (let i = 0; i < 8; i++) tone(880 * Math.pow(1.122, i), 0.11, 'triangle', 0.16, 0, i * 0.05); },
     stand() { for (let i = 0; i < 6; i++) { tone(58, 0.16, 'sine', 0.5, 0.7, i * 0.62); tone(52, 0.14, 'sine', 0.4, 0.7, i * 0.62 + 0.17); } tone(180, 0.6, 'sawtooth', 0.12, 0.4); },
+    parp() { tone(160, 0.34, 'sawtooth', 0.24, 0.5); tone(125, 0.3, 'square', 0.12, 0.55, 0.04); noise(0.18, 0.15, 500, 'lowpass', 1, 0.02); },
+    dong() { tone(523, 1.1, 'sine', 0.28); tone(1047, 0.9, 'sine', 0.13); tone(1568, 0.6, 'triangle', 0.08); noise(0.04, 0.3, 3000, 'highpass'); },
+    snap() { noise(0.04, 0.55, 3200, 'highpass'); tone(1500, 0.05, 'square', 0.2, 0.4); tone(420, 0.1, 'square', 0.12, 0.5, 0.02); },
+    rattle() { for (let i = 0; i < 4; i++) { noise(0.025, 0.28, 1800 + i * 300, 'bandpass', 2, i * 0.045); } },
+    alarm() { for (let i = 0; i < 8; i++) tone(i % 2 ? 1320 : 1760, 0.07, 'square', 0.14, 0, i * 0.075); },
     record() { for (let i = 0; i < 4; i++) tone([523, 659, 784, 1047][i], 0.16, 'triangle', 0.2, 0, i * 0.11); },
   };
 
