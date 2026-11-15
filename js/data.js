@@ -111,7 +111,7 @@ const AMMO = {
   e_ball: { id: 'e_ball', dmg: 10, r: 8, grav: 1, spin: 20 },
   e_pin: { id: 'e_pin', dmg: 7, r: 10, grav: 1, spin: 13 },
   e_dart: { id: 'e_dart', dmg: 8, r: 7, grav: 1, spin: 0 },
-  e_barrel: { id: 'e_barrel', dmg: 22, r: 20, grav: 1, spin: 4, hp: 2 },
+  e_barrel: { id: 'e_barrel', dmg: 26, r: 22, grav: 1, spin: 4, hp: 3 },
 };
 
 /* ------------------------------------------------------------------ foes
@@ -131,7 +131,7 @@ const FOES = {
     body: '#5c9c6b', shade: '#427450', scale: 1.05, hat: 'pot' },
   floater: { name: 'Floater', hp: 36, ammo: 'e_dart', wind: 0.9, rest: [2.2, 3.2], flight: [0.95, 1.2], err: 0.9, anchor: 1.5, coins: 9, balloons: 3,
     body: '#e06aa5', shade: '#ad4d7e', scale: 0.95, hat: 'goggles' },
-  brute: { name: 'Brute', hp: 150, ammo: 'e_barrel', wind: 1.5, rest: [3.6, 4.8], flight: [1.5, 1.8], err: 0.8, anchor: 4.2, coins: 16,
+  brute: { name: 'Brute', hp: 150, ammo: 'e_barrel', burst: 2, gap: 0.6, wind: 1.5, rest: [3.4, 4.4], flight: [1.5, 1.8], err: 0.8, anchor: 4.2, coins: 16,
     body: '#8a5a44', shade: '#684232', scale: 1.38, hat: 'horns' },
 };
 // the stage a foe first shows up in
@@ -152,7 +152,7 @@ const BOSSES = [
   { base: 'floater', name: 'BARON VON FLOAT', hp: 200, scale: 1.4, body: '#e0508f', shade: '#b03a6e', hat: 'goggles',
     ammo: 'e_dart', fan: 5, spread: 0.15, burst: 1, wind: 1.3, rest: [3.2, 4.2], flight: [0.95, 1.2], dmg: 0.42, balloons: 6 },
   { base: 'brute', name: 'THE WALL', hp: 300, scale: 1.75, body: '#6b7080', shade: '#4d515f', hat: 'horns',
-    ammo: 'e_barrel', burst: 1, wind: 1.8, rest: [4.2, 5.2], flight: [1.5, 1.8], dmg: 0.7, resist: 0.55 },
+    ammo: 'e_barrel', burst: 2, gap: 0.75, wind: 1.7, rest: [3.6, 4.6], flight: [1.4, 1.7], dmg: 0.7, resist: 0.55 },
 ];
 // knockouts before the stage boss walks in: 15 on stage 1, two more each stage after
 const stageKills = stage => 15 + 2 * (Math.max(1, stage) - 1);

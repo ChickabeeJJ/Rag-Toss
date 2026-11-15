@@ -100,7 +100,13 @@ const Game = (() => {
   // enemies hit a little harder with every one that has been sent at you: +0.3% each, in a straight line
   // how far the player's damage has run ahead of what the stage expects (0 to 3, in doublings)
   const heat = () => (run && run.dps > 0 ? clamp(Math.log2(Math.max(1, run.dps / (20 + 9 * run.stage))), 0, 3) : 0);
-  const foeDmgMul = () => (1 + 0.1 * (run.stage - 1) + 0.01 * Math.pow(Math.max(0, run.stage - 6), 2)) * (1 + 0.003 * (run.spawned || 0)) * (1 + 0.12 * heat());
+  // enemy damage keeps climbing, but along a curve that flattens towards about 3.2x: stage, enemies sent and how far the player runs ahead all feed it
+  const foeDmgMul = () => {
+    const raw = (1 + 0.1 * (run.stage - 1) + 0.006 * Math.pow(Math.max(0, run.stage - 6), 2)) * (1 + 0.002 * (run.spawned || 0)) * (1 + 0.1 * heat());
+    return raw <= 1.8 ? raw : 1.8 + 1.4 * (1 - Math.exp(-(raw - 1.8) / 1.4));
+  };
+  // and no single enemy throw takes more than a set share of your health (a boss's, a bit more), so nothing is ever a surprise one-shot
+  const capHit = (dmg, s) => Math.min(dmg, player.maxHp * (s && s.from && s.from.boss ? 0.36 : 0.26));
   const usingBonus = () => !!(player.bonus && player.bonus.on);
   const currentItemId = () => (previewId ? previewId : usingBonus() ? player.bonus.id : bag()[player.slot] || 'rock');
 
@@ -749,7 +755,7 @@ const Game = (() => {
       if (hit) {
         if (s.def.blast) { detonate(s); return; }
         const d = Math.hypot(s.vx, s.vy) || 1;
-        hurtPlayer(s.dmg * (hit.part === 'head' ? 1.25 : 1), { x: hit.x, y: hit.y, dirx: s.vx / d, diry: s.vy / d, head: hit.part === 'head', hit, sf: speedF(s) });
+        hurtPlayer(capHit(s.dmg * (hit.part === 'head' ? 1.25 : 1), s), { x: hit.x, y: hit.y, dirx: s.vx / d, diry: s.vy / d, head: hit.part === 'head', hit, sf: speedF(s) });
         Fx.chunk(s.art, s.x, s.y, -s.vx * 0.2, -rand(180, 320), s.r, 0.8);
         kill(s); return;
       }
@@ -795,10 +801,23 @@ const Game = (() => {
         pl.props.push({ id: s.art, ox: s.x - pl.x, oy: s.y - pl.y + s.r * 0.4, rot: s.rot + (s.art === 'forks' ? Math.PI / 2 : 0), r: s.r, life: 3 });
         Sfx.stick(); kill(s); return;
       }
+      if (id === 'e_barrel' && (pl === home || pl === wall)) { barrelSlam(s, pl); return; }
       Sfx.land(); breakShot(s); return;
     }
   }
 
+  // a barrel that lands on your island bursts and shakes it: anyone close is hurt and rattled, however hard they ducked
+  function barrelSlam(s, pl) {
+    Sfx.boom(true); Sfx.thud(true); shake = Math.max(shake, 0.7); pl.shake = Math.max(pl.shake || 0, 0.7);
+    Fx.chunk('e_barrel', s.x, s.y, rand(-120, 120), -rand(260, 420), s.r, 0.9); Fx.chunk('e_barrel', s.x, s.y, rand(-200, 200), -rand(200, 360), s.r * 0.7, 0.8);
+    Fx.dust(s.x, s.y + s.r, 16, '#e9e2d0'); Fx.ring(s.x, s.y + s.r * 0.6, 12, 170, 0.45, '#e9d7b8', 8);
+    Fx.burst(s.x, s.y, 10, { colors: ['#b4834f', '#7a4f26', '#e9d7b8'], speed: [120, 420], life: [0.4, 0.8], size: [3, 7], grav: 900, shape: 'rect' });
+    if (!player.dead && state === 'play') {
+      const c = player.rag.chest, d = Math.abs(c.x - s.x);
+      if (d < 150) hurtPlayer(capHit(s.dmg * 0.55 * (1 - 0.6 * d / 150), s) * (player.rag.duck > 0.6 ? 0.6 : 1), { x: c.x, y: c.y, dirx: Math.sign(c.x - s.x) || 1, diry: -0.8 });
+    }
+    kill(s);
+  }
   function deflect(e, s) {
     if (--e.hp > 0 && !s.def.heavy && !s.def.blast) { Sfx.thud(true); Fx.hit(e.x, e.y, 0, '#e9d7b8', 6); e.vx *= 0.6; return; }
     Fx.hit(e.x, e.y, Math.atan2(s.vy, s.vx), '#ffffff', 10);
@@ -1409,7 +1428,7 @@ const Game = (() => {
       f.t -= dt * (f.slow > 0 ? 0.5 : 1); rag.pull = clamp(1 - f.t / f.windMax, 0, 1);
       if (f.t <= 0) {
         foeThrow(f);
-        if (--f.left > 0) { f.windMax = f.t = (f.boss && f.boss.gap) || 0.3; f.sol = aimAt(f); }
+        if (--f.left > 0) { f.windMax = f.t = (f.boss && f.boss.gap) || f.def.gap || 0.3; f.sol = aimAt(f); }
         else { const rs = (f.boss && f.boss.rest) || def.rest; f.state = 'idle'; f.t = rand(rs[0], rs[1]) * Math.max(0.5, 1.1 - 0.06 * (run.stage - 1)) * Math.max(0.6, 1 - 0.08 * heat()) * (f.enraged ? 0.7 : 1) * (f.boss ? 0.9 * Math.max(0.65, 1 - 0.07 * (f.cycle || 0)) : 1); }
       }
     }
