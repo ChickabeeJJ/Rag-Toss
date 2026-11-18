@@ -31,7 +31,9 @@ const UI = (() => {
     $('btnPause').onclick = () => { click(); openPause(); };
     $('pvBack').onclick = () => { click(); closePreview(); };
     $('pvAgain').onclick = () => { click(); Game.replayPreview(); };
-    $('btnRotateOk').onclick = () => { rotateDismissed = true; checkRotate(); };
+    $('btnRotateOk').onclick = () => { rotateDismissed = true; try { localStorage.setItem('ragtoss_rotate_ok', '1'); } catch (e) { /* ignore */ } checkRotate(); };
+    try { rotateDismissed = localStorage.getItem('ragtoss_rotate_ok') === '1'; } catch (e) { /* ignore */ }
+    setTimeout(() => { rotateDismissed = true; checkRotate(); }, 7000);
     document.querySelectorAll('[data-back]').forEach(b => { b.onclick = () => { click(); show('home'); }; });
     $('modal').addEventListener('pointerdown', e => { if (e.target === $('modal') && ['missions', 'rank', 'settings', 'confirm', 'privacy'].includes(modalKind)) closeModal(); });
     const duck = $('btnDuck');
@@ -635,7 +637,10 @@ const UI = (() => {
     if (next) { $('sheet').querySelector('.goal-ic').appendChild(ItemArt.iconEl(next.id, 44)); $('mGoal').onclick = () => { click(); shopSel = next.id; closeModal(true); show('shop'); }; }
     let armed = false;
     setTimeout(() => { armed = true; }, 450);
-    $('mRetry').onclick = () => { if (!armed) return; click(); play(); };
+    const again = () => { if (!armed || modalKind !== 'results') return; window.removeEventListener('keydown', keyAgain, true); click(); play(); };
+    const keyAgain = e => { if (modalKind !== 'results') { window.removeEventListener('keydown', keyAgain, true); return; } if (['Enter', 'Space', 'KeyR'].includes(e.code)) { e.preventDefault(); e.stopPropagation(); again(); } };
+    window.addEventListener('keydown', keyAgain, true);
+    $('mRetry').onclick = again;
     $('mUp').onclick = () => { click(); closeModal(true); show('upgrades'); };
     $('mHome').onclick = () => { click(); closeModal(true); show('home'); };
   }

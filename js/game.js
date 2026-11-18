@@ -1759,8 +1759,9 @@ const Game = (() => {
   let cine = null;
   function camera() {
     if (cine) { const k = cw / cine.w; view.s = k; view.ox = cw / 2 - cine.x * k; view.oy = ch / 2 - cine.y * k; return; }
-    const s0 = Math.min(cw / WORLD_W, ch / WORLD_H);
-    const ps = s0, pox = (cw - WORLD_W * ps) / 2, poy = (ch - WORLD_H * ps) / 2;
+    // play: frame a padded view of the world, so islands keep clear of the screen edges and the HUD
+    const VX = -110, VY = -40, VW = WORLD_W + 220, VH = WORLD_H + 90;
+    const ps = Math.min(cw / VW, ch / VH), pox = (cw - VW * ps) / 2 - VX * ps, poy = (ch - VH * ps) / 2 - VY * ps;
     // menu: zoom in on the two throwers, to the right of the ink panel
     const room = Math.max(200, cw - menuInset);
     const ms = Math.min(room / 1000, ch / 760), mox = menuInset + (room - 1000 * ms) / 2 - 80 * ms, moy = ch * 0.5 - 500 * ms;
