@@ -88,7 +88,7 @@
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       if (UI.screen === null && !UI.modalOpen() && Game.state === 'play') UI.openPause();
-      Game.saveRun();
+      Game.saveRun(true);
       Save.save();
       Sfx.suspend(true);
     } else { Sfx.suspend(false); grab(); }

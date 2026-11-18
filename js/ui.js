@@ -504,7 +504,7 @@ const UI = (() => {
     wireToggles();
     $('mResume').onclick = () => { click(); resume(); };
     $('mRestart').onclick = () => { click(); Game.saveRun(); Save.clearRun(); play({ tutorial: !Save.data.tutDone }); };
-    $('mHome').onclick = () => { click(); const res = Game.saveRun(); closeModal(true); show('home'); if (res !== 'empty') toast(res === 'ended' ? 'KNOCKED OUT. THAT RUN IS OVER.' : 'RUN SAVED', 'check'); };
+    $('mHome').onclick = () => { click(); const res = Game.saveRun(); closeModal(true); show('home'); if (res !== 'empty') toast(res === 'ended' ? 'RUN FINISHED' : 'RUN SAVED', 'check'); };
   }
   function resume() {
     if (modalKind !== 'pause') return;
@@ -626,7 +626,7 @@ const UI = (() => {
       goal = `<div class="goal ${canItem ? 'ready' : ''}" id="mGoal"><div class="goal-ic"></div><div class="goal-body"><small>${canItem ? 'YOU CAN AFFORD' : 'SAVING UP FOR'}</small><b>${esc(next.name.toUpperCase())}</b>
         <div class="bar-track"><i style="width:${(t * 100).toFixed(0)}%"></i></div></div><span>${canItem ? 'GET IT' : fmt(next.price - d.coins) + ' TO GO'}</span></div>`;
     }
-    openModal('results', `<h2 class="lose">KNOCKED OUT</h2><div class="sub">STAGE ${s.stage} · ${esc(THEMES[(s.stage - 1) % THEMES.length].name.toUpperCase())}</div>
+    openModal('results', `<h2 class="lose">FINISHED</h2><div class="sub">STAGE ${s.stage} · ${esc(THEMES[(s.stage - 1) % THEMES.length].name.toUpperCase())}</div>
       <div class="res-score"><span>KNOCKOUTS${s.newBest ? ' <em class="new">NEW BEST</em>' : ''}</span><b>${s.kos}</b></div>${tease ? `<div class="tease">${tease}</div>` : ''}
       <div class="res-grid"><div><b>x${s.combo}</b><small>BEST STREAK</small></div><div><b>${s.heads}</b><small>HEADSHOTS</small></div><div><b>${s.bounties || 0}</b><small>BOUNTIES</small></div><div><b>${s.bosses}</b><small>BOSSES</small></div></div>
       <div class="coins-gain">${ic('coin')}+${fmt(s.coins)}</div>${rankUps}${mastUps}

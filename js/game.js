@@ -141,9 +141,10 @@ const Game = (() => {
      last stand, the bounty, every foe (and the boss) with its health and island, crates in the air,
      throws in flight, open pocket holes and a perk offer that was still on screen. */
   const plain = o => JSON.parse(JSON.stringify(o));
-  function saveRun() {
+  function saveRun(showResults) {
     // knocked out but the results have not come up yet: leaving now ends the run for good, with its stats recorded
-    if (run && !run.demo && !run.tut && state === 'play' && player && player.dead) { finishRun(true); return 'ended'; }
+    // (and when the player only tabbed away, the results are up waiting for them when they come back)
+    if (run && !run.demo && !run.tut && state === 'play' && player && player.dead) { finishRun(!showResults); return 'ended'; }
     if (!run || run.demo || run.tut || state !== 'play' || !player || player.dead || run.overT > 0) return;
     // a run that was started and left alone (no throw, no knockout) is not worth keeping
     if (!run.resumed && !run.throws && !run.kos) return 'empty';
@@ -1168,6 +1169,16 @@ const Game = (() => {
     aimCancel(); Sfx.death();
     slowT = 1.3; slowK = 0.34; run.overT = 1.9; shake = 1;
   }
+  // off the edge: health goes straight to zero, whatever shields, last stands or invulnerability are up (the tutorial just puts you back)
+  function fellOff() {
+    const rag = player.rag;
+    if (run.tut || run.demo) { rag.revive(home, HOME_X); player.inv = 1; return; }
+    player.hp = 0; player.dead = true; run.stand = 0; player.inv = 0;
+    if (!run.demo) Save.clearRun();
+    rag.die(0, 200, P.PELVIS);
+    aimCancel(); Sfx.death(); hurtFlash = 1;
+    slowT = 1.3; slowK = 0.34; run.overT = 1.9; shake = 1;
+  }
   function heal(n) {
     if (player.dead || player.hp >= player.maxHp) return;
     player.hp = Math.min(player.maxHp, player.hp + n); healFlash = 1;
@@ -1534,8 +1545,8 @@ const Game = (() => {
         if (p.x < home.left + 8) { p.x = home.left + 8; p.px = p.x; }
         else if (p.x > home.right - 8) { p.x = home.right - 8; p.px = p.x; }
       }
-      if (rag.pts[P.PELVIS].y > WORLD_H + 120) hurtPlayer(1e9, { x: rag.pts[P.PELVIS].x, y: WORLD_H, dirx: 0, diry: 1 });
     }
+    if (!player.dead && state === 'play' && rag.pts[P.PELVIS].y > WORLD_H + 120) fellOff();
     for (const f of foes) f.rag.update(dt, plats);
     for (let i = 0; i < shots.length; i++) if (!shots[i].dead) stepShot(shots[i], dt);
     for (let i = shots.length - 1; i >= 0; i--) if (shots[i].dead) shots.splice(i, 1);
