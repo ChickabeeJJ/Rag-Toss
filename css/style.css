@@ -708,3 +708,14 @@ body.touch .lo-x { opacity: 1; }
   .lo-detail { padding: 6px; } .lo-big { width: 64px; height: 64px; } .lo-big canvas { width: 64px !important; height: 64px !important; }
   .lo-help { display: none; }
 }
+
+/* a boss fight: the boss bar takes the streak's row, and the streak tucks in beside the knockout count as a compact chip */
+body.boss-on .bossbar { top: calc(90px + var(--safe-t)); padding: 6px 12px 8px; }
+body.boss-on .boss-top { margin-bottom: 4px; }
+body.boss-on .boss-top b { font-size: 13px; }
+body.boss-on .boss-track { height: 8px; }
+body.boss-on .combo { top: calc(14px + var(--safe-t)); left: calc(50% + 70px); transform: none; padding: 4px 10px; gap: 5px; }
+body.boss-on .combo b { font-size: 18px; }
+body.boss-on .combo span, body.boss-on .combo em { display: none; }
+body.boss-on .combo .pips u { width: 5px; height: 5px; }
+@media (max-height: 520px) { body.boss-on .bossbar { width: min(400px, 40vw); } }
