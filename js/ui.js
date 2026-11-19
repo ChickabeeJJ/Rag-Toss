@@ -100,6 +100,7 @@ const UI = (() => {
     buildSlots(); cache.perks = null; cache.bounty = null; shownCoins = null; targetT = 0;
     $('fever').classList.add('hidden'); $('stand').classList.add('hidden'); $('bounty').classList.add('hidden'); document.body.classList.remove('frenzy');
     $('bossBar').classList.add('hidden'); $('combo').classList.add('hidden'); document.body.classList.remove('boss-on');
+    if ($('combo').classList.contains('inbar')) { $('combo').classList.remove('inbar'); $('bossBar').before($('combo')); }
     if (!opts.tutorial && !Save.data.seenSwap && Save.bagItems().length > 1) { coach('swap', 6); Save.data.seenSwap = true; Save.save(); }
   }
 
@@ -766,7 +767,13 @@ const UI = (() => {
     });
     // boss
     const boss = r.boss && r.boss.rag.alive ? r.boss : null;
-    set('boss', boss ? boss.name : '', v => { $('bossBar').classList.toggle('hidden', !v); document.body.classList.toggle('boss-on', !!v); if (v) $('bossName').textContent = v; });
+    set('boss', boss ? boss.name : '', v => {
+      $('bossBar').classList.toggle('hidden', !v); document.body.classList.toggle('boss-on', !!v); if (v) $('bossName').textContent = v;
+      // in a boss fight the streak rides in the boss bar's header, on the right; afterwards it goes back to its own spot
+      const c = $('combo'), top = $('bossBar').querySelector('.boss-top');
+      if (v && c.parentNode !== top) top.appendChild(c); else if (!v && c.parentNode === top) $('bossBar').before(c);
+      c.classList.toggle('inbar', !!v);
+    });
     if (boss) $('bossFill').style.transform = `scaleX(${clamp(boss.hp / boss.maxHp, 0, 1).toFixed(3)})`;
     const pkKey = Object.entries(r.perks).map(([k, n]) => k + n).join(',');
     set('perks', pkKey, () => { $('perkRow').innerHTML = Object.entries(r.perks).map(([k, n]) => `<span title="${esc(PERK[k].name)}">${Icons.perk(k)}${n > 1 ? `<b>${n}</b>` : ''}</span>`).join(''); });
