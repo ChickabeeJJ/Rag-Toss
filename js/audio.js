@@ -11,7 +11,12 @@ const Sfx = (() => {
   const last = {};
 
   function ensure() {
-    if (ac) { if (ac.state === 'suspended' && !paused) ac.resume().catch(() => {}); return true; }
+    if (ac) {
+      if (ac.state === 'suspended' && !paused) ac.resume().catch(() => {});
+      // the browser refuses music before the first tap (the tutorial starts before any): try again on every tap until it plays
+      if (musicPlaying && track && track.paused && !paused) playTrack();
+      return true;
+    }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
     ac = new AC();
@@ -150,7 +155,7 @@ const Sfx = (() => {
   }
 
   return Object.assign(S, {
-    ensure, suspend, startMusic, stopMusic, setStage, setHype,
+    ensure, suspend, startMusic, stopMusic, setStage, setHype, musicLive() { return !!track && !track.paused; },
     setSfxVol(v) { sfxVol = Math.max(0, Math.min(1, v)); applyGains(); }, setMusicVol(v) { musicVol = Math.max(0, Math.min(1, v)); applyGains(); },
     setSfx(v) { sfxOn = v; applyGains(); }, setMusic(v) { musicOn = v; applyGains(); },
     setPlatformMute(v) { platMuted = v; applyGains(); },

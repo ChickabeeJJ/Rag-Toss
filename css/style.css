@@ -277,7 +277,7 @@ body.frenzy .combo { box-shadow: none; background: #3a2208; }
 .bo-row span { font-weight: 800; font-size: 10px; color: var(--muted); }
 .bo-row em { font-style: normal; font-weight: 900; font-size: 11px; color: var(--gold); }
 .bounty.done { background: #3a3008; } .bounty.done b { color: var(--gold); }
-.fever { position: absolute; left: 50%; bottom: calc(104px + var(--safe-b)); transform: translateX(-50%); width: min(330px, 56vw); padding: 7px 14px 9px; clip-path: var(--cut-s); background: #3a2208; animation: pop 0.25s ease; }
+.fever { position: absolute; left: 50%; bottom: calc(104px + var(--safe-b)); transform: translateX(-50%); width: min(360px, 60vw); padding: 10px 22px 12px; clip-path: var(--cut-s); background: #3a2208; animation: pop 0.25s ease; }
 .fv-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 5px; }
 .fv-top b { font-weight: 900; font-size: 17px; letter-spacing: 0.1em; color: #ff9a3c; }
 .fv-top span { font-weight: 800; font-size: 9.5px; letter-spacing: 0.14em; color: #ffd9a0; white-space: nowrap; }
