@@ -1325,6 +1325,24 @@ const Game = (() => {
       while (rar.n > room(p)) rar = RARITIES[RARITIES.indexOf(rar) - 1];     // never more stacks than the perk can still take
       picks.push({ id: p.id, kind: p.kind, name: p.name, n: rar.n, rarity: rar, text: p.text(rar.n), have: pk(p.id) });
     }
+    // every offer has at least one epic or better: lift a random card that can still take three stacks,
+    // or swap one out for a perk from the leftover pool that can
+    const EPIC = RARITIES[2];
+    if (!picks.some(c => c.rarity.n >= EPIC.n)) {
+      const fits = c => room(PERK[c.id]) >= EPIC.n;
+      const lift = picks.filter(c => !PERK[c.id].legendOnly && fits(c));
+      let c = lift[Math.floor(Math.random() * lift.length)];
+      if (!c) {
+        const spare = pool.filter(p => room(p) >= EPIC.n);
+        const p = spare[Math.floor(Math.random() * spare.length)];
+        if (p) {
+          c = { id: p.id, kind: p.kind, name: p.name, have: pk(p.id) };
+          if (picks.length < 3) picks.push(c);
+          else picks[picks.length - 1] = c;                                     // the last card is never the Auto Aimer
+        }
+      }
+      if (c) { c.n = EPIC.n; c.rarity = EPIC; c.text = PERK[c.id].text(EPIC.n); }
+    }
     hold = true; aimCancel(); run.perkPick = picks;
     saveRun();
     if (on.perk) on.perk(picks, run.stage); else pickPerk(picks[0].id, picks[0].n);
