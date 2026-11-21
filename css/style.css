@@ -540,6 +540,9 @@ body.touch .slots { bottom: calc(10px + var(--safe-b)); }
 .toast.out { opacity: 0; transition: opacity 0.4s; }
 body.playing #toasts { top: auto; bottom: calc(94px + var(--safe-b)); }      /* just above the hotbar, clear of the action */
 body.result-open #toasts { top: calc(8px + var(--safe-t)); bottom: auto; }
+/* phones: up in the top bar's row in landscape; in portrait the logo fills the top, so just above the rotate banner */
+@media (max-height: 520px) { body:not(.playing):not(.result-open) #toasts { top: calc(12px + var(--safe-t)); } }
+@media (max-width: 600px) and (min-height: 521px) { body:not(.playing):not(.result-open) #toasts { top: auto; bottom: calc(76px + var(--safe-b)); } }
 
 /* the sideways hint is a small banner: it never stops anyone playing */
 #rotate { position: fixed; left: 0; right: 0; bottom: calc(10px + var(--safe-b)); z-index: 50; display: flex; justify-content: center; pointer-events: none; }
