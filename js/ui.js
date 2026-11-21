@@ -48,6 +48,11 @@ const UI = (() => {
 
     // a brand-new player lands straight in the tutorial; everyone else gets the home screen
     if (!Save.data.tutDone) play({ tutorial: true }); else show('home');
+    $('btnTurnAnyway').onclick = () => {
+      click(); portraitOk = true; checkRotate();
+      if (turnPaused && modalKind === 'pause') resume();                    // straight back into the run it paused
+      turnPaused = false;
+    };
     checkRotate();
   }
 
@@ -57,14 +62,14 @@ const UI = (() => {
     const k = clamp(Math.min(innerWidth / 1280, innerHeight / 760), 0.72, 1.75);
     document.documentElement.style.setProperty('--ui', k.toFixed(3));
   }
-  // phones held upright always show a notice that the game plays best sideways, on every screen,
-  // until the phone is turned; it leaves on its own once the phone is sideways
+  // phones held upright are covered by a turn-your-phone screen; PLAY ANYWAY lets them carry on upright
+  // for the rest of this visit. While it is up a run in progress is paused
   const isPortrait = () => Platform.device() !== 'desktop' && window.innerHeight > window.innerWidth * 1.1;
-  let sideways = null;
+  let portraitOk = false, turnPaused = false;
   function checkRotate() {
-    const portrait = isPortrait();
-    if (portrait && !(sideways && sideways.isConnected)) sideways = toast('PLAYS BEST SIDEWAYS - TURN YOUR PHONE', 'rotate', 0, 'sticky');
-    else if (!portrait && sideways) { const el = sideways; sideways = null; el.classList.add('out'); setTimeout(() => el.remove(), 420); }
+    const block = isPortrait() && !portraitOk;
+    $('turn').classList.toggle('hidden', !block);
+    if (block && screen === null && !modalOpen && Game.state === 'play') { openPause(); turnPaused = modalKind === 'pause'; }
   }
   function coins() { document.querySelectorAll('.coin-val').forEach(el => { el.textContent = fmt(Save.data.coins); }); }
 
@@ -97,6 +102,7 @@ const UI = (() => {
     coachKind = null; $('coach').classList.add('hidden');
     Game.start(opts);
     Sfx.ensure(); Sfx.startMusic();
+    setTimeout(checkRotate, 0);                                            // a run started under the turn screen waits paused
     Platform.gameplayStart();
     buildSlots(); cache.perks = null; cache.bounty = null; shownCoins = null; targetT = 0;
     $('fever').classList.add('hidden'); $('stand').classList.add('hidden'); $('bounty').classList.add('hidden'); document.body.classList.remove('frenzy');
