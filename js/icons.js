@@ -30,7 +30,7 @@ const Icons = (() => {
     sound: `<path d="M4 9h4l5-4.5v15L8 15H4z" ${F}/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" ${S} stroke-width="2"/>`,
     music: `<path d="M9 18V5.5l11-2v12.5" ${S} stroke-width="2.4"/><circle cx="6.5" cy="18" r="2.8" ${F}/><circle cx="17.5" cy="16" r="2.8" ${F}/>`,
     shake: `<rect x="7" y="4" width="10" height="16" rx="2" ${F}/><path d="M3.5 8v8M20.5 8v8" ${S} stroke-width="2.2"/>`,
-    rotate: `<rect x="3" y="7" width="18" height="10" rx="2" ${S} stroke-width="2.2"/><path d="M16 3.5c2 .2 3.6 1.4 4.3 3.2M20.5 3.5v3.3h-3.3" ${S} stroke-width="1.8"/>`,
+    rotate: `<rect x="2.5" y="9.5" width="17" height="10" rx="2" ${S} stroke-width="2.2"/><path d="M15 2.6c2.4.2 4.4 1.5 5.4 3.6M20.8 2.4v3.9h-3.9" ${S} stroke-width="1.8"/>`,
     bag: `<path d="M5.5 8.5h13l1.5 10a2 2 0 0 1-2 2.3H6a2 2 0 0 1-2-2.3z" ${F}/><path d="M8.5 8.5V7a3.5 3.5 0 0 1 7 0v1.5" ${S} stroke-width="2.2"/>`,
     bolt: `<path d="M13.5 2.5 5 13.5h5.5l-1 8L18.5 10H13z" ${F}/>`,
     fist: `<path d="M6 10.5V8a1.6 1.6 0 0 1 3.2 0V7a1.6 1.6 0 0 1 3.2 0v.5a1.6 1.6 0 0 1 3.2 0V9a1.6 1.6 0 0 1 3.2 0v5a6.5 6.5 0 0 1-6.5 6.5h-1A6.3 6.3 0 0 1 6 14.2z" ${F}/><path d="M6 13h7" stroke="rgba(0,0,0,.3)" stroke-width="1.8" stroke-linecap="round"/>`,
