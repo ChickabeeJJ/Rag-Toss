@@ -10,7 +10,7 @@ const UI = (() => {
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const ic = name => `<span class="ic" data-icon="${name}"></span>`;
-  let screen = 'home', modalOpen = false, modalKind = null, wasPortrait = false;
+  let screen = 'home', modalOpen = false, modalKind = null;
   let shopSel = 'rock', shopTab = 'items', charSel = 'rookie', coachT = 0, coachKind = null, bannerT = 0;
   const cache = {};
 
@@ -57,19 +57,14 @@ const UI = (() => {
     const k = clamp(Math.min(innerWidth / 1280, innerHeight / 760), 0.72, 1.75);
     document.documentElement.style.setProperty('--ui', k.toFixed(3));
   }
-  // phones held upright get a notice that the game plays best sideways: when the game opens that way,
-  // each time the phone is turned upright, and when a run starts upright
+  // phones held upright always show a notice that the game plays best sideways, on every screen,
+  // until the phone is turned; it leaves on its own once the phone is sideways
   const isPortrait = () => Platform.device() !== 'desktop' && window.innerHeight > window.innerWidth * 1.1;
-  let advisedAt = -1e9;
-  const adviseLandscape = () => {
-    if (performance.now() - advisedAt < 5000) return;                      // once is enough when the game opens straight into a run
-    advisedAt = performance.now();
-    toast('PLAYS BEST SIDEWAYS', 'rotate', 3600);
-  };
+  let sideways = null;
   function checkRotate() {
     const portrait = isPortrait();
-    if (portrait && !wasPortrait) adviseLandscape();
-    wasPortrait = portrait;
+    if (portrait && !(sideways && sideways.isConnected)) sideways = toast('PLAYS BEST SIDEWAYS - TURN YOUR PHONE', 'rotate', 0, 'sticky');
+    else if (!portrait && sideways) { const el = sideways; sideways = null; el.classList.add('out'); setTimeout(() => el.remove(), 420); }
   }
   function coins() { document.querySelectorAll('.coin-val').forEach(el => { el.textContent = fmt(Save.data.coins); }); }
 
@@ -102,7 +97,6 @@ const UI = (() => {
     coachKind = null; $('coach').classList.add('hidden');
     Game.start(opts);
     Sfx.ensure(); Sfx.startMusic();
-    if (isPortrait()) adviseLandscape();
     Platform.gameplayStart();
     buildSlots(); cache.perks = null; cache.bounty = null; shownCoins = null; targetT = 0;
     $('fever').classList.add('hidden'); $('stand').classList.add('hidden'); $('bounty').classList.add('hidden'); document.body.classList.remove('frenzy');
@@ -786,14 +780,17 @@ const UI = (() => {
     set('perks', pkKey, () => { $('perkRow').innerHTML = Object.entries(r.perks).map(([k, n]) => `<span title="${esc(PERK[k].name)}">${Icons.perk(k)}${n > 1 ? `<b>${n}</b>` : ''}</span>`).join(''); });
   }
 
-  function toast(text, icon = 'check', ms = 2400) {
+  // ms 0 keeps the notice up until whoever made it takes it down
+  function toast(text, icon = 'check', ms = 2400, cls = '') {
     const el = document.createElement('div');
-    el.className = 'toast';
+    el.className = 'toast ' + cls;
     el.innerHTML = `${ic(icon)}<span>${esc(text)}</span>`;
     $('toasts').appendChild(el);
     Icons.hydrate(el);
-    while ($('toasts').children.length > 3) $('toasts').firstChild.remove();
-    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 420); }, ms);
+    const brief = () => $('toasts').querySelectorAll('.toast:not(.sticky)');
+    while (brief().length > 3) brief()[0].remove();
+    if (ms) setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 420); }, ms);
+    return el;
   }
 
   return {
