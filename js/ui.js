@@ -10,7 +10,7 @@ const UI = (() => {
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const ic = name => `<span class="ic" data-icon="${name}"></span>`;
-  let screen = 'home', modalOpen = false, modalKind = null, rotateDismissed = false;
+  let screen = 'home', modalOpen = false, modalKind = null, wasPortrait = false;
   let shopSel = 'rock', shopTab = 'items', charSel = 'rookie', coachT = 0, coachKind = null, bannerT = 0;
   const cache = {};
 
@@ -31,9 +31,6 @@ const UI = (() => {
     $('btnPause').onclick = () => { click(); openPause(); };
     $('pvBack').onclick = () => { click(); closePreview(); };
     $('pvAgain').onclick = () => { click(); Game.replayPreview(); };
-    $('btnRotateOk').onclick = () => { rotateDismissed = true; try { localStorage.setItem('ragtoss_rotate_ok', '1'); } catch (e) { /* ignore */ } checkRotate(); };
-    try { rotateDismissed = localStorage.getItem('ragtoss_rotate_ok') === '1'; } catch (e) { /* ignore */ }
-    setTimeout(() => { rotateDismissed = true; checkRotate(); }, 7000);
     document.querySelectorAll('[data-back]').forEach(b => { b.onclick = () => { click(); show('home'); }; });
     $('modal').addEventListener('pointerdown', e => { if (e.target === $('modal') && ['missions', 'rank', 'settings', 'confirm', 'privacy'].includes(modalKind)) closeModal(); });
     const duck = $('btnDuck');
@@ -60,10 +57,19 @@ const UI = (() => {
     const k = clamp(Math.min(innerWidth / 1280, innerHeight / 760), 0.72, 1.75);
     document.documentElement.style.setProperty('--ui', k.toFixed(3));
   }
+  // phones held upright get a notice that the game plays best sideways: when the game opens that way,
+  // each time the phone is turned upright, and when a run starts upright
+  const isPortrait = () => Platform.device() !== 'desktop' && window.innerHeight > window.innerWidth * 1.1;
+  let advisedAt = -1e9;
+  const adviseLandscape = () => {
+    if (performance.now() - advisedAt < 5000) return;                      // once is enough when the game opens straight into a run
+    advisedAt = performance.now();
+    toast('PLAYS BEST SIDEWAYS', 'rotate', 3600);
+  };
   function checkRotate() {
-    const portrait = window.innerHeight > window.innerWidth * 1.1;
-    const mobile = Platform.device() !== 'desktop';
-    $('rotate').classList.toggle('hidden', !(portrait && mobile && !rotateDismissed));
+    const portrait = isPortrait();
+    if (portrait && !wasPortrait) adviseLandscape();
+    wasPortrait = portrait;
   }
   function coins() { document.querySelectorAll('.coin-val').forEach(el => { el.textContent = fmt(Save.data.coins); }); }
 
@@ -96,6 +102,7 @@ const UI = (() => {
     coachKind = null; $('coach').classList.add('hidden');
     Game.start(opts);
     Sfx.ensure(); Sfx.startMusic();
+    if (isPortrait()) adviseLandscape();
     Platform.gameplayStart();
     buildSlots(); cache.perks = null; cache.bounty = null; shownCoins = null; targetT = 0;
     $('fever').classList.add('hidden'); $('stand').classList.add('hidden'); $('bounty').classList.add('hidden'); document.body.classList.remove('frenzy');
