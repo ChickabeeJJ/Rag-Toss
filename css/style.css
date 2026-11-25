@@ -634,6 +634,21 @@ body.playing:has(#coach:not(.hidden)) #toasts { top: calc(80px + var(--safe-t));
 .sl:hover .sl-val, .sl.held .sl-val, .sl:focus-visible .sl-val { opacity: 1; transform: translate(-50%, 0) scale(1); }
 .set-label + .sl { margin-top: -2px; }
 .sl-ticks { display: none; }
+/* phones (not tablets): thinner volume rails */
+@media (max-height: 520px), (max-width: 600px) {
+  .sl { height: 24px; }
+  .sl-rail { height: 8px; }
+  .sl-fill::after { display: none; }
+  .sl-knob { left: -8px; top: -8px; width: 16px; height: 16px; }
+  .sl-knob::after { width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; }
+}
+/* scrollbars in the theme colour */
+* { scrollbar-width: thin; scrollbar-color: var(--acc) rgba(255, 255, 255, 0.06); }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.06); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: var(--acc); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--acc-hi); }
+::-webkit-scrollbar-corner { background: transparent; }
 .sw.sm { width: 30px; height: 30px; }
 .sw.rainbow { --s: #fff; background: conic-gradient(#ff3b3b, #ffb13b, #f4ff3b, #3bff6a, #3bffe6, #3b7bff, #a63bff, #ff3bd8, #ff3b3b); }
 .band { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; padding-top: 12px; border-top: 1px solid var(--line); }
