@@ -1325,23 +1325,37 @@ const Game = (() => {
       while (rar.n > room(p)) rar = RARITIES[RARITIES.indexOf(rar) - 1];     // never more stacks than the perk can still take
       picks.push({ id: p.id, kind: p.kind, name: p.name, n: rar.n, rarity: rar, text: p.text(rar.n), have: pk(p.id) });
     }
-    // every offer has at least one epic or better: lift a random card that can still take three stacks,
-    // or swap one out for a perk from the leftover pool that can
-    const EPIC = RARITIES[2];
-    if (!picks.some(c => c.rarity.n >= EPIC.n)) {
-      const fits = c => room(PERK[c.id]) >= EPIC.n;
-      const lift = picks.filter(c => !PERK[c.id].legendOnly && fits(c));
-      let c = lift[Math.floor(Math.random() * lift.length)];
-      if (!c) {
-        const spare = pool.filter(p => room(p) >= EPIC.n);
-        const p = spare[Math.floor(Math.random() * spare.length)];
+    // every offer has at least one epic or better, and that card leans towards the perks that change how a throw
+    // looks and plays (bigger, bouncier, doubled, exploding, burning) rather than the plain number bumps
+    const EPIC = RARITIES[2], FUN_ODDS = 0.75;
+    const fun = id => !!PERK[id].fun;
+    const inOffer = id => picks.some(c => c.id === id);
+    const spare = need => pool.filter(p => room(p) >= need && !inOffer(p.id));
+    const pickOf = a => a[Math.floor(Math.random() * a.length)];
+    const recast = (c, p) => { c.id = p.id; c.kind = p.kind; c.name = p.name; c.have = pk(p.id); c.text = p.text(c.n); };
+    const wantFun = Math.random() < FUN_ODDS;
+    let star = picks.find(c => c.rarity.n >= EPIC.n);
+    if (star) {
+      // a rolled epic+ on a plain perk usually becomes a fun one at the same rarity
+      if (wantFun && !fun(star.id) && !PERK[star.id].legendOnly) { const p = pickOf(spare(star.n).filter(q => q.fun)); if (p) recast(star, p); }
+    } else {
+      const lift = picks.filter(c => !PERK[c.id].legendOnly && room(PERK[c.id]) >= EPIC.n);
+      star = wantFun ? pickOf(lift.filter(c => fun(c.id))) : null;
+      if (!star && wantFun) {
+        // none of the three is a fun perk that can take an epic: swap one in
+        const p = pickOf(spare(EPIC.n).filter(q => q.fun));
+        const slot = picks.length < 3 ? null : (pickOf(picks.filter(c => !PERK[c.id].legendOnly)) || picks[picks.length - 1]);
+        if (p) { star = slot || { n: EPIC.n }; if (!slot) picks.push(star); star.n = EPIC.n; recast(star, p); }
+      }
+      if (!star) star = pickOf(lift);
+      if (!star) {
+        const p = pickOf(spare(EPIC.n));
         if (p) {
-          c = { id: p.id, kind: p.kind, name: p.name, have: pk(p.id) };
-          if (picks.length < 3) picks.push(c);
-          else picks[picks.length - 1] = c;                                     // the last card is never the Auto Aimer
+          star = { n: EPIC.n }; recast(star, p);
+          if (picks.length < 3) picks.push(star); else picks[picks.length - 1] = star;   // the last card is never the Auto Aimer
         }
       }
-      if (c) { c.n = EPIC.n; c.rarity = EPIC; c.text = PERK[c.id].text(EPIC.n); }
+      if (star) { star.n = EPIC.n; star.rarity = EPIC; star.text = PERK[star.id].text(EPIC.n); }
     }
     hold = true; aimCancel(); run.perkPick = picks;
     saveRun();

@@ -175,21 +175,22 @@ const upgradeCost = (u, lvl) => Math.round(u.base * Math.pow(u.grow, lvl) / 10) 
 
 /* -------------------------------------------------------------- run perks
    Offered three at a time after every boss; they last until the run ends. */
-// `text(n)` describes a card worth n stacks: a rarer card is the same perk, several times over
+// `text(n)` describes a card worth n stacks: a rarer card is the same perk, several times over.
+// `fun` perks change how a throw looks and plays; the guaranteed epic+ card in each offer favours them
 const PERKS = [
   { id: 'heavy', kind: 'offense', name: 'Heavy Hands', text: n => `+${25 * n}% damage` },
-  { id: 'twin', kind: 'offense', name: 'Second Helping', max: 4, text: n => (n === 1 ? 'One throw in four comes out twice' : n >= 4 ? 'Every throw comes out twice' : `${25 * n}% of throws come out twice`) },
+  { id: 'twin', fun: true, kind: 'offense', name: 'Second Helping', max: 4, text: n => (n === 1 ? 'One throw in four comes out twice' : n >= 4 ? 'Every throw comes out twice' : `${25 * n}% of throws come out twice`) },
   { id: 'skin', kind: 'sustain', name: 'Extra Padding', text: n => `+${35 * n} max health, and heal it now` },
   { id: 'lungs', kind: 'utility', name: 'Deep Breath', text: n => `+${40 * n}% stamina refill` },
   { id: 'leech', kind: 'sustain', name: 'Snack Break', text: n => `Heal ${6 * n} with every knockout` },
   { id: 'eye', kind: 'offense', name: 'Sharp Eye', text: n => `Headshots hit ${50 * n}% harder` },
-  { id: 'pop', kind: 'offense', name: 'Loud Exit', text: n => (n === 1 ? 'Knocked-out foes explode' : `Knocked-out foes explode, ${n} times as hard`) },
-  { id: 'big', kind: 'offense', name: 'Family Size', text: n => `Everything you throw is ${30 * n}% bigger` },
+  { id: 'pop', fun: true, kind: 'offense', name: 'Loud Exit', text: n => (n === 1 ? 'Knocked-out foes explode' : `Knocked-out foes explode, ${n} times as hard`) },
+  { id: 'big', fun: true, kind: 'offense', name: 'Family Size', text: n => `Everything you throw is ${30 * n}% bigger` },
   { id: 'crate', kind: 'utility', name: 'Special Delivery', text: n => `Mystery crates float by ${n + 1} times as often` },
   { id: 'rich', kind: 'wealth', name: 'Loose Change', text: n => `+${30 * n}% coins` },
   { id: 'shove', kind: 'offense', name: 'Big Shove', text: n => `+${40 * n}% knockback` },
-  { id: 'hot', kind: 'offense', name: 'Hot Hands', text: n => (n === 1 ? 'Every hit sets the foe on fire' : `Every hit sets the foe on fire, burning ${n} times as hard`) },
-  { id: 'spring', kind: 'utility', name: 'Springy', text: n => `Everything bounces ${n === 1 ? 'one more time' : n + ' more times'}` },
+  { id: 'hot', fun: true, kind: 'offense', name: 'Hot Hands', text: n => (n === 1 ? 'Every hit sets the foe on fire' : `Every hit sets the foe on fire, burning ${n} times as hard`) },
+  { id: 'spring', fun: true, kind: 'utility', name: 'Springy', text: n => `Everything bounces ${n === 1 ? 'one more time' : n + ' more times'}` },
   { id: 'aim', kind: 'utility', name: 'Auto Aimer', max: 1, legendOnly: true, text: () => 'Everything you throw curves towards the nearest foe, a little less than the magnet. The magnet itself pulls much harder' },
   { id: 'cheap', kind: 'utility', name: 'Light Load', max: 3, text: n => `Throws cost ${20 * n}% less stamina` },
 ];

@@ -141,7 +141,9 @@ const UI = (() => {
     const r = Save.rankInfo();
     $('rankStrip').innerHTML = `<div class="rk-top"><b>${esc(r.cur.name.toUpperCase())}</b><span>${r.next ? `${r.kos} / ${r.next.kos} KOs` : 'TOP RANK'}</span></div><div class="rk-track"><i style="width:${(r.t * 100).toFixed(1)}%"></i></div>`;
     const touch = document.body.classList.contains('touch');
-    $('homeHint').innerHTML = touch ? '<span>DRAG BACK AND LET GO TO THROW</span>' : '<span><kbd>DRAG</kbd> PULL BACK TO THROW</span><span><kbd>S</kbd> DUCK</span><span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> SWAP</span><span><kbd>P</kbd> PAUSE</span>';
+    // the tutorial teaches throwing, so the menu only lists the keyboard shortcuts (and nothing on touch)
+    $('homeHint').innerHTML = touch ? '' : '<span><kbd>S</kbd> DUCK</span><span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> SWAP</span><span><kbd>P</kbd> PAUSE</span>';
+    $('homeHint').classList.toggle('hidden', touch);
     coins();
   }
 
