@@ -81,7 +81,7 @@ const Game = (() => {
     const maxHp = 100 + 15 * ulvl('health') + 35 * pk('skin');
     if (full) player.hp = maxHp; else player.hp = Math.min(maxHp, player.hp + Math.max(0, maxHp - player.maxHp));
     player.maxHp = maxHp;
-    player.maxSta = 200 + 20 * ulvl('stamina');
+    player.maxSta = 100 + 20 * ulvl('stamina');
     if (full) player.sta = player.maxSta;
   }
   // a run throws from the bag it started with: changing the loadout in the shop only reaches the next new run
