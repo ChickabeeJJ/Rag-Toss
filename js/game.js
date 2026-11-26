@@ -92,6 +92,11 @@ const Game = (() => {
   // Stamina: a big pool, small costs. A throw takes a few points, holding a wind-up
   // sips at it, a duck is a flat fee, and it refills by itself the whole time.
   const DUCK_COST = 5, HOLD_DRAIN = 2.5, DUCK_MAX = 1.5;
+  // Winded: every throw adds a point that fades at WIND_FADE a second, and each point past the first makes the next
+  // throw WIND_STEP dearer, up to WIND_MAX times the price. A throw a second never builds it up; mashing doubles the
+  // cost within a few seconds and, with the refill held off between throws, empties the bar in about seven.
+  const WIND_FADE = 1.5, WIND_STEP = 0.15, WIND_MAX = 2, THROW_REST = 0.5;
+  const windMul = () => Math.min(WIND_MAX, 1 + WIND_STEP * Math.max(0, (player.wind || 0) - 1));
   const staRegen = () => 7.7 * (1 + 0.1 * ulvl('regen')) * (1 + 0.4 * pk('lungs'));
   const throwCd = () => 0.42 * (1 - 0.08 * ulvl('quick'));
   const staCost = def => def.sta * (1 - Math.min(0.6, 0.2 * pk('cheap')));
@@ -362,7 +367,7 @@ const Game = (() => {
     aim.max = clamp(Math.min(cw, ch) * 0.3, 110, 230);
     aim.afford = player.sta >= throwCost();      // only a throw you could pay for when you started holding will fire itself
   }
-  const throwCost = () => (usingBonus() || run.fever > 0 ? 0 : staCost(ITEM[currentItemId()] || ITEM.rock));
+  const throwCost = () => (usingBonus() || run.fever > 0 ? 0 : staCost(ITEM[currentItemId()] || ITEM.rock) * windMul());
   function aimMove(x, y, id) {
     if (!aim.on || aim.id !== id) return;
     aim.cx = x; aim.cy = y;
@@ -406,22 +411,24 @@ const Game = (() => {
     const id = currentItemId(), def = ITEM[id];
     if (player.rag.mode !== 'active') return false;       // knocked flat: no throwing until you are back on your feet
     const free = usingBonus(), hot = run.fever > 0;
-    let cost = free || hot ? 0 : staCost(def);
+    let cost = free || hot ? 0 : staCost(def) * windMul();
     if (auto) cost = Math.min(cost, player.sta);       // an automatic release spends whatever is left
     if (player.sta < cost) { Sfx.empty(); staFlash = 0.5; return false; }
-    player.sta -= cost; player.staWait = 0.25; player.cd = throwCd() * (hot ? 0.6 : 1);
+    player.sta -= cost; player.staWait = THROW_REST; player.cd = throwCd() * (hot ? 0.6 : 1);
+    if (!free && !hot) player.wind = (player.wind || 0) + 1;
     if (free && --player.bonus.n <= 0) player.bonus = null;
     const rag = player.rag;
     rag.aim = ang; rag.throwT = 0;
     let real = def, mul = dmgMul();
     if (id === 'sack') { real = pick(ITEMS.filter(i => i.id !== 'sack')); mul *= 1.3; Fx.text(rag.head.x, rag.head.y - 46, real.name.toUpperCase() + '!', '#ffd9a0', 18); }
+    // Second Helping adds one more of the thing thrown (+25% chance a stack): two rocks, or four forks rather than six
     const twin = Math.random() < 0.25 * pk('twin');
     const n = real.multi || 1;
-    const seq = logNew(n * (twin ? 2 : 1));
+    const seq = logNew(n + (twin ? 1 : 0));
     player.rel = RELEASE_AT;
-    const volley = (a, delay) => {
-      for (let i = 0; i < n; i++) {
-        const aa = a + (i - (n - 1) / 2) * 0.11;
+    const volley = (a, delay, count) => {
+      for (let i = 0; i < count; i++) {
+        const aa = a + (i - (count - 1) / 2) * 0.11;
         const v = throwSpeed(real, power), planned = release(rag, aa);
         zones.push({ kind: 'delay', t: delay, fn: () => {
           if (player.dead) { logDone(seq); return; }
@@ -433,8 +440,8 @@ const Game = (() => {
         } });
       }
     };
-    volley(ang, RELEASE_AT);
-    if (twin) volley(ang - 0.06, RELEASE_AT + 0.11);
+    volley(ang, RELEASE_AT, n);
+    if (twin) volley(ang - 0.06, RELEASE_AT + 0.11, 1);
     Sfx.throw(!!real.heavy);
     track('throws'); run.throws = (run.throws || 0) + 1;
     return true;
@@ -1233,9 +1240,12 @@ const Game = (() => {
     const cycle = boss ? Math.floor((run.stage - 1) / BOSSES.length) : 0;      // how many times this boss has come round before
     // each return adds 50% health, and no boss that has already been round once is softer than four fifths of the Wall
     let hp = boss ? bossHp(Math.max(boss.hp * 1.2 * (1 + 0.09 * (run.stage - 1)) * (1 + 0.5 * cycle), cycle > 0 ? 300 * 1.2 * (1 + 0.09 * (run.stage - 1)) * 0.8 : 0)) : def.hp * foeHpMul();
+    // early bosses (the first time round, and easing back over the three stages after) have 20% less health
+    const early = boss ? 1 - 0.2 * clamp((BOSSES.length + 3 - run.stage) / 3, 0, 1) : 1;
+    hp *= early;
     // the harder you hit, the more there is to hit: a foe's health rises to about 3.6 seconds of your sustained damage
     // (a boss's, tuned so a real fight lasts ~25 seconds), never more than 10x (24x) what the stage alone would give, so it is always a fair fight
-    if (!run.demo && !run.tut && run.dps > 0) hp = boss ? Math.max(hp, Math.min(run.dps * 40, hp * 24, 120000)) : Math.max(hp, Math.min(run.dps * 3.6, hp * 10));
+    if (!run.demo && !run.tut && run.dps > 0) hp = boss ? Math.max(hp, Math.min(run.dps * 40 * early, hp * 24, 120000)) : Math.max(hp, Math.min(run.dps * 3.6, hp * 10));
     const f = {
       type, def, rag, plat: pl, hp, maxHp: hp, state: 'enter', t: rand(0.9, 1.8), burst: boss ? boss.burst : def.burst || 1, left: 0, sol: null,
       boss: boss || null, cycle, minion: false, dummy: false, bleed: 0, bleedDps: 0, burnT: 0, dotT: 0.5, coins: boss ? 40 + run.stage * 6 : def.coins,
@@ -1534,6 +1544,7 @@ const Game = (() => {
     const rag = player.rag;
     if (!player.dead) {
       player.cd -= dt; player.inv -= dt; if (player.noLimp > 0) player.noLimp -= dt;
+      player.wind = Math.max(0, (player.wind || 0) - WIND_FADE * dt);
       if ((player.staWait -= dt) <= 0) player.sta = Math.min(player.maxSta, player.sta + staRegen() * dt);
       // a duck is a flat fee and lasts a moment: a dodge, not a place to hide
       if (!duckHeld) { duckTired = false; duckOn = false; }

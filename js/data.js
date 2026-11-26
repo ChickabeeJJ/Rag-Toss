@@ -179,7 +179,7 @@ const upgradeCost = (u, lvl) => Math.round(u.base * Math.pow(u.grow, lvl) / 10) 
 // `fun` perks change how a throw looks and plays; the guaranteed epic+ card in each offer favours them
 const PERKS = [
   { id: 'heavy', kind: 'offense', name: 'Heavy Hands', text: n => `+${25 * n}% damage` },
-  { id: 'twin', fun: true, kind: 'offense', name: 'Second Helping', max: 4, text: n => (n === 1 ? 'One throw in four comes out twice' : n >= 4 ? 'Every throw comes out twice' : `${25 * n}% of throws come out twice`) },
+  { id: 'twin', fun: true, kind: 'offense', name: 'Second Helping', max: 4, text: n => (n === 1 ? 'One throw in four throws one extra' : n >= 4 ? 'Every throw throws one extra' : `${25 * n}% of throws throw one extra`) },
   { id: 'skin', kind: 'sustain', name: 'Extra Padding', text: n => `+${35 * n} max health, and heal it now` },
   { id: 'lungs', kind: 'utility', name: 'Deep Breath', text: n => `+${40 * n}% stamina refill` },
   { id: 'leech', kind: 'sustain', name: 'Snack Break', text: n => `Heal ${6 * n} with every knockout` },
