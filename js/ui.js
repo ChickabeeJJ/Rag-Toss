@@ -442,7 +442,7 @@ const UI = (() => {
   function openPrivacy(back) {
     // on CrazyGames the site hosts the game, so the hosting note and the outside contact address are left out
     const cg = Platform.hasSdk;
-    openModal('privacy', `<h2>PRIVACY</h2><div class="sub">LAST UPDATED 27 NOVEMBER 2026</div>
+    openModal('privacy', `<h2>PRIVACY</h2>
       <div class="policy">
         <p>Rag Toss is a free browser game. Short version: it doesn't ask who you are, it has no accounts, no ads and no tracking of its own, and your progress stays on your own device.</p>
         <h3>WHAT THE GAME STORES</h3>
@@ -455,7 +455,7 @@ const UI = (() => {
         <h3>CHILDREN</h3>
         <p>The game is suitable for a general audience and does not knowingly collect personal information from anyone, including children.</p>
         <h3>CHANGES AND CONTACT</h3>
-        <p>If the game ever starts doing something that changes the above (for example online leaderboards), this policy is updated first and the date changed. ${cg ? 'Questions: contact the developer through the game\'s page on CrazyGames.' : 'Questions: open an issue on the project\'s GitHub page, ChickabeeJJ / Rag-Toss.'}</p>
+        <p>If the game ever starts doing something that changes the above (for example online leaderboards), this policy is updated first. ${cg ? 'Questions: contact the developer through the game\'s page on CrazyGames.' : 'Questions: open an issue on the project\'s GitHub page, ChickabeeJJ / Rag-Toss.'}</p>
       </div>
       <div class="actions"><button class="btn primary wide" id="mDone"><b>CLOSE</b></button></div>`);
     $('mDone').onclick = () => { click(); if (back) openSettings(); else closeModal(); };
