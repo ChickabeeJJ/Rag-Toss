@@ -307,7 +307,7 @@ body.frenzy .combo { box-shadow: none; background: #3a2208; }
 .boss-top b { font-weight: 900; font-size: 15px; letter-spacing: 0.06em; }
 .boss-track { height: 10px; border-radius: 5px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
 .boss-fill { height: 100%; background: linear-gradient(90deg, #e2434b, #ff8a5c); transform-origin: left; transition: transform 0.15s; }
-.banner { position: absolute; top: 27%; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 36px 14px; clip-path: var(--cut-l); background: var(--panel); animation: bannerIn 2.2s ease forwards; white-space: nowrap; }
+.banner { position: absolute; top: calc(146px + var(--safe-t));   /* under the knockout counter and streak, over the empty gap between you and the foes' islands (which never come left of ~36%) */ left: 36%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 36px 14px; clip-path: var(--cut-l); background: var(--panel); animation: bannerIn 2.2s ease forwards; white-space: nowrap; }
 .banner b { font-weight: 900; font-size: 34px; letter-spacing: 0.06em; }
 .banner span { font-weight: 800; font-size: 12px; letter-spacing: 0.16em; color: var(--acc); }
 .banner.boss b { color: #ff8a94; }
@@ -360,7 +360,7 @@ body.touch .tb-duck {
 body.touch .vitals { min-width: 190px; }
 body.touch .slots { bottom: calc(10px + var(--safe-b)); }
 
-.coach { position: absolute; left: 50%; top: auto; bottom: calc(150px + var(--safe-b)); transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 22px 14px; clip-path: var(--cut-m); background: var(--panel); box-shadow: inset 0 3px 0 var(--acc); animation: pop 0.25s ease; white-space: nowrap; }
+.coach { position: absolute; left: 50%; top: auto; bottom: calc(96px + var(--safe-b));   /* just above the hotbar, below the islands */ transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 22px 14px; clip-path: var(--cut-m); background: var(--panel); box-shadow: inset 0 3px 0 var(--acc); animation: pop 0.25s ease; white-space: nowrap; }
 .coach-row { display: flex; align-items: center; gap: 14px; }
 .coach-txt { display: flex; flex-direction: column; gap: 3px; }
 .coach p { font-weight: 900; font-size: 17px; letter-spacing: 0.06em; }
@@ -376,6 +376,8 @@ body.touch .slots { bottom: calc(10px + var(--safe-b)); }
 .tut-skip:hover { color: var(--text); background: var(--ink-4); }
 .tut-skip .ic { width: 11px; height: 11px; }
 .coach:has(.tut-skip:not(.hidden)) { padding-top: 16px; padding-right: 78px; padding-left: 22px; }
+/* landscape phones are too short to fit it between the islands and the hotbar, so it moves right, clear of the player's island */
+@media (max-height: 520px) and (min-width: 521px) { .coach { left: 61%; bottom: calc(88px + var(--safe-b)); } }
 .pull { position: relative; width: 50px; height: 26px; }
 .pull i { position: absolute; right: 2px; top: 7px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; }
 .pull u { position: absolute; top: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--acc); animation: pullDemo 1.5s ease-in-out infinite; }
