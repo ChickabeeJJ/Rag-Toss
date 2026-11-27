@@ -8,6 +8,8 @@
   const canvas = document.getElementById('stage');
   // SDK order: init, loadingStart, load everything, loadingStop, then the UI
   await Platform.init();
+  // on CrazyGames the site's own privacy policy covers the page, so the game's (which talks about its own hosting) stays hidden
+  if (Platform.hasSdk) document.body.classList.add('on-cg');
   Platform.loadingStart();
   Save.load();
   if (matchMedia('(pointer: coarse)').matches && !matchMedia('(pointer: fine)').matches) document.body.classList.add('touch');
