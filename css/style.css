@@ -376,8 +376,12 @@ body.touch .slots { bottom: calc(10px + var(--safe-b)); }
 .tut-skip:hover { color: var(--text); background: var(--ink-4); }
 .tut-skip .ic { width: 11px; height: 11px; }
 .coach:has(.tut-skip:not(.hidden)) { padding-top: 16px; padding-right: 78px; padding-left: 22px; }
-/* landscape phones are too short to fit it between the islands and the hotbar, so it moves right, clear of the player's island */
-@media (max-height: 520px) and (min-width: 521px) { .coach { left: 61%; bottom: calc(88px + var(--safe-b)); } }
+/* landscape phones are short: a slimmer card, centred, fits between the player's feet and the hotbar */
+@media (max-height: 520px) and (min-width: 521px) {
+  .coach { bottom: calc(84px + var(--safe-b)); padding: 7px 16px 9px; gap: 5px; }
+  .coach p { font-size: 14px; } .coach small { font-size: 10px; } .coach-row { gap: 10px; }
+  .coach:has(.tut-skip:not(.hidden)) { padding-top: 11px; padding-right: 70px; padding-left: 16px; }
+}
 .pull { position: relative; width: 50px; height: 26px; }
 .pull i { position: absolute; right: 2px; top: 7px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; }
 .pull u { position: absolute; top: 4px; width: 18px; height: 18px; border-radius: 50%; background: var(--acc); animation: pullDemo 1.5s ease-in-out infinite; }
