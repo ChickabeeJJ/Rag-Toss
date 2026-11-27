@@ -767,4 +767,3 @@ body.boss-on .boss-track { height: 8px; }
   body.touch.boss-on .bossbar { top: calc(100px + var(--safe-t)); }
 }
 @media (max-height: 520px) { body.boss-on .bossbar { top: calc(56px + var(--safe-t)); width: min(400px, 40vw); } body.boss-on .hud-mid span { display: none; } }
-body.on-cg .home-legal, body.on-cg [data-legal] { display: none !important; }
