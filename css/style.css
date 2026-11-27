@@ -307,7 +307,7 @@ body.frenzy .combo { box-shadow: none; background: #3a2208; }
 .boss-top b { font-weight: 900; font-size: 15px; letter-spacing: 0.06em; }
 .boss-track { height: 10px; border-radius: 5px; background: rgba(255, 255, 255, 0.12); overflow: hidden; }
 .boss-fill { height: 100%; background: linear-gradient(90deg, #e2434b, #ff8a5c); transform-origin: left; transition: transform 0.15s; }
-.banner { position: absolute; top: calc(146px + var(--safe-t));   /* under the knockout counter and streak, over the empty gap between you and the foes' islands (which never come left of ~36%) */ left: 36%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 36px 14px; clip-path: var(--cut-l); background: var(--panel); animation: bannerIn 2.2s ease forwards; white-space: nowrap; }
+.banner { position: absolute; top: calc(146px + var(--safe-t));   /* centred, under the knockout counter and streak */ left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 36px 14px; clip-path: var(--cut-l); background: var(--panel); animation: bannerIn 2.2s ease forwards; white-space: nowrap; }
 .banner b { font-weight: 900; font-size: 34px; letter-spacing: 0.06em; }
 .banner span { font-weight: 800; font-size: 12px; letter-spacing: 0.16em; color: var(--acc); }
 .banner.boss b { color: #ff8a94; }
