@@ -422,6 +422,9 @@ const Game = (() => {
     let real = def, mul = dmgMul();
     if (id === 'sack') { real = pick(ITEMS.filter(i => i.id !== 'sack')); mul *= 1.3; Fx.text(rag.head.x, rag.head.y - 46, real.name.toUpperCase() + '!', '#ffd9a0', 18); }
     // Second Helping adds one more of the thing thrown (+25% chance a stack): two rocks, or four forks rather than six
+    // a caught boomerang gives back what its throw actually cost, once per throw: never more than was paid,
+    // nothing for a free throw, and not again for a Second Helping copy
+    const refund = { left: cost };
     const twin = Math.random() < 0.25 * pk('twin');
     const n = real.multi || 1;
     const seq = logNew(n + (twin ? 1 : 0));
@@ -435,7 +438,7 @@ const Game = (() => {
           // the body leans into the throw, so the hand is not where the preview started: leave from the
           // hand, but bend the velocity so the arc still passes through the previewed path
           const q = release(rag, aa);
-          launch(real, { owner: 'p', x: q.x, y: q.y, vx: Math.cos(aa) * v + (planned.x - q.x) / ARC_T, vy: Math.sin(aa) * v + (planned.y - q.y) / ARC_T, dmg: real.dmg * mul * (1 + 0.05 * Save.masteryLvl(id)), seq, power, mast: id });
+          launch(real, { owner: 'p', x: q.x, y: q.y, vx: Math.cos(aa) * v + (planned.x - q.x) / ARC_T, vy: Math.sin(aa) * v + (planned.y - q.y) / ARC_T, dmg: real.dmg * mul * (1 + 0.05 * Save.masteryLvl(id)), seq, power, mast: id, refund });
           if (i === 0) releaseFx(rag, aa, power, real);
         } });
       }
@@ -466,7 +469,7 @@ const Game = (() => {
       rot: rand(0, TAU), vr: (def.spin || 0) * (o.vx < 0 ? -1 : 1), r: def.r * big * (o.scale || 1),
       dmg: o.dmg != null ? o.dmg : def.dmg, kb: def.kb != null ? def.kb : 0.5, grav: def.grav != null ? def.grav : 1,
       mast: o.mast || def.id, age: 0, life: o.life || def.life || 7, bounces: (def.bounce || 0) + (o.owner === 'p' ? pk('spring') : 0), hits: new Set(), rehit: 0,
-      seq: o.seq || 0, from: o.from || null, tricks: 0, st: 0, hp: def.hp || 1, target: o.target || null, dead: false,
+      seq: o.seq || 0, from: o.from || null, refund: o.refund || null, tricks: 0, st: 0, hp: def.hp || 1, target: o.target || null, dead: false,
       turnAt: 0.5 + 0.4 * (o.power || 0.5), trail: 0, sx: o.x,
     };
     if (def.id === 'firework') { s.grav = 0; s.rot = Math.atan2(s.vy, s.vx); }
@@ -506,7 +509,9 @@ const Game = (() => {
         const k = Math.min(1, 5 * dt);
         s.vx = lerp(s.vx, dx / d * 950, k); s.vy = lerp(s.vy, dy / d * 950, k);
         if (d < 46 && !player.dead) {
-          player.sta = Math.min(player.maxSta, player.sta + staCost(ITEM.boomerang));
+          const back = s.refund ? s.refund.left : 0;
+          if (s.refund) s.refund.left = 0;
+          player.sta = Math.min(player.maxSta, player.sta + back);
           Fx.text(c.x, c.y - 80, 'CATCH', '#9fe0ff', 18); Sfx.catch(); kill(s);
         }
       }
