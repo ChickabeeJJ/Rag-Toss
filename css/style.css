@@ -130,6 +130,7 @@ kbd.big { font-size: 18px; padding: 9px 12px; border-radius: 6px; box-shadow: in
   padding: calc(20px + var(--safe-t)) 34px calc(20px + var(--safe-b)) calc(36px + var(--safe-l));
   background: rgba(9, 11, 17, 0.97);
   display: flex; flex-direction: column; justify-content: center; gap: 16px; animation: fade 0.3s ease;
+  overflow-x: hidden;                                               /* the logo's tilt and toss never give it a sideways scrollbar */
 }
 .home-panel::after {
   content: ''; position: absolute; top: 0; bottom: 0; left: 100%; width: clamp(160px, 22vw, 380px); pointer-events: none; z-index: -1;
@@ -564,7 +565,7 @@ body.playing:has(#coach:not(.hidden)) #toasts { top: calc(80px + var(--safe-t));
   .pk-badge { width: 76px; height: 76px; margin: 10px 0 8px; } .pk-ic { width: 68px; height: 68px; } .pk-ic svg { width: 44px; height: 44px; }
   .pk-name { font-size: 15px; } .pk-text { font-size: 12px; min-height: 0; } .sheet.perks h2 { font-size: 32px; }
   .title .t1 { font-size: 56px; } .title .t2 { font-size: 52px; }
-  .home-panel { gap: 10px; justify-content: flex-start; overflow-y: auto; }
+  .home-panel { gap: 10px; justify-content: safe center; overflow-y: auto; }   /* centred, but still scrolls from the top if it ever runs out of room */
   .home-hint { display: none; }
 }
 @media (max-width: 640px) {

@@ -59,7 +59,7 @@ const UI = (() => {
   function click() { Sfx.ensure(); Sfx.click(); }
   // menus and HUD scale up on large screens (1280x760 is the design size)
   function applyUiScale() {
-    const k = clamp(Math.min(innerWidth / 1280, innerHeight / 760), 0.72, 1.75);
+    const k = clamp(Math.min(innerWidth / 960, innerHeight / 760), 0.72, 1.75);   // narrow desktop windows keep readable text
     document.documentElement.style.setProperty('--ui', k.toFixed(3));
   }
   // phones held upright are covered by a turn-your-phone screen; PLAY ANYWAY lets them carry on upright
