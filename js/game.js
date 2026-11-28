@@ -499,7 +499,7 @@ const Game = (() => {
     const a = turnTo(cur, want, turn * dt);
     s.vx = Math.cos(a) * sp; s.vy = Math.sin(a) * sp - G * s.grav * dt * gcomp;
   }
-  const NO_AUTOAIM = new Set(['magnet', 'boomerang', 'firework', 'anvil', 'bee']);
+  const NO_AUTOAIM = new Set(['magnet', 'boomerang', 'firework', 'anvil', 'bee', 'flame', 'meteorite', 'starlet']);
   /* per-item behaviour while in the air */
   const TICK = {
     boomerang(s, dt) {
@@ -563,6 +563,11 @@ const Game = (() => {
 
   function detonate(s) {
     if (s.dead) return;
+    if (s.def.id === 'meteorite') {
+      const pl = plats.find(q => !q.falling && s.x > q.left - 30 && s.x < q.right + 30 && s.y > q.top - 260 && s.y < q.bottom + 40);
+      if (pl) quake(pl, s);
+      shake = 1; Fx.dust(s.x, s.y, 20, '#e9d7b8');
+    }
     if (s.owner === 'p') {
       const r = s.def.blast * (s.r / s.def.r);
       blast(s.x, s.y, r, s.dmg, s.kb, s, s.def.id === 'firework');
@@ -657,6 +662,56 @@ const Game = (() => {
       Fx.burst(s.x, s.y, 22, { colors: ['#f2c36a', '#e0a24a', '#fff1c4'], speed: [80, 380], life: [0.4, 0.9], size: [2, 4], grav: 500 });
       run.slowT = 5;
       for (const f of foes) { if (!live(f) || f.dummy) continue; f.slow = Math.max(f.slow || 0, 5); Fx.text(f.rag.head.x, f.rag.head.y - 44, 'SLOW-MO', '#f2c36a', 17); }
+      kill(s);
+    },
+    // thundercloud: a storm that chases the nearest foe
+    cloud(s) {
+      Sfx.zap(); Fx.dust(s.x, s.y, 8, '#9aa3b8');
+      logAdd(s.seq, 1);
+      zones.push({ kind: 'cloud', x: s.x, y: s.y - 120, t: 0, dur: 4.6, strikeT: 0.6, dmg: s.dmg, seq: s.seq, s });
+      kill(s);
+    },
+    // snow globe: everyone on screen frozen solid, and their throws shattered in the air
+    globe(s) {
+      Sfx.glass(); Sfx.freeze(); Fx.ring(s.x, s.y, 20, 520, 0.8, '#cfeeff', 8); shake = Math.max(shake, 0.4);
+      Fx.burst(s.x, s.y, 30, { colors: ['#ffffff', '#cfeeff', '#9fd0ff'], speed: [120, 520], life: [0.6, 1.2], size: [2, 5], grav: 120, drag: 1.2 });
+      for (const f of foes) {
+        if (!live(f) || f.dummy) continue;
+        f.rag.frozen = f.boss ? 1.4 : 3; f.state = 'idle'; f.t = Math.max(f.t, f.boss ? 1.2 : 2.6);
+        Fx.text(f.rag.head.x, f.rag.head.y - 44, 'FROZEN', '#cfeeff', 18);
+      }
+      for (const e of shots) if (e.owner === 'e' && !e.dead) { Fx.burst(e.x, e.y, 6, { colors: ['#ffffff', '#cfeeff'], speed: [40, 180], life: [0.2, 0.4], size: [2, 4], shape: 'rect' }); kill(e); }
+      kill(s);
+    },
+    // dragon egg: hatches a little dragon that hunts for six seconds
+    dragonegg(s) {
+      Sfx.pop(); Sfx.perk();
+      Fx.burst(s.x, s.y, 14, { colors: ['#5fc9a8', '#3b9c82', '#f6f0da'], speed: [80, 300], life: [0.3, 0.7], size: [3, 6], grav: 700, shape: 'rect' });
+      logAdd(s.seq, 1);
+      zones.push({ kind: 'dragon', x: s.x, y: s.y - 30, vx: 0, vy: -200, t: 0, dur: 6, fireT: 0.7, dmg: s.dmg, seq: s.seq, face: 1 });
+      kill(s);
+    },
+    // meteor: marks the nearest foe, and a giant meteor comes down on it
+    meteor(s) {
+      let tgt = null, bd = 700;
+      for (const f of foes) { if (!live(f)) continue; const d = dist(s.x, s.y, f.rag.chest.x, f.rag.chest.y); if (d < bd) { bd = d; tgt = f; } }
+      const tx = tgt ? tgt.rag.chest.x : s.x, ty = tgt ? tgt.rag.chest.y : s.y;
+      Sfx.warn(); Fx.ring(tx, ty, 140, 20, 0.5, '#ff7a3c', 6); Fx.ring(tx, ty, 160, 30, 0.8, '#ffb347', 4);
+      logAdd(s.seq, 1);
+      const seq = s.seq, dmg = s.dmg * 2;
+      zones.push({ kind: 'delay', t: 0.45, fn: () => Sfx.warn() });
+      zones.push({ kind: 'delay', t: 0.85, fn: () => {
+        const T = 0.55, g = G * AMMO.meteorite.grav, x0 = tx - 260, y0 = ty - 1000;
+        launch(AMMO.meteorite, { owner: 'p', x: x0, y: y0, vx: (tx - x0) / T, vy: (ty - y0) / T - 0.5 * g * T, dmg, seq, art: 'meteor', life: 3 });
+        Sfx.whoosh && Sfx.whoosh();
+      } });
+      kill(s);
+    },
+    // supernova: swells for a second, then a shockwave hits every foe on screen
+    nova(s) {
+      Sfx.vortex();
+      logAdd(s.seq, 1);
+      zones.push({ kind: 'nova', x: s.x, y: s.y - 20, t: 0, dur: 1.1, dmg: s.dmg, seq: s.seq, s });
       kill(s);
     },
     disco(s) {
@@ -778,7 +833,7 @@ const Game = (() => {
     if (s.vr) s.rot += s.vr * dt; else if (id !== 'anvil' && id !== 'bee') s.rot = Math.atan2(s.vy, s.vx);
     if (s.owner === 'p' && run.fever > 0 && Math.random() < 0.5) Fx.burst(s.x, s.y, 1, { colors: ['#ffb347', '#ff7a3c', '#ffe08a'], speed: [10, 70], life: [0.2, 0.45], size: [3, 6], grav: -80, glow: true });
     // a faint trail on your own throws so fast ones stay readable
-    if (s.owner === 'p' && (s.trail -= dt) <= 0 && id !== 'bee' && id !== 'candy' && id !== 'seed' && id !== 'starlet' && shots.length < 12) { s.trail = 0.02; Fx.burst(s.x, s.y, 1, { color: '#ffffff', speed: [0, 8], life: [0.16, 0.26], size: [s.r * 0.22, s.r * 0.34], grav: 0, drag: 0 }); }
+    if (s.owner === 'p' && (s.trail -= dt) <= 0 && id !== 'bee' && id !== 'candy' && id !== 'seed' && id !== 'starlet' && id !== 'flame' && shots.length < 12) { s.trail = 0.02; Fx.burst(s.x, s.y, 1, { color: '#ffffff', speed: [0, 8], life: [0.16, 0.26], size: [s.r * 0.22, s.r * 0.34], grav: 0, drag: 0 }); }
     if (s.age > s.life || s.y > WORLD_H + 260 || s.x < -400 || s.x > WORLD_W + 600 || s.y < -2600) { kill(s); return; }
 
     if (s.owner === 'p') {
@@ -956,7 +1011,7 @@ const Game = (() => {
   }
   // the little freeze on a solid hit: shorter as the stages climb, never back to back, and never from candies, seeds or bees
   let lastStop = -9;
-  const SUBS = new Set(['candy', 'seed', 'bee', 'starlet']);
+  const SUBS = new Set(['candy', 'seed', 'bee', 'starlet', 'flame']);
   function stopFor(base, s) {
     if (s && s.def && SUBS.has(s.def.id)) return;
     if (time - lastStop < 0.2) return;
@@ -1034,6 +1089,7 @@ const Game = (() => {
       glued = true; rag.addStuck('clock', hit, Math.atan2(s.vy, s.vx), s.r); Fx.text(hit.x, hit.y - 34, 'TICKING', '#ffb3a0', 16);
       armClock(hit.x, hit.y, rag);
     }
+    if (id === 'flame') { f.burnT = Math.max(f.burnT || 0, 4); }
     if (pk('hot')) f.burnT = 3;
     if (SPEND[id]) {
       const direct = id === 'beehive' || id === 'pinata';          // these still land their own hit; the jar and the hole don't
@@ -1064,7 +1120,7 @@ const Game = (() => {
       return;
     }
     if (def.stick && f && hit) { f.rag.addStuck(s.art, hit, Math.atan2(s.vy, s.vx), s.r); Sfx.stick(); kill(s); return; }
-    if (def.id === 'bee' || def.id === 'candy' || def.id === 'seed' || def.id === 'starlet') { kill(s); return; }
+    if (def.id === 'bee' || def.id === 'candy' || def.id === 'seed' || def.id === 'starlet' || def.id === 'flame') { kill(s); return; }
     breakShot(s);
   }
   function yank(f, hit) {
@@ -1832,6 +1888,61 @@ const Game = (() => {
     logDone(z.seq);
     return true;
   }
+  const nearestFoe = (x, y) => { let t = null, bd = 1e9; for (const f of foes) { if (!live(f) || f.dummy) continue; const d = dist(x, y, f.rag.chest.x, f.rag.chest.y); if (d < bd) { bd = d; t = f; } } return t; };
+  // the storm cloud drifts over the nearest foe and strikes every 0.8 s
+  function stepCloud(z, dt) {
+    z.t += dt;
+    const f = nearestFoe(z.x, z.y);
+    if (f) { const h = f.rag.head; z.x = approach(z.x, h.x, 320 * dt); z.y = approach(z.y, h.y - 190, 320 * dt); }
+    if (Math.random() < 0.4) Fx.burst(z.x + rand(-40, 40), z.y + 18, 1, { color: '#9fc4ff', speed: [180, 260], life: [0.2, 0.35], size: [1.5, 2.5], grav: 900, ang: Math.PI / 2, spread: 0.1 });
+    if ((z.strikeT -= dt) <= 0 && f && Math.abs(f.rag.head.x - z.x) < 60) {
+      z.strikeT = 0.8;
+      const c = f.rag.chest;
+      Fx.bolt(z.x, z.y + 20, c.x, c.y); Fx.bolt(z.x, z.y + 20, c.x, c.y, '#9fd0ff', 0.3); Sfx.zap();
+      f.rag.stun = Math.max(f.rag.stun, f.boss ? 0.3 : 0.7);
+      hurtFoe(f, z.dmg, { x: c.x, y: c.y - 10, dirx: 0, diry: -1, s: z.s, kb: 0.3 });
+    }
+    if (z.t < z.dur) return false;
+    Fx.dust(z.x, z.y, 10, '#9aa3b8'); logDone(z.seq);
+    return true;
+  }
+  // the little dragon flies off to one side of its target and spits a fireball every 0.7 s
+  function stepDragon(z, dt) {
+    z.t += dt;
+    const f = nearestFoe(z.x, z.y);
+    const tx = f ? f.rag.head.x - 170 : z.x, ty = f ? f.rag.head.y - 120 + Math.sin(z.t * 3) * 30 : z.y;
+    z.vx = lerp(z.vx, clamp((tx - z.x) * 3, -420, 420), Math.min(1, 3 * dt)); z.vy = lerp(z.vy, clamp((ty - z.y) * 3, -420, 420), Math.min(1, 3 * dt));
+    z.x += z.vx * dt; z.y += z.vy * dt;
+    if (f) z.face = f.rag.chest.x > z.x ? 1 : -1;
+    if ((z.fireT -= dt) <= 0 && f) {
+      z.fireT = 0.7;
+      const c = f.rag.chest, d = dist(z.x, z.y, c.x, c.y) || 1, sp = 760;
+      launch(AMMO.flame, { owner: 'p', x: z.x + z.face * 18, y: z.y + 4, vx: (c.x - z.x) / d * sp, vy: (c.y - z.y) / d * sp - 40, dmg: z.dmg, seq: z.seq, life: 2 });
+      logAdd(z.seq, 1); Sfx.fizz();
+    }
+    if (Math.random() < 0.3) Fx.burst(z.x - z.face * 14, z.y, 1, { colors: ['#ffb347', '#ff7a3c'], speed: [10, 60], life: [0.2, 0.4], size: [2, 3.5], grav: -60, glow: true });
+    if (z.t < z.dur) return false;
+    Fx.burst(z.x, z.y, 14, { colors: ['#5fc9a8', '#ffffff', '#ffe27a'], speed: [80, 260], life: [0.3, 0.6], size: [2, 4] }); Sfx.pop();
+    logDone(z.seq);
+    return true;
+  }
+  // the supernova swells, then hits every foe on screen and clears the air
+  function stepNova(z, dt) {
+    z.t += dt;
+    if (Math.random() < 0.8) { const a = rand(0, TAU), r = rand(120, 240); Fx.burst(z.x + Math.cos(a) * r, z.y + Math.sin(a) * r, 1, { colors: ['#fff6c2', '#ffd23a', '#ffffff'], speed: [300, 420], life: [0.25, 0.4], size: [2, 4], grav: 0, drag: 0, ang: a + Math.PI, spread: 0.05, glow: true }); }
+    if (z.t < z.dur) return false;
+    Sfx.boom(true); Sfx.boss && Sfx.boss(); shake = 1; stopFor(0.08, null);
+    Fx.explosion(z.x, z.y, 180); Fx.ring(z.x, z.y, 30, 1500, 0.9, '#fff6c2', 14); Fx.ring(z.x, z.y, 20, 1100, 0.7, '#ffd23a', 8);
+    for (const e of shots) if (e.owner === 'e' && !e.dead) { Fx.burst(e.x, e.y, 6, { colors: ['#fff6c2', '#ffd23a'], speed: [60, 200], life: [0.2, 0.4], size: [2, 4], glow: true }); kill(e); }
+    for (const f of foes) {
+      if (!live(f)) continue;
+      const c = f.rag.chest, d = dist(z.x, z.y, c.x, c.y) || 1;
+      let nx = (c.x - z.x) / d, ny = (c.y - z.y) / d - 0.5; const n = Math.hypot(nx, ny) || 1;
+      hurtFoe(f, z.dmg * 3, { x: c.x, y: c.y, dirx: nx / n, diry: ny / n, s: z.s, kb: 2.4 });
+    }
+    logDone(z.seq);
+    return true;
+  }
   function stepZones(dt) {
     for (let i = zones.length - 1; i >= 0; i--) {
       const z = zones[i];
@@ -1839,6 +1950,9 @@ const Game = (() => {
       if (z.kind === 'rope') { if ((z.t -= dt) <= 0 || !z.rag.alive) zones.splice(i, 1); else stepRope(z, dt); continue; }
       if (z.kind === 'lift') { if (stepLift(z, dt)) zones.splice(i, 1); continue; }
       if (z.kind === 'twister') { if (stepTwister(z, dt)) zones.splice(i, 1); continue; }
+      if (z.kind === 'cloud') { if (stepCloud(z, dt)) zones.splice(i, 1); continue; }
+      if (z.kind === 'dragon') { if (stepDragon(z, dt)) zones.splice(i, 1); continue; }
+      if (z.kind === 'nova') { if (stepNova(z, dt)) zones.splice(i, 1); continue; }
       // pocket hole: drag everything in, then spit it out
       z.t += dt;
       const R = 310;
@@ -2260,6 +2374,16 @@ const Game = (() => {
       const h = z.f.rag.head, bx = h.x + Math.sin(time * 3 + z.t) * 8, by = h.y - 74;
       ctx.strokeStyle = 'rgba(239,230,210,0.9)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(h.x, h.y - 8); ctx.quadraticCurveTo((h.x + bx) / 2 + 8, (h.y + by) / 2, bx, by + 16); ctx.stroke();
       ItemArt.draw(ctx, 'balloon', bx, by, 0, 20, time);
+    }
+    // storm clouds, little dragons and a swelling supernova
+    for (const z of zones) {
+      if (z.kind === 'cloud') { const k = Math.min(1, z.t / 0.3, (z.dur - z.t) / 0.3); ctx.globalAlpha = Math.max(0, k); ItemArt.draw(ctx, 'cloud', z.x, z.y, 0, 46, time); ctx.globalAlpha = 1; }
+      else if (z.kind === 'dragon') { ctx.save(); ctx.translate(z.x, z.y); ctx.scale(z.face, 1); ItemArt.draw(ctx, 'dragon', 0, 0, Math.sin(time * 5) * 0.08, 30, time); ctx.restore(); }
+      else if (z.kind === 'nova') {
+        const k = z.t / z.dur, r = 20 + 60 * k * k;
+        ctx.globalCompositeOperation = 'lighter'; Glow.draw(ctx, '#ffd23a', z.x, z.y, r * 4, 0.6 + 0.3 * k); ctx.globalCompositeOperation = 'source-over';
+        ItemArt.draw(ctx, 'nova', z.x, z.y, time * 2, r, time);
+      }
     }
     // the tornado: stacked spinning rings, wide at the top
     for (const z of zones) {

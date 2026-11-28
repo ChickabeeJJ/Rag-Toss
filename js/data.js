@@ -107,6 +107,16 @@ const ITEMS = [
     tag: 'TORNADO', desc: 'Uncorks a little tornado that rolls across the islands, spinning up everyone in its path.' },
   { id: 'hourglass', name: 'Hourglass', price: 0, runKos: 100, sta: 12, dmg: 10, r: 13, kb: 0.5, spd: 0.95, grav: 1, spin: 5,
     tag: 'SLOW MOTION', desc: 'Shatters into sand that slows every foe, and everything they throw, to a crawl for five seconds.' },
+  { id: 'cloud', name: 'Thundercloud', price: 0, runKos: 150, sta: 12, dmg: 14, r: 14, kb: 0.4, spd: 0.9, grav: 0.85, spin: 2,
+    tag: 'STORM', desc: 'Lets loose a storm cloud that chases the nearest foe and strikes it with lightning, again and again.' },
+  { id: 'globe', name: 'Snow Globe', price: 0, runKos: 200, sta: 13, dmg: 10, r: 13, kb: 0.4, spd: 0.95, grav: 1, spin: 5,
+    tag: 'BIG FREEZE', desc: 'Shatters into a blizzard that freezes every foe on screen solid. A frozen foe takes double from the next hit.' },
+  { id: 'dragonegg', name: 'Dragon Egg', price: 0, runKos: 300, sta: 14, dmg: 9, r: 13, kb: 0.5, spd: 0.95, grav: 1, spin: 6,
+    tag: 'HATCHES', desc: 'Hatches a little dragon that flies at your foes for six seconds, spitting fireballs that set them alight.' },
+  { id: 'meteor', name: 'Meteor', price: 0, runKos: 400, sta: 15, dmg: 20, r: 13, kb: 1.2, spd: 1, grav: 1, spin: 4,
+    tag: 'FROM ABOVE', desc: 'Marks the spot. A second later a giant meteor slams down on the nearest foe and shakes the whole island.' },
+  { id: 'nova', name: 'Supernova', price: 0, runKos: 500, sta: 16, dmg: 30, r: 13, kb: 1, spd: 0.95, grav: 0.9, spin: 3,
+    tag: 'SCREEN WIPE', desc: 'Swells for a moment, then bursts in a shockwave that hits every foe on screen and wipes their throws out of the air.' },
 ];
 // the shop lists things cheapest first, then the knockout unlocks in the order you can earn them
 ITEMS.sort((a, b) => (a.runKos ? 1e7 + a.runKos : a.price) - (b.runKos ? 1e7 + b.runKos : b.price));
@@ -118,6 +128,8 @@ const AMMO = {
   bee: { id: 'bee', name: 'Bee', dmg: 5, r: 6, kb: 0.2, grav: 0, spin: 0 },
   seed: { id: 'seed', name: 'Seed', dmg: 5, r: 6, kb: 0.2, grav: 1, spin: 14 },
   starlet: { id: 'starlet', name: 'Star', dmg: 9, r: 9, kb: 0.5, grav: 0.6, spin: 8, pierce: true },
+  flame: { id: 'flame', name: 'Fireball', dmg: 7, r: 8, kb: 0.3, grav: 0.15, spin: 0 },
+  meteorite: { id: 'meteorite', name: 'Meteor', dmg: 40, r: 34, kb: 3, grav: 1.6, spin: 2, blast: 230, heavy: true },
   e_rock: { id: 'e_rock', dmg: 8, r: 10, grav: 1, spin: 7 },
   e_bomb: { id: 'e_bomb', dmg: 13, r: 12, grav: 1, spin: 5, blast: 105 },
   e_ball: { id: 'e_ball', dmg: 10, r: 8, grav: 1, spin: 20 },

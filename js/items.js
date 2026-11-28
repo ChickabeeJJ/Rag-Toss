@@ -483,6 +483,80 @@ const ItemArt = (() => {
     g.fillStyle = lin(g, -11, 0, -8, 0, '#a86e3c', '#7a4a20');
     g.beginPath(); g.roundRect(-10.6, -11, 2.2, 22, 1); g.fill(); g.beginPath(); g.roundRect(8.4, -11, 2.2, 22, 1); g.fill();
   };
+  // thundercloud: a puffy storm cloud with a bolt hanging under it
+  P.cloud = (g, t) => {
+    const f = 0.5 + 0.5 * Math.sin(t * 7);
+    poly(g, [-1.5, 3, 3.6, 3, 0.6, 8.6, 4.4, 8.6, -3, 17.4, -0.6, 10.4, -4, 10.4]); fillStroke(g, `rgba(255,${226 + 20 * f | 0},${90 + 60 * f | 0},1)`);
+    g.fillStyle = lin(g, 0, -12, 0, 6, '#8b93a8', '#5b6378', '#454c60');
+    for (const [x, y, r] of [[-8.6, 0.6, 6], [-2.6, -4.4, 7.6], [5.2, -2.4, 6.6], [10, 1.6, 4.6], [1.4, 1.6, 7]]) { circ(g, x, y, r); g.fill(); }
+    g.fillStyle = 'rgba(255,255,255,0.22)'; for (const [x, y, r] of [[-4, -7.4, 3.4], [4, -5.6, 2.6]]) { circ(g, x, y, r); g.fill(); }
+    g.fillStyle = INK; circ(g, -3, -0.6, 1); g.fill(); circ(g, 3, -0.6, 1); g.fill();
+    g.strokeStyle = INK; g.lineWidth = 1; g.lineCap = 'round'; g.beginPath(); g.moveTo(-5, -3); g.lineTo(-1.8, -2.2); g.moveTo(5, -3); g.lineTo(1.8, -2.2); g.stroke();
+  };
+  // snow globe: a glass dome on a wooden base, a tiny snowy tree inside, flakes drifting
+  P.globe = (g, t) => {
+    g.fillStyle = lin(g, 0, 7, 0, 15, '#c98a52', '#7a4a20'); g.beginPath(); g.moveTo(-10.6, 8); g.lineTo(10.6, 8); g.lineTo(12.4, 15); g.lineTo(-12.4, 15); g.closePath(); g.fill();
+    circ(g, 0, -1.6, 11.4); fillStroke(g, rad(g, -3, -5, 1, 13, 'rgba(235,248,255,0.85)', 'rgba(170,215,245,0.65)', 'rgba(120,180,225,0.75)'));
+    g.save(); circ(g, 0, -1.6, 11.4); g.clip();
+    g.fillStyle = '#f4f8ff'; g.beginPath(); g.ellipse(0, 9, 12, 4.4, 0, 0, TAU); g.fill();
+    poly(g, [0, -8, -5.4, 4.4, 5.4, 4.4]); fillStroke(g, lin(g, 0, -8, 0, 5, '#3fb55a', '#237a3a'));
+    g.fillStyle = '#ffffff'; poly(g, [0, -8, -2.4, -2.6, 2.4, -2.6]); g.fill();
+    for (let i = 0; i < 7; i++) { const x = ((i * 37 + t * 6) % 20) - 10, y = ((i * 23 + t * 9) % 18) - 11; circ(g, x, y, 0.8); g.fill(); }
+    g.restore();
+    g.fillStyle = 'rgba(255,255,255,0.6)'; ell(g, -5, -6.4, 2.2, 4, -0.6); g.fill();
+  };
+  // dragon egg: a teal egg with dark speckles and a glowing crack
+  P.dragonegg = (g, t) => {
+    ell(g, 0, 1, 10.6, 13.4); fillStroke(g, rad(g, -3.4, -4, 1, 16, '#8ff0cf', '#3fb594', '#21765f'));
+    g.save(); ell(g, 0, 1, 10.6, 13.4); g.clip(); g.fillStyle = 'rgba(16,60,48,0.45)';
+    for (const [x, y, r] of [[-4.6, -4, 2], [4.2, -1, 1.6], [-2, 7.4, 2.4], [5.6, 7, 1.3], [0.4, -9, 1.2]]) { circ(g, x, y, r); g.fill(); }
+    g.restore();
+    const f = 0.6 + 0.4 * Math.sin(t * 6);
+    g.strokeStyle = `rgba(255,${190 + 40 * f | 0},80,1)`; g.lineWidth = 1.6; g.lineJoin = 'round';
+    g.beginPath(); g.moveTo(-8.6, -0.4); g.lineTo(-4.6, 2); g.lineTo(-1.4, -1.6); g.lineTo(2, 1.6); g.lineTo(5, -1); g.lineTo(9, 1); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.35)'; ell(g, -4.4, -6, 1.8, 3.4, -0.4); g.fill();
+  };
+  // the little dragon that hatches: side view, facing right
+  P.dragon = (g, t) => {
+    const flap = Math.sin(t * 14);
+    g.save(); g.translate(-2, -4); g.rotate(-0.4 - flap * 0.5);
+    poly(g, [0, 0, -12, -10, -6, -3, -13, -2, -4, 2]); fillStroke(g, lin(g, -12, -8, 0, 2, '#9ef5d6', '#3fb594')); g.restore();
+    g.beginPath(); g.moveTo(-6, 3); g.quadraticCurveTo(-14, 6, -16, 0); g.quadraticCurveTo(-12, 9, -4, 7); g.closePath(); fillStroke(g, '#2f9a7c');
+    poly(g, [-16, 0, -18.4, -2.6, -17.6, 1.6]); fillStroke(g, '#ffb347');
+    ell(g, -1, 3, 8.6, 6.4); fillStroke(g, rad(g, -3, 0, 1, 10, '#7fe8c4', '#3fb594', '#2a8a6e'));
+    ell(g, 0.6, 5.6, 5.2, 2.8); fillStroke(g, '#f6e8b0');
+    circ(g, 7, -3, 5.6); fillStroke(g, rad(g, 5.6, -5, 1, 7, '#8ff0cf', '#3fb594'));
+    ell(g, 11.6, -1.6, 3.8, 2.8); fillStroke(g, '#4cc4a0');
+    poly(g, [4.4, -7.6, 3, -12, 6.6, -8.4]); fillStroke(g, '#f6e8b0'); poly(g, [7.6, -8.2, 8.4, -12.6, 9.6, -7.8]); fillStroke(g, '#f6e8b0');
+    g.fillStyle = INK; circ(g, 8.4, -4, 1.2); g.fill(); g.fillStyle = '#fff'; circ(g, 8.8, -4.4, 0.4); g.fill();
+    g.fillStyle = '#1f5f4c'; circ(g, 13.6, -2.2, 0.6); g.fill();
+    for (const x of [-4, 2]) { g.strokeStyle = '#2a8a6e'; g.lineWidth = 2; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, 8); g.lineTo(x + 1, 11); g.stroke(); }
+  };
+  // a fireball from the dragon
+  P.flame = (g, t) => {
+    const f = Math.sin(t * 30) * 0.8;
+    g.beginPath(); g.moveTo(10, 0); g.quadraticCurveTo(4, -9 - f, -12, -2); g.quadraticCurveTo(-6, 0, -12, 2); g.quadraticCurveTo(4, 9 + f, 10, 0); g.closePath();
+    fillStroke(g, lin(g, -12, 0, 10, 0, 'rgba(255,90,40,0)', '#ff7a3c', '#ffb347'));
+    circ(g, 4.6, 0, 5.4); fillStroke(g, rad(g, 5.6, -1, 0.5, 6, '#fff6c2', '#ffd23a', '#ff8a3c'));
+  };
+  // meteor: a dark rock glowing through its cracks, trailing fire
+  P.meteor = (g, t) => {
+    const f = Math.sin(t * 20) * 1;
+    g.beginPath(); g.moveTo(-6, -9); g.quadraticCurveTo(-18, -6 + f, -24, -14); g.quadraticCurveTo(-16, -1, -22, 4 - f); g.quadraticCurveTo(-12, 4, -6, 9); g.closePath();
+    fillStroke(g, lin(g, -24, 0, -4, 0, 'rgba(255,122,60,0)', '#ff7a3c', '#ffd23a'));
+    poly(g, [-10, 2, -7, -8, 2, -12, 10, -7, 12, 3, 6, 11, -5, 10]); fillStroke(g, lin(g, -10, -10, 10, 10, '#6b5a5a', '#4a3a3a', '#2e2424'));
+    g.strokeStyle = '#ff9a3c'; g.lineWidth = 1.4; g.lineJoin = 'round';
+    g.beginPath(); g.moveTo(-5, -4); g.lineTo(-1, -1); g.lineTo(-3, 4); g.moveTo(-1, -1); g.lineTo(5, -3); g.lineTo(7, 2); g.moveTo(1, 3); g.lineTo(4, 7); g.stroke();
+    g.fillStyle = 'rgba(255,200,120,0.3)'; poly(g, [-7, -8, 2, -12, 10, -7, 3, -6]); g.fill();
+  };
+  // supernova: a white-hot core in a golden halo, with a ring spinning round it
+  P.nova = (g, t) => {
+    circ(g, 0, 0, 13); fillStroke(g, rad(g, 0, 0, 2, 13, 'rgba(255,246,194,0.9)', 'rgba(255,210,58,0.55)', 'rgba(255,150,40,0)'));
+    circ(g, 0, 0, 7.4); fillStroke(g, rad(g, -2, -2, 0.5, 8, '#ffffff', '#fff3b0', '#ffc93a'));
+    g.save(); g.rotate(t * 2); g.strokeStyle = 'rgba(255,240,180,0.9)'; g.lineWidth = 1.6;
+    g.beginPath(); g.ellipse(0, 0, 13.4, 4.2, 0.4, 0, TAU); g.stroke(); g.restore();
+    g.fillStyle = '#ffffff'; for (let i = 0; i < 4; i++) { const a = t * 1.5 + i * TAU / 4; circ(g, Math.cos(a) * 11, Math.sin(a) * 11, 1); g.fill(); }
+  };
   P.disco = (g, t) => {
     g.save(); circ(g, 0, 1, 13); g.clip();
     g.fillStyle = lin(g, -13, -13, 13, 15, '#7e8aa8', '#3a4259'); g.fillRect(-14, -13, 28, 28);
