@@ -35,6 +35,8 @@ const Save = (() => {
         if (!Array.isArray(data.items)) data.items = ['rock'];
         data.items = data.items.filter(id => ITEM[id]);
         if (!data.items.includes('rock')) data.items.unshift('rock');
+        // knockout unlocks already earned by your best run (also covers saves from before they existed)
+        for (const it of ITEMS) if (it.runKos && data.best.kos >= it.runKos && !data.items.includes(it.id)) data.items.push(it.id);
         if (!Array.isArray(data.bag) || data.bag.length !== 3) data.bag = ['rock', null, null];
         data.bag = data.bag.map(id => (id && data.items.includes(id) ? id : null));
         if (!data.bag.some(Boolean)) data.bag[0] = 'rock';
@@ -57,6 +59,14 @@ const Save = (() => {
 
   /* ------------------------------------------------------------------ bag */
   const owns = id => data.items.includes(id);
+  // a knockout unlock: free, and dropped into a free bag slot if there is one
+  function unlockItem(id) {
+    if (!ITEM[id] || owns(id)) return false;
+    data.items.push(id);
+    const free = data.bag.indexOf(null);
+    if (free >= 0) data.bag[free] = id;
+    save(); return true;
+  }
   function buyItem(id) {
     const it = ITEM[id];
     if (!it || owns(id) || data.coins < it.price) return false;
@@ -80,7 +90,7 @@ const Save = (() => {
     data.bag[slot] = null; save(); return true;
   }
   const bagItems = () => data.bag.filter(Boolean);
-  const nextItem = () => ITEMS.find(i => !owns(i.id)) || null;
+  const nextItem = () => ITEMS.find(i => !owns(i.id) && !i.runKos) || null;
 
   /* ----------------------------------------------------------- characters */
   const ownsChar = id => data.chars.includes(id);
@@ -116,7 +126,7 @@ const Save = (() => {
     if (data.coins < c) return false;
     data.coins -= c; data.upgrades[id] = l + 1; save(); return true;
   }
-  const canAffordAny = () => UPGRADES.some(u => lvl(u.id) < u.max && data.coins >= upgradeCost(u, lvl(u.id))) || ITEMS.some(i => !owns(i.id) && data.coins >= i.price);
+  const canAffordAny = () => UPGRADES.some(u => lvl(u.id) < u.max && data.coins >= upgradeCost(u, lvl(u.id))) || ITEMS.some(i => !owns(i.id) && !i.runKos && data.coins >= i.price);
 
   /* ------------------------------------------------------------- missions */
   function rollDaily() {
@@ -189,7 +199,7 @@ const Save = (() => {
   }
 
   return {
-    load, save, reset, setRun, clearRun, addCoins, ownsChar, buyChar, equipChar, owns, buyItem, equip, unequip, bagItems, nextItem, lvl, buyUpgrade, canAffordAny,
+    load, save, reset, setRun, clearRun, addCoins, ownsChar, buyChar, equipChar, owns, buyItem, unlockItem, equip, unequip, bagItems, nextItem, lvl, buyUpgrade, canAffordAny,
     masteryInfo, masteryLvl, masterKill, track, claimMission, claimBonus, allClaimed, missionsReady, rollDaily, rankInfo, claimRanks, recordRun,
     get data() { return data; },
   };

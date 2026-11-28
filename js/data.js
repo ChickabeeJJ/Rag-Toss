@@ -96,9 +96,20 @@ const ITEMS = [
     tag: 'TIMED STUN', desc: 'Sticks on, then goes off two seconds later: a wide blast of noise that stuns everyone nearby.' },
   { id: 'cannon', name: 'Cannonball', price: 5600, sta: 12, dmg: 26, r: 14, kb: 2.9, spd: 1.12, grav: 0.55, spin: 3, bounce: 2, heavy: true,
     tag: 'SKIPS', desc: 'Fast, flat and very heavy. It skips off whatever it hits, smashes lids and sends nearly anyone flying.' },
+  /* Knockout unlocks: never for sale. Each one is yours for good the first run you reach `runKos` knockouts. */
+  { id: 'doll', name: 'Nesting Doll', price: 0, runKos: 15, sta: 8, dmg: 14, r: 14, kb: 0.9, spd: 0.95, grav: 1, spin: 7,
+    tag: 'SPLITS', desc: 'Every hit splits it into two smaller dolls, and they split again. One doll ends up as eight.' },
+  { id: 'balloon', name: 'Party Balloon', price: 0, runKos: 30, sta: 9, dmg: 16, r: 14, kb: 0.3, spd: 0.92, grav: 0.8, spin: 3,
+    tag: 'LIFTS', desc: 'Ties a balloon to everyone it lands near. Up they float, then it pops and down they come.' },
+  { id: 'star', name: 'Shooting Star', price: 0, runKos: 50, sta: 10, dmg: 12, r: 13, kb: 0.6, spd: 1.05, grav: 0.85, spin: 9,
+    tag: 'STAR SHOWER', desc: 'Wherever it lands, a shower of falling stars rains down on the spot a moment later.' },
+  { id: 'twister', name: 'Twister in a Bottle', price: 0, runKos: 75, sta: 12, dmg: 10, r: 12, kb: 0.5, spd: 0.95, grav: 1, spin: 6,
+    tag: 'TORNADO', desc: 'Uncorks a little tornado that rolls across the islands, spinning up everyone in its path.' },
+  { id: 'hourglass', name: 'Hourglass', price: 0, runKos: 100, sta: 12, dmg: 10, r: 13, kb: 0.5, spd: 0.95, grav: 1, spin: 5,
+    tag: 'SLOW MOTION', desc: 'Shatters into sand that slows every foe, and everything they throw, to a crawl for five seconds.' },
 ];
-// the shop lists things cheapest first
-ITEMS.sort((a, b) => a.price - b.price);
+// the shop lists things cheapest first, then the knockout unlocks in the order you can earn them
+ITEMS.sort((a, b) => (a.runKos ? 1e7 + a.runKos : a.price) - (b.runKos ? 1e7 + b.runKos : b.price));
 const ITEM = Object.fromEntries(ITEMS.map(i => [i.id, i]));
 
 /* sub-projectiles and enemy ammo (never in the shop) */
@@ -106,6 +117,7 @@ const AMMO = {
   candy: { id: 'candy', name: 'Candy', dmg: 7, r: 7, kb: 0.3, grav: 1, spin: 12 },
   bee: { id: 'bee', name: 'Bee', dmg: 5, r: 6, kb: 0.2, grav: 0, spin: 0 },
   seed: { id: 'seed', name: 'Seed', dmg: 5, r: 6, kb: 0.2, grav: 1, spin: 14 },
+  starlet: { id: 'starlet', name: 'Star', dmg: 9, r: 9, kb: 0.5, grav: 0.6, spin: 8, pierce: true },
   e_rock: { id: 'e_rock', dmg: 8, r: 10, grav: 1, spin: 7 },
   e_bomb: { id: 'e_bomb', dmg: 13, r: 12, grav: 1, spin: 5, blast: 105 },
   e_ball: { id: 'e_ball', dmg: 10, r: 8, grav: 1, spin: 20 },
@@ -190,7 +202,7 @@ const PERKS = [
   { id: 'rich', kind: 'wealth', name: 'Loose Change', text: n => `+${30 * n}% coins` },
   { id: 'shove', kind: 'offense', name: 'Big Shove', text: n => `+${40 * n}% knockback` },
   { id: 'hot', fun: true, kind: 'offense', name: 'Hot Hands', text: n => (n === 1 ? 'Every hit sets the foe on fire' : `Every hit sets the foe on fire, burning ${n} times as hard`) },
-  { id: 'spring', fun: true, kind: 'utility', name: 'Springy', text: n => `Everything bounces ${n === 1 ? 'one more time' : n + ' more times'}` },
+  { id: 'spring', fun: true, kind: 'utility', name: 'Springy', text: n => `Everything bounces ${n === 1 ? 'one more time' : n + ' more times'}, and things that go off where they land go off on every bounce` },
   { id: 'aim', kind: 'utility', name: 'Auto Aimer', max: 1, legendOnly: true, text: () => 'Everything you throw curves towards the nearest foe, a little less than the magnet. The magnet itself pulls much harder' },
   { id: 'cheap', kind: 'utility', name: 'Light Load', max: 3, text: n => `Throws cost ${20 * n}% less stamina` },
 ];

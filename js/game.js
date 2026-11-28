@@ -24,7 +24,7 @@ const Game = (() => {
   const on = { over: null, perk: null, toast: null, banner: null, tut: null };
 
   const HOME_X = 262, HOME_Y = 620;
-  const FEVER_T = 7, FEVER_EVERY = 10, STAND_T = 3.4;
+  const FEVER_T = 6, FEVER_EVERY = 10, STAND_T = 3.4;
   const coinFx = []; let coinTarget = { x: 0, y: 0 }, coinPing = 0, feverGlow = 0;
   const ARC_T = 0.8;           // the throw rejoins the previewed arc about this far into its flight
   const RELEASE_AT = 0.07;     // seconds into the whip when the item leaves the hand
@@ -469,7 +469,7 @@ const Game = (() => {
       rot: rand(0, TAU), vr: (def.spin || 0) * (o.vx < 0 ? -1 : 1), r: def.r * big * (o.scale || 1),
       dmg: o.dmg != null ? o.dmg : def.dmg, kb: def.kb != null ? def.kb : 0.5, grav: def.grav != null ? def.grav : 1,
       mast: o.mast || def.id, age: 0, life: o.life || def.life || 7, bounces: (def.bounce || 0) + (o.owner === 'p' ? pk('spring') : 0), hits: new Set(), rehit: 0,
-      seq: o.seq || 0, from: o.from || null, refund: o.refund || null, tricks: 0, st: 0, hp: def.hp || 1, target: o.target || null, dead: false,
+      seq: o.seq || 0, from: o.from || null, refund: o.refund || null, scale: o.scale || 1, gen: o.gen || 0, tricks: 0, st: 0, hp: def.hp || 1, target: o.target || null, dead: false,
       turnAt: 0.5 + 0.4 * (o.power || 0.5), trail: 0, sx: o.x,
     };
     if (def.id === 'firework') { s.grav = 0; s.rot = Math.atan2(s.vy, s.vx); }
@@ -571,6 +571,13 @@ const Game = (() => {
     else blastPlayer(s.x, s.y, s.def.blast, s.dmg);
     kill(s);
   }
+  /* ---- Springy on things that spend themselves: a copy of the throw goes off where it is, and the throw
+     itself bounces on, so a bell, a stick of dynamite or a melon goes off on every bounce ---- */
+  const springy = s => s.owner === 'p' && s.bounces > 0;
+  function ghost(s, fn) {
+    logAdd(s.seq, 1);                                              // the copy's own kill() balances this
+    fn(Object.assign({}, s, { hits: new Set(s.hits), dead: false }));
+  }
   /* ---- things that go off where they land: a bell, a melon, a bucket of paint, a cushion, a disco ball ---- */
   const nearFoes = (x, y, r) => foes.filter(f => live(f) && dist(x, y, f.rag.chest.x, f.rag.chest.y) < r + 30 * f.rag.s);
   const AREA = {
@@ -607,6 +614,51 @@ const Game = (() => {
       }
       kill(s);
     },
+    // nesting doll: two smaller dolls pop out, three generations deep
+    doll(s) {
+      Sfx.pop(); Fx.burst(s.x, s.y, 8, { colors: ['#f0485a', '#ffd25a', '#fff4e6'], speed: [80, 260], life: [0.25, 0.5], size: [2, 4], grav: 600 });
+      if (s.gen < 3) {
+        logAdd(s.seq, 2);
+        for (const side of [-1, 1]) {
+          const c = launch(ITEM.doll, { owner: 'p', x: s.x, y: s.y - s.r - 4, vx: side * rand(170, 270) + s.vx * 0.15, vy: -rand(380, 520), dmg: s.dmg * 0.72, seq: s.seq, scale: s.scale * 0.74, gen: s.gen + 1, mast: 'doll', life: 4 });
+          c.split = true; c.bounces = 0; if (s.lastFoe) c.hits.add(s.lastFoe);
+        }
+      }
+      breakShot(s, true);
+    },
+    // party balloon: everyone close by gets a balloon and floats off
+    balloon(s) {
+      Sfx.pop(); Fx.confetti(s.x, s.y, 12); Fx.ring(s.x, s.y, 10, 170, 0.35, '#ff8aa0', 5);
+      for (const f of nearFoes(s.x, s.y, 170)) liftFoe(f, s.dmg);
+      kill(s);
+    },
+    // shooting star: a shower of stars falls on the spot
+    star(s) {
+      Sfx.gold(); Fx.ring(s.x, s.y, 8, 120, 0.4, '#ffe27a', 5); Fx.burst(s.x, s.y, 12, { colors: ['#fff6b0', '#ffd23a'], speed: [80, 300], life: [0.3, 0.6], size: [2, 4], glow: true });
+      const n = 7; logAdd(s.seq, n);
+      const x0 = s.x, y0 = s.y, dmg = s.dmg * 0.8, seq = s.seq;
+      for (let i = 0; i < n; i++) zones.push({ kind: 'delay', t: 0.35 + i * 0.09, fn: () => {
+        const tx = x0 + rand(-140, 140);
+        launch(AMMO.starlet, { owner: 'p', x: tx + rand(-60, 60), y: y0 - 820, vx: rand(-40, 40), vy: rand(620, 760), dmg, seq, life: 3 });
+        if (i === 0) Sfx.whoosh && Sfx.whoosh();
+      } });
+      kill(s);
+    },
+    // twister in a bottle: a tornado rolls off in the direction of the throw
+    twister(s) {
+      Sfx.pop(); Sfx.vortex(); Fx.dust(s.x, s.y, 10, '#d8dee8');
+      logAdd(s.seq, 1);
+      zones.push({ kind: 'twister', x: s.x, y: s.y, vx: (s.vx >= 0 ? 1 : -1) * 190, t: 0, dur: 3.4, tick: 0.2, dmg: s.dmg, seq: s.seq, s });
+      kill(s);
+    },
+    // hourglass: every foe and everything they throw slows right down
+    hourglass(s) {
+      Sfx.glass(); Sfx.tick(); Fx.ring(s.x, s.y, 20, 420, 0.7, '#f2c36a', 6);
+      Fx.burst(s.x, s.y, 22, { colors: ['#f2c36a', '#e0a24a', '#fff1c4'], speed: [80, 380], life: [0.4, 0.9], size: [2, 4], grav: 500 });
+      run.slowT = 5;
+      for (const f of foes) { if (!live(f) || f.dummy) continue; f.slow = Math.max(f.slow || 0, 5); Fx.text(f.rag.head.x, f.rag.head.y - 44, 'SLOW-MO', '#f2c36a', 17); }
+      kill(s);
+    },
     disco(s) {
       Sfx.tick(); Sfx.gold();
       Fx.ring(s.x, s.y, 20, 360, 0.6, '#ffffff', 6); Fx.confetti(s.x, s.y, 20);
@@ -614,6 +666,11 @@ const Game = (() => {
       kill(s);
     },
   };
+  function liftFoe(f, dmg) {
+    if (!f.rag.alive || zones.some(z => z.kind === 'lift' && z.f === f)) return;
+    zones.push({ kind: 'lift', f, t: 0, dur: f.boss ? 0.8 : 1.7, dmg, x0: f.rag.chest.x, y0: f.rag.chest.y });
+    Fx.text(f.rag.head.x, f.rag.head.y - 44, 'UP YOU GO', '#ff9ab0', 17);
+  }
   // an alarm clock stuck on something goes off two seconds later
   function armClock(x, y, rag) {
     Sfx.stick();
@@ -672,6 +729,27 @@ const Game = (() => {
     kill(s);
   }
 
+  const SPEND = { beehive: burstHive, jar: zap, hole: openHole, pinata: burstPinata };
+  function landFx(s, pl, n) {
+    const id = s.def.id;
+    if (s.def.blast) return detonate;
+    if (id === 'hole') return g => { g.y -= 30; openHole(g); };
+    if (SPEND[id]) return SPEND[id];
+    if (AREA[id]) return AREA[id];
+    if (id === 'clock') return g => {
+      if (pl.kind !== 'wall' && n.ny < -0.5 && pl.props.length < 8) pl.props.push({ id: 'clock', ox: g.x - pl.x, oy: g.y - pl.y + g.r * 0.4, rot: g.rot, r: g.r, life: 2.1 });
+      armClock(g.x, g.y, null); kill(g);
+    };
+    if (id === 'anvil' && s.st === 1) return g => { quake(pl, g); kill(g); };
+    if (id === 'glue') return g => {
+      if (pl.kind !== 'wall' && n.ny < -0.5 && pl.props.length < 8) pl.props.push({ id: 'glue', ox: g.x - pl.x, oy: g.y - pl.y + g.r * 0.4, rot: 0, r: g.r, life: 1.6 });
+      const gx = g.x, gy = g.y; Sfx.stick();
+      zones.push({ kind: 'delay', t: 0.9, fn: () => Sfx.warn() }); zones.push({ kind: 'delay', t: 1.2, fn: () => Sfx.warn() });
+      zones.push({ kind: 'delay', t: 1.5, fn: () => blast(gx, gy - 6, 115, 30 * dmgMul(), 1.7, null, false) });
+      kill(g);
+    };
+    return null;
+  }
   // circle against a solid island box: returns the push-out normal or null
   function platHit(s, pl) {
     if (pl.falling && pl.kind !== 'wall') return null;
@@ -700,7 +778,7 @@ const Game = (() => {
     if (s.vr) s.rot += s.vr * dt; else if (id !== 'anvil' && id !== 'bee') s.rot = Math.atan2(s.vy, s.vx);
     if (s.owner === 'p' && run.fever > 0 && Math.random() < 0.5) Fx.burst(s.x, s.y, 1, { colors: ['#ffb347', '#ff7a3c', '#ffe08a'], speed: [10, 70], life: [0.2, 0.45], size: [3, 6], grav: -80, glow: true });
     // a faint trail on your own throws so fast ones stay readable
-    if (s.owner === 'p' && (s.trail -= dt) <= 0 && id !== 'bee' && id !== 'candy' && id !== 'seed' && shots.length < 12) { s.trail = 0.02; Fx.burst(s.x, s.y, 1, { color: '#ffffff', speed: [0, 8], life: [0.16, 0.26], size: [s.r * 0.22, s.r * 0.34], grav: 0, drag: 0 }); }
+    if (s.owner === 'p' && (s.trail -= dt) <= 0 && id !== 'bee' && id !== 'candy' && id !== 'seed' && id !== 'starlet' && shots.length < 12) { s.trail = 0.02; Fx.burst(s.x, s.y, 1, { color: '#ffffff', speed: [0, 8], life: [0.16, 0.26], size: [s.r * 0.22, s.r * 0.34], grav: 0, drag: 0 }); }
     if (s.age > s.life || s.y > WORLD_H + 260 || s.x < -400 || s.x > WORLD_W + 600 || s.y < -2600) { kill(s); return; }
 
     if (s.owner === 'p') {
@@ -756,7 +834,10 @@ const Game = (() => {
         }
         const hit = rag.hitTest(s.x, s.y, s.r);
         if (!hit) continue;
-        if (s.def.blast) { detonate(s); return; }
+        if (s.def.blast) {
+          if (springy(s)) { s.hits.add(f); ghost(s, detonate); hitResolve(s, f, hit); continue; }
+          detonate(s); return;
+        }
         onFoeHit(s, f, hit);
         if (s.dead) return;
       }
@@ -780,17 +861,17 @@ const Game = (() => {
       if (s.owner === 'p' && s.age < 0.3 && (pl === home || pl === wall)) continue;
       const n = platHit(s, pl);
       if (!n) continue;
-      if (s.def.blast) { detonate(s); return; }
-      if (id === 'beehive') { burstHive(s); return; }
-      if (id === 'jar') { zap(s); return; }
-      if (id === 'hole') { s.y -= 30; openHole(s); return; }
-      if (id === 'pinata') { burstPinata(s); return; }
-      if (AREA[id]) { AREA[id](s); return; }
-      if (id === 'clock') {
-        if (pl.kind !== 'wall' && n.ny < -0.5 && pl.props.length < 8) pl.props.push({ id: 'clock', ox: s.x - pl.x, oy: s.y - pl.y + s.r * 0.4, rot: s.rot, r: s.r, life: 2.1 });
-        armClock(s.x, s.y, null); kill(s); return;
+      if (s.split && s.age < 0.15) continue;                      // a fresh nesting doll first leaves the spot it popped out of
+      const fx = landFx(s, pl, n);
+      if (fx) {
+        if (springy(s)) {
+          ghost(s, fx);
+          s.bounces--; s.tricks++; bounceOff(s, n, 0.74); s.hits.clear(); Sfx.boing();
+          Fx.ring(s.x - n.nx * s.r, s.y - n.ny * s.r, 4, 22, 0.2, '#ffffff', 3);
+          continue;
+        }
+        fx(s); return;
       }
-      if (id === 'anvil' && s.st === 1) { quake(pl, s); kill(s); return; }
       if (id === 'bowling') {
         bounceOff(s, n, 0.3); s.vx *= 0.992;
         if (Math.abs(s.vy) > 120) { Sfx.thud(true); pl.shake = Math.max(pl.shake, 0.4); Fx.dust(s.x, s.y + s.r, 3, '#e9e2d0'); }
@@ -802,13 +883,6 @@ const Game = (() => {
         if (id === 'duck') Sfx.quack(); else if (id === 'chicken') Sfx.squeak(); else Sfx.boing();
         Fx.ring(s.x - n.nx * s.r, s.y - n.ny * s.r, 4, 22, 0.2, '#ffffff', 3);
         continue;
-      }
-      if (id === 'glue') {
-        if (pl.kind !== 'wall' && n.ny < -0.5 && pl.props.length < 8) pl.props.push({ id: 'glue', ox: s.x - pl.x, oy: s.y - pl.y + s.r * 0.4, rot: 0, r: s.r, life: 1.6 });
-        const gx = s.x, gy = s.y; Sfx.stick();
-        zones.push({ kind: 'delay', t: 0.9, fn: () => Sfx.warn() }); zones.push({ kind: 'delay', t: 1.2, fn: () => Sfx.warn() });
-        zones.push({ kind: 'delay', t: 1.5, fn: () => blast(gx, gy - 6, 115, 30 * dmgMul(), 1.7, null, false) });
-        kill(s); return;
       }
       if (s.def.stick && s.owner === 'p' && pl.kind !== 'wall' && n.ny < -0.5 && pl.props.length < 8) {
         pl.props.push({ id: s.art, ox: s.x - pl.x, oy: s.y - pl.y + s.r * 0.4, rot: s.rot + (s.art === 'forks' ? Math.PI / 2 : 0), r: s.r, life: 3 });
@@ -882,7 +956,7 @@ const Game = (() => {
   }
   // the little freeze on a solid hit: shorter as the stages climb, never back to back, and never from candies, seeds or bees
   let lastStop = -9;
-  const SUBS = new Set(['candy', 'seed', 'bee']);
+  const SUBS = new Set(['candy', 'seed', 'bee', 'starlet']);
   function stopFor(base, s) {
     if (s && s.def && SUBS.has(s.def.id)) return;
     if (time - lastStop < 0.2) return;
@@ -961,17 +1035,21 @@ const Game = (() => {
       armClock(hit.x, hit.y, rag);
     }
     if (pk('hot')) f.burnT = 3;
-    if (id === 'beehive') { burstHive(s); }
-    else if (id === 'jar') { zap(s); return; }
-    else if (id === 'hole') { openHole(s); return; }
-    else if (id === 'pinata') { burstPinata(s); }
+    if (SPEND[id]) {
+      const direct = id === 'beehive' || id === 'pinata';          // these still land their own hit; the jar and the hole don't
+      if (springy(s)) { ghost(s, SPEND[id]); if (!direct) { hitResolve(s, f, hit); return; } }
+      else { SPEND[id](s); if (!direct) return; }
+    }
 
     if (SUBS.has(id)) { if (Math.random() < 0.5) Fx.hit(hit.x, hit.y, Math.atan2(s.vy, s.vx), '#ffffff', 3); }
     else Fx.hit(hit.x, hit.y, Math.atan2(s.vy, s.vx), head ? '#ffe14d' : '#ffffff', head ? 12 : 7);
     hurtFoe(f, dmg, { x: hit.x, y: hit.y, dirx, diry, s, kb, head, hit });
     if (id === 'plunger' && rag.alive) yank(f, hit);
-    if (AREA[id] && !s.dead) { AREA[id](s); return; }
-    if (glued) { kill(s); return; }
+    if (AREA[id] && !s.dead) {
+      if (springy(s) && id !== 'doll') { ghost(s, AREA[id]); hitResolve(s, f, hit); return; }
+      AREA[id](s); return;
+    }
+    if (glued) { if (springy(s)) { hitResolve(s, f, hit); return; } kill(s); return; }
     hitResolve(s, f, hit);
   }
   // what the projectile itself does after connecting
@@ -986,7 +1064,7 @@ const Game = (() => {
       return;
     }
     if (def.stick && f && hit) { f.rag.addStuck(s.art, hit, Math.atan2(s.vy, s.vx), s.r); Sfx.stick(); kill(s); return; }
-    if (def.id === 'bee' || def.id === 'candy' || def.id === 'seed') { kill(s); return; }
+    if (def.id === 'bee' || def.id === 'candy' || def.id === 'seed' || def.id === 'starlet') { kill(s); return; }
     breakShot(s);
   }
   function yank(f, hit) {
@@ -1094,6 +1172,15 @@ const Game = (() => {
     Fx.burst(c.x, c.y, 6, { color: '#ffc933', speed: [140, 380], life: [0.4, 0.8], size: [3, 5], grav: 1000, ang: -Math.PI / 2, spread: 1 });
     Sfx.ko(); Sfx.coin(run.combo);
     run.kos++; track('kills');
+    // knockout unlocks: reach the mark in one run and it's yours for good, with a few throws of it right away
+    if (!run.demo && !run.tut) for (const it of ITEMS) {
+      if (!it.runKos || run.kos < it.runKos || Save.owns(it.id)) continue;
+      Save.unlockItem(it.id);
+      if (on.banner) on.banner('NEW THROWABLE', it.name.toUpperCase());
+      if (on.toast) on.toast(it.name.toUpperCase() + ' UNLOCKED', 'bag');
+      if (!player.bonus) { player.bonus = { id: it.id, n: 3, on: true }; Fx.text(player.rag.head.x, player.rag.head.y - 60, 'TRY IT!', '#ffe27a', 22); }
+      Sfx.perk();
+    }
     bump('ko'); bump('clean'); if (o.ring) bump('ring');
     if (lh.s && lh.s.owner === 'p' && ITEM[lh.s.mast || lh.s.def.id]) {
       const mid = lh.s.mast || lh.s.def.id;
@@ -1479,11 +1566,11 @@ const Game = (() => {
       if (f.reload > 0) f.reload -= dt;
       rag.hold = f.reload > 0 ? null : def.ammo;
       if (player.dead || state !== 'play') return;
-      f.t -= dt * (f.slow > 0 ? 0.5 : 1);
+      f.t -= dt * (f.slow > 0 ? 0.5 : 1) * (run.slowT > 0 ? 0.4 : 1);
       if (f.t <= 0) { f.state = 'wind'; f.windMax = f.t = ((f.boss && f.boss.wind) || def.wind) * Math.max(0.6, 1 - 0.03 * (run.stage - 1)) * (f.enraged ? 0.75 : 1); f.left = f.burst; f.sol = aimAt(f); f.tele = 0.35; Sfx.warn(); }
     } else if (f.state === 'wind') {
       rag.aim = f.sol.ang; rag.aimW = approach(rag.aimW, 1, dt * 7);
-      f.t -= dt * (f.slow > 0 ? 0.5 : 1); rag.pull = clamp(1 - f.t / f.windMax, 0, 1);
+      f.t -= dt * (f.slow > 0 ? 0.5 : 1) * (run.slowT > 0 ? 0.4 : 1); rag.pull = clamp(1 - f.t / f.windMax, 0, 1);
       if (f.t <= 0) {
         foeThrow(f);
         if (--f.left > 0) { f.windMax = f.t = (f.boss && f.boss.gap) || f.def.gap || 0.3; f.sol = aimAt(f); }
@@ -1596,7 +1683,8 @@ const Game = (() => {
     }
     if (!player.dead && state === 'play' && rag.pts[P.PELVIS].y > WORLD_H + 120) fellOff();
     for (const f of foes) f.rag.update(dt, plats);
-    for (let i = 0; i < shots.length; i++) if (!shots[i].dead) stepShot(shots[i], dt);
+    if (run.slowT > 0) run.slowT -= dt;
+    for (let i = 0; i < shots.length; i++) if (!shots[i].dead) stepShot(shots[i], shots[i].owner === 'e' && run.slowT > 0 ? dt * 0.35 : dt);
     for (let i = shots.length - 1; i >= 0; i--) if (shots[i].dead) shots.splice(i, 1);
     stepZones(dt);
 
@@ -1683,11 +1771,74 @@ const Game = (() => {
       }
     }
   }
+  // a foe on a balloon: gravity loses for a while, then the balloon pops and they drop
+  function stepLift(z, dt) {
+    const f = z.f, rag = f.rag;
+    if (!rag.alive) { Sfx.pop(); return true; }
+    z.t += dt;
+    if (f.boss) { rag.stun = Math.max(rag.stun, 0.4); rag.impulse(P.NECK, 0, -60, 1); }
+    else {
+      if (rag.mode !== 'tumble') { rag.knock(rand(-40, 40), -260, P.NECK, 0.4); f.state = 'idle'; }
+      f.t = Math.max(f.t, 0.8);
+      rag.tumbleT = 0.3;
+      // a gentle rise to about 150 px above where they stood, held over the same spot, so the drop lands them back on their island
+      const c = rag.chest, up = clamp((c.y - (z.y0 - 150)) / 150, -0.5, 1);
+      for (const p of rag.pts) {
+        const vx = (p.x - p.px) / dt, vy = (p.y - p.py) / dt;
+        p.px -= ((z.x0 - c.x) * 9 - vx * 3 + Math.sin(z.t * 4) * 30) * dt * dt;
+        p.py -= (-G * (1 + 0.35 * up) - vy * 2.2) * dt * dt;
+      }
+    }
+    if (z.t < z.dur) return false;
+    const c = rag.head;
+    Sfx.pop(); Fx.confetti(c.x, c.y - 60, 14); Fx.text(c.x, c.y - 70, 'POP!', '#ff9ab0', 20);
+    hurtFoe(f, z.dmg, { x: rag.chest.x, y: rag.chest.y, dirx: 0, diry: 1, kb: 0.8 });
+    return true;
+  }
+  // a tornado that rolls along, picks foes up and spins them round, then lets go
+  function stepTwister(z, dt) {
+    z.t += dt; z.x += z.vx * dt;
+    if (z.x > WORLD_W - 60 || z.x < 380) z.vx = -z.vx;
+    const R = 95, hit = (z.tick -= dt) <= 0;
+    if (hit) z.tick = 0.4;
+    for (const f of foes) {
+      const rag = f.rag;
+      if (!live(f) || f.dummy) continue;
+      const c = rag.chest, dx = z.x - c.x, dy = c.y - z.y;
+      if (Math.abs(dx) > R || dy < -340 || dy > 110) continue;
+      if (hit) hurtFoe(f, z.dmg * 0.4, { x: c.x, y: c.y, dirx: Math.sign(z.vx), diry: -1, s: z.s, kb: 0.1 });
+      if (f.boss) { rag.impulse(P.NECK, dx * 0.4, -20, 1); continue; }
+      if (rag.mode !== 'tumble') { rag.knock(dx * 2, -320, P.NECK, 0.3); f.state = 'idle'; }
+      f.t = Math.max(f.t, 1);
+      rag.tumbleT = 0.3;
+      for (const p of rag.pts) {
+        const vx = (p.x - p.px) / dt, vy = (p.y - p.py) / dt, tx = z.x + Math.sin(z.t * 10 + p.y * 0.03) * 46;
+        p.px -= ((tx - p.x) * 16 - vx * 2 + z.vx * 2) * dt * dt;
+        p.py -= ((p.y < z.y - 300 ? 0 : -G * 1.25) - vy * 1.1) * dt * dt;
+      }
+    }
+    for (const e of shots) {
+      if (e.owner !== 'e' || e.dead || Math.abs(e.x - z.x) > R + 30 || e.y < z.y - 360 || e.y > z.y + 80) continue;
+      e.vy -= 2600 * dt; e.vx += (z.x - e.x) * 6 * dt;
+    }
+    if (Math.random() < 0.7) Fx.burst(z.x + rand(-50, 50), z.y - rand(0, 260), 1, { colors: ['#d8dee8', '#ffffff', '#b7c0cf'], speed: [80, 200], life: [0.3, 0.6], size: [2, 4], grav: -200, ang: Math.sign(z.vx) > 0 ? -0.3 : Math.PI + 0.3, spread: 1.2 });
+    if (z.t < z.dur) return false;
+    Fx.dust(z.x, z.y, 14, '#d8dee8'); Sfx.whoosh && Sfx.whoosh();
+    for (const f of foes) {
+      const rag = f.rag;
+      if (!live(f) || f.boss || f.dummy || Math.abs(f.rag.chest.x - z.x) > R + 20) continue;
+      rag.knock(Math.sign(z.vx) * 380, -420, P.NECK, 0.5);
+    }
+    logDone(z.seq);
+    return true;
+  }
   function stepZones(dt) {
     for (let i = zones.length - 1; i >= 0; i--) {
       const z = zones[i];
       if (z.kind === 'delay') { if ((z.t -= dt) <= 0) { zones.splice(i, 1); z.fn(); } continue; }
       if (z.kind === 'rope') { if ((z.t -= dt) <= 0 || !z.rag.alive) zones.splice(i, 1); else stepRope(z, dt); continue; }
+      if (z.kind === 'lift') { if (stepLift(z, dt)) zones.splice(i, 1); continue; }
+      if (z.kind === 'twister') { if (stepTwister(z, dt)) zones.splice(i, 1); continue; }
       // pocket hole: drag everything in, then spit it out
       z.t += dt;
       const R = 310;
@@ -2103,6 +2254,24 @@ const Game = (() => {
       ctx.__tint = c.col || null; ItemArt.draw(ctx, 'crate', c.x, c.y, sw, 22, time); ctx.__tint = null;
     }
     for (const f of foes) f.rag.draw(ctx, time);
+    // a balloon tied above each floating foe
+    for (const z of zones) {
+      if (z.kind !== 'lift' || !z.f.rag.alive) continue;
+      const h = z.f.rag.head, bx = h.x + Math.sin(time * 3 + z.t) * 8, by = h.y - 74;
+      ctx.strokeStyle = 'rgba(239,230,210,0.9)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(h.x, h.y - 8); ctx.quadraticCurveTo((h.x + bx) / 2 + 8, (h.y + by) / 2, bx, by + 16); ctx.stroke();
+      ItemArt.draw(ctx, 'balloon', bx, by, 0, 20, time);
+    }
+    // the tornado: stacked spinning rings, wide at the top
+    for (const z of zones) {
+      if (z.kind !== 'twister') continue;
+      const k = Math.min(1, z.t / 0.3) * Math.min(1, (z.dur - z.t) / 0.3);
+      for (let i = 0; i < 9; i++) {
+        const u = i / 8, y = z.y - u * 300, rx = (18 + u * 70) * k, wob = Math.sin(time * 9 + i * 0.8) * 10 * u;
+        ctx.globalAlpha = 0.5 * k; ctx.strokeStyle = i % 2 ? '#c9d1de' : '#eef2f8'; ctx.lineWidth = 7 - u * 2;
+        ctx.beginPath(); ctx.ellipse(z.x + wob, y, rx, rx * 0.22, 0, time * 4 + i, time * 4 + i + 4.6); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
     for (const z of zones) {
       if (z.kind !== 'rope') continue;
       if (!z.nodes) continue;

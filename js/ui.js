@@ -134,7 +134,7 @@ const UI = (() => {
     $('shopSub').textContent = `${d.items.length} / ${ITEMS.length} FOUND`;
     const lv = UPGRADES.reduce((a, u) => a + Save.lvl(u.id), 0), mx = UPGRADES.reduce((a, u) => a + u.max, 0);
     $('upSub').textContent = `${lv} / ${mx} LEVELS`;
-    $('shopDot').classList.toggle('hidden', !ITEMS.some(i => !Save.owns(i.id) && d.coins >= i.price));
+    $('shopDot').classList.toggle('hidden', !ITEMS.some(i => !Save.owns(i.id) && !i.runKos && d.coins >= i.price));
     $('upDot').classList.toggle('hidden', !UPGRADES.some(u => Save.lvl(u.id) < u.max && d.coins >= upgradeCost(u, Save.lvl(u.id))));
     $('missionDot').classList.toggle('hidden', !Save.missionsReady());
     bagRow($('homeBag'), i => { click(); openLoadout(i); });
@@ -247,13 +247,14 @@ const UI = (() => {
     }).join('');
     const mi = Save.masteryInfo(look.id);
     let act;
-    if (!lookOwn) act = d.coins >= look.price ? `<button class="btn primary wide" id="loShop"><b>BUY IT IN THE SHOP</b><small>${fmt(look.price)} COINS</small></button>` : `<button class="btn wide" id="loShop"><b>${fmt(look.price)} COINS</b><small>${fmt(look.price - d.coins)} MORE TO GO · SEE IT IN THE SHOP</small></button>`;
+    if (!lookOwn && look.runKos) act = koNote(look, d);
+    else if (!lookOwn) act = d.coins >= look.price ? `<button class="btn primary wide" id="loShop"><b>BUY IT IN THE SHOP</b><small>${fmt(look.price)} COINS</small></button>` : `<button class="btn wide" id="loShop"><b>${fmt(look.price)} COINS</b><small>${fmt(look.price - d.coins)} MORE TO GO · SEE IT IN THE SHOP</small></button>`;
     else if (lookSlot === loSlot) act = `<div class="note">IN SLOT ${loSlot + 1} RIGHT NOW</div>`;
     else act = `<button class="btn primary wide" id="loPut"><b>${lookSlot >= 0 ? 'SWAP INTO' : 'PUT IN'} SLOT ${loSlot + 1}</b></button>`;
     const items = [...ITEMS.filter(i => Save.owns(i.id)), ...ITEMS.filter(i => !Save.owns(i.id))].map(it => {
       const own = Save.owns(it.id), sl = bag.indexOf(it.id);
       return `<button class="lo-item${own ? '' : ' locked'}${sl >= 0 ? ' inbag' : ''}${it.id === loLook ? ' look' : ''}${sl === loSlot ? ' here' : ''}" data-item="${it.id}">
-        ${sl >= 0 ? `<i class="bagtag">${sl + 1}</i>` : ''}<span class="lo-art" data-art="${it.id}"></span><b>${esc(it.name)}</b>${own ? (sl >= 0 ? '<small class="eq">IN BAG</small>' : '') : `<small class="${d.coins >= it.price ? '' : 'poor'}">${ic('coin')}${fmt(it.price)}</small>`}</button>`;
+        ${sl >= 0 ? `<i class="bagtag">${sl + 1}</i>` : ''}<span class="lo-art" data-art="${it.id}"></span><b>${esc(it.name)}</b>${own ? (sl >= 0 ? '<small class="eq">IN BAG</small>' : '') : priceTag(it, d)}</button>`;
     }).join('');
     root.innerHTML = `<div class="lo-side card">
         <div class="lo-label"><b>YOUR BAG</b><span>SLOT ${loSlot + 1} IS SELECTED</span></div>
@@ -366,6 +367,9 @@ const UI = (() => {
     else if (free >= 0 && Save.equip(id, free)) Sfx.equip();
     else Sfx.deny();
   }
+  // the price tag of something you don't own: coins, or the knockout run that unlocks it
+  const priceTag = (it, d) => it.runKos ? `<small class="poor">${ic('skull')}${it.runKos} KOs</small>` : `<small class="${d.coins >= it.price ? '' : 'poor'}">${ic('coin')}${fmt(it.price)}</small>`;
+  const koNote = (it, d) => `<div class="note">REACH <b>${it.runKos} KNOCKOUTS IN ONE RUN</b> TO UNLOCK IT FOR GOOD. YOUR BEST RUN: ${d.best.kos}</div>`;
   function renderShop() {
     const d = Save.data;
     document.querySelectorAll('#shopTabs [data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === shopTab));
@@ -379,7 +383,7 @@ const UI = (() => {
       const b = document.createElement('button');
       b.className = 'item' + (it.id === shopSel ? ' sel' : '') + (own ? '' : ' locked') + (slot >= 0 ? ' inbag' : '');
       b.appendChild(ItemArt.iconEl(it.id, 60));
-      b.insertAdjacentHTML('beforeend', `<b>${esc(it.name)}</b>` + (slot >= 0 ? `<i class="bagtag">${slot + 1}</i><small class="eq">IN BAG</small>` : own ? '<small class="own">OWNED</small>' : `<small class="${d.coins >= it.price ? '' : 'poor'}">${ic('coin')}${fmt(it.price)}</small>`));
+      b.insertAdjacentHTML('beforeend', `<b>${esc(it.name)}</b>` + (slot >= 0 ? `<i class="bagtag">${slot + 1}</i><small class="eq">IN BAG</small>` : own ? '<small class="own">OWNED</small>' : priceTag(it, d)));
       // tap to look at it; tap it again to put it in the bag or take it out
       b.onclick = () => { if (it.id === shopSel && own) toggleBag(it.id); else { click(); shopSel = it.id; } renderShop(); };
       grid.appendChild(b);
@@ -392,6 +396,7 @@ const UI = (() => {
     let action;
     if (own && inBag) action = only ? '<div class="note">IN YOUR BAG. YOU NEED AT LEAST ONE THING TO THROW.</div>' : '<button class="btn" id="btnEq"><b>TAKE OUT OF BAG</b></button>';
     else if (own) action = full ? '<div class="note hi">BAG FULL. TAP A SLOT ABOVE TO SWAP IT IN.</div>' : '<button class="btn primary" id="btnEq"><b>ADD TO BAG</b></button>';
+    else if (it.runKos) action = koNote(it, d);
     else if (d.coins >= it.price) action = `<button class="btn primary" id="btnBuy"><b>BUY</b><small>${fmt(it.price)} COINS</small></button>`;
     else action = `<button class="btn" disabled><b>${fmt(it.price)} COINS</b><small>${fmt(it.price - d.coins)} MORE TO GO</small></button>`;
     $('shopInfo').innerHTML = `<div class="pv-head"><b>${esc(it.name.toUpperCase())}</b><span class="tag">${esc(it.tag)}</span></div><p>${esc(it.desc)}</p><button class="btn wide pvbtn" id="btnPreview">${ic('play')}<b>PREVIEW IT</b></button>

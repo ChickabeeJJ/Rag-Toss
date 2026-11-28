@@ -410,6 +410,79 @@ const ItemArt = (() => {
     circ(g, 9, 1.4, 2.6); fillStroke(g, '#7d869b'); circ(g, 9, 1.4, 1.1); g.fillStyle = '#2b3042'; g.fill();
     g.strokeStyle = '#9aa3b8'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(9, 1.4); g.quadraticCurveTo(0, 1, -2, -8); g.stroke();
   };
+  /* ---------------------------------------------------- knockout unlocks */
+  // nesting doll: a round red doll with a painted face, a gold apron and a flower on it
+  P.doll = g => {
+    g.beginPath(); g.moveTo(0, -14.5);
+    g.bezierCurveTo(7.2, -14.5, 8.8, -8.6, 6.6, -4.6); g.bezierCurveTo(11.6, -1, 12.4, 8.6, 8.4, 13.4);
+    g.lineTo(-8.4, 13.4); g.bezierCurveTo(-12.4, 8.6, -11.6, -1, -6.6, -4.6); g.bezierCurveTo(-8.8, -8.6, -7.2, -14.5, 0, -14.5); g.closePath();
+    fillStroke(g, lin(g, -12, 0, 12, 0, '#a81f30', '#f0485a', '#e23a4c', '#a81f30'));
+    ell(g, 0, 5.4, 6.6, 6.6); fillStroke(g, rad(g, -1.5, 3.5, 1, 8, '#ffe58a', '#f2b23a'));
+    g.fillStyle = '#ff6a7a'; for (let i = 0; i < 5; i++) { const a = i * TAU / 5 - Math.PI / 2; circ(g, Math.cos(a) * 2.6, 5.4 + Math.sin(a) * 2.6, 1.7); g.fill(); }
+    circ(g, 0, 5.4, 1.4); g.fillStyle = '#fff1b0'; g.fill();
+    ell(g, 0, -7.8, 5.1, 4.7); fillStroke(g, rad(g, -1.2, -9, 0.5, 6, '#fff6ea', '#f3d6bd'));
+    g.fillStyle = '#4a2a18'; g.beginPath(); g.ellipse(0, -9.4, 5.2, 2.6, 0, Math.PI, TAU); g.fill();
+    g.fillStyle = INK; circ(g, -1.8, -7.8, 0.75); g.fill(); circ(g, 1.8, -7.8, 0.75); g.fill();
+    g.fillStyle = 'rgba(240,90,110,0.75)'; circ(g, -3, -6.2, 1.15); g.fill(); circ(g, 3, -6.2, 1.15); g.fill();
+    g.strokeStyle = '#c23a4a'; g.lineWidth = 0.9; g.lineCap = 'round'; g.beginPath(); g.arc(0, -5.9, 1.3, 0.3, Math.PI - 0.3); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,0.22)'; ell(g, -6.4, 2, 1.6, 5.4, 0.15); g.fill();
+  };
+  // party balloon: a shiny round balloon, a little knot and a curly string
+  P.balloon = (g, t) => {
+    const w = Math.sin(t * 4) * 1.2;
+    g.strokeStyle = '#efe6d2'; g.lineWidth = 1.3; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(0, 11); g.bezierCurveTo(3 + w, 13, -3 - w, 15, 1, 17.5); g.stroke();
+    poly(g, [-2.4, 11.2, 2.4, 11.2, 0, 8.4]); fillStroke(g, '#c81f45');
+    ell(g, 0, -2, 11.2, 12.8); fillStroke(g, rad(g, -4, -6, 1, 16, '#ff9db0', '#ff3b62', '#c81f45'));
+    g.fillStyle = 'rgba(255,255,255,0.6)'; ell(g, -4.6, -7.2, 2.3, 3.8, -0.5); g.fill();
+    g.fillStyle = 'rgba(255,255,255,0.3)'; circ(g, -1.6, -11.6, 1.1); g.fill();
+  };
+  const starPath = (g, ro, ri) => { const pts = []; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? ri : ro; pts.push(Math.cos(a) * r, Math.sin(a) * r); } poly(g, pts); };
+  // shooting star: a plump gold star with a happy face
+  P.star = g => {
+    starPath(g, 15, 7); fillStroke(g, lin(g, -12, -13, 12, 13, '#fff6b0', '#ffd23a', '#f09a1a'));
+    g.fillStyle = 'rgba(255,255,255,0.35)'; g.save(); g.scale(0.55, 0.55); g.translate(-2, -3); starPath(g, 15, 7); g.fill(); g.restore();
+    g.fillStyle = INK; circ(g, -2.6, -0.6, 1); g.fill(); circ(g, 2.6, -0.6, 1); g.fill();
+    g.strokeStyle = INK; g.lineWidth = 1; g.lineCap = 'round'; g.beginPath(); g.arc(0, 1.4, 2, 0.35, Math.PI - 0.35); g.stroke();
+    g.fillStyle = 'rgba(255,120,90,0.55)'; circ(g, -4.6, 2, 1.2); g.fill(); circ(g, 4.6, 2, 1.2); g.fill();
+  };
+  // the little stars of the shower
+  P.starlet = g => {
+    starPath(g, 14, 6.4); fillStroke(g, lin(g, -12, -12, 12, 12, '#fffbd6', '#ffe066', '#ffb52a'));
+    g.fillStyle = 'rgba(255,255,255,0.45)'; g.save(); g.scale(0.5, 0.5); starPath(g, 14, 6.4); g.fill(); g.restore();
+  };
+  // twister in a bottle: a corked glass bottle with a little grey tornado spinning inside
+  P.twister = (g, t) => {
+    g.fillStyle = lin(g, -4, -15, 4, -10, '#d9a066', '#a86e3c'); g.beginPath(); g.roundRect(-4.4, -15.4, 8.8, 5, 1.5); g.fill();
+    g.beginPath(); g.moveTo(-3.6, -10.6); g.lineTo(3.6, -10.6); g.lineTo(3.6, -6); g.bezierCurveTo(10.6, -4, 11, 1, 11, 5); g.lineTo(11, 9);
+    g.quadraticCurveTo(11, 14, 6, 14); g.lineTo(-6, 14); g.quadraticCurveTo(-11, 14, -11, 9); g.lineTo(-11, 5); g.bezierCurveTo(-11, 1, -10.6, -4, -3.6, -6); g.closePath();
+    fillStroke(g, lin(g, -11, 0, 11, 0, 'rgba(160,210,240,0.75)', 'rgba(220,242,255,0.6)', 'rgba(140,195,230,0.8)'));
+    g.save(); g.clip();
+    for (let i = 0; i < 5; i++) {
+      const y = 11 - i * 3.2, rx = 1.6 + i * 1.5, sh = Math.sin(t * 7 + i) * 1.4;
+      g.strokeStyle = i % 2 ? '#8a97ad' : '#b7c0cf'; g.lineWidth = 1.8;
+      g.beginPath(); g.ellipse(sh, y, rx, 1.2, 0, 0, TAU); g.stroke();
+    }
+    g.restore();
+    g.fillStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.roundRect(-8.4, -1.4, 1.8, 11, 0.9); g.fill();
+  };
+  // hourglass: a wooden frame round a glass of gold sand, mid-trickle
+  P.hourglass = (g, t) => {
+    g.beginPath(); g.moveTo(-7.6, -10.6); g.lineTo(7.6, -10.6); g.bezierCurveTo(7.6, -3.6, 1.6, -2.2, 1.4, 0); g.bezierCurveTo(1.6, 2.2, 7.6, 3.6, 7.6, 10.6);
+    g.lineTo(-7.6, 10.6); g.bezierCurveTo(-7.6, 3.6, -1.6, 2.2, -1.4, 0); g.bezierCurveTo(-1.6, -2.2, -7.6, -3.6, -7.6, -10.6); g.closePath();
+    fillStroke(g, 'rgba(205,235,255,0.6)');
+    g.save(); g.clip();
+    g.fillStyle = lin(g, 0, -8, 0, 10, '#ffd98a', '#e7a94a');
+    poly(g, [-6.6, -5.4, 6.6, -5.4, 1, -0.6, -1, -0.6]); g.fill();
+    g.beginPath(); g.moveTo(-7.6, 10.6); g.quadraticCurveTo(0, 2.6, 7.6, 10.6); g.closePath(); g.fill();
+    g.strokeStyle = '#f2c36a'; g.lineWidth = 1; g.setLineDash([1.6, 1.4]); g.lineDashOffset = -t * 12; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 7); g.stroke(); g.setLineDash([]);
+    g.restore();
+    g.fillStyle = 'rgba(255,255,255,0.5)'; g.beginPath(); g.roundRect(-6, -9, 1.4, 4.4, 0.7); g.fill();
+    g.fillStyle = lin(g, 0, -15, 0, -11, '#c98a52', '#8a5426'); g.beginPath(); g.roundRect(-11.4, -14.6, 22.8, 4, 1.4); g.fill();
+    g.fillStyle = lin(g, 0, 10.6, 0, 14.6, '#c98a52', '#8a5426'); g.beginPath(); g.roundRect(-11.4, 10.6, 22.8, 4, 1.4); g.fill();
+    g.fillStyle = lin(g, -11, 0, -8, 0, '#a86e3c', '#7a4a20');
+    g.beginPath(); g.roundRect(-10.6, -11, 2.2, 22, 1); g.fill(); g.beginPath(); g.roundRect(8.4, -11, 2.2, 22, 1); g.fill();
+  };
   P.disco = (g, t) => {
     g.save(); circ(g, 0, 1, 13); g.clip();
     g.fillStyle = lin(g, -13, -13, 13, 15, '#7e8aa8', '#3a4259'); g.fillRect(-14, -13, 28, 28);
